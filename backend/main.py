@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import Optional
+from datetime import datetime, timezone
 from database import get_db
 import models
 import schemas
@@ -87,3 +88,33 @@ def list_orders(status: Optional[str] = None, db: Session = Depends(get_db)):
         query = query.filter(models.Order.status == status)
 
     return query.order_by(models.Order.created_at.desc()).all()
+
+
+# Dedicated overdue section: orders stuck in 'ready' status past the threshold.
+# Computed fresh on every request — nothing stored, no scheduled job.
+@app.get("/orders/overdue", response_model=list[schemas.OrderOut])
+def list_overdue_orders(db: Session = Depends(get_db)):
+    cutoff = logic.get_overdue_cutoff()
+    return db.query(models.Order).filter(
+        models.Order.status == "ready",
+        models.Order.ready_at <= cutoff
+    ).order_by(models.Order.ready_at.asc()).all()
+
+
+# Updates an order's status, and stamps ready_at / collected_at when relevant
+@app.patch("/orders/{order_id}/status", response_model=schemas.OrderOut)
+def update_order_status(order_id: int, status_update: schemas.OrderStatusUpdate, db: Session = Depends(get_db)):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    order.status = status_update.status
+
+    if status_update.status == "ready":
+        order.ready_at = datetime.now(timezone.utc)
+    elif status_update.status == "collected":
+        order.collected_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(order)
+    return order

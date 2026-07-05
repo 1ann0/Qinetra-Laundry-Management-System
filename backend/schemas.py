@@ -27,6 +27,10 @@ class OrderCreate(BaseModel):
     service_type: Literal["wash_fold", "duvet", "dry_cleaning"]
     quantity: float
 
+# Data required to update an order's status
+class OrderStatusUpdate(BaseModel):
+    status: Literal["received", "in_progress", "ready", "collected"]
+
 # Data returned after creating/fetching an order
 class OrderOut(BaseModel):
     id: int
