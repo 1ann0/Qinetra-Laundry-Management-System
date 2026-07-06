@@ -10,8 +10,10 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Connection to the database
-engine = create_engine(DATABASE_URL)
+# Connection to the database.
+# pool_pre_ping checks a connection is still alive before using it,
+# and reconnects automatically if Supabase's pooler dropped it from being idle.
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 # Creates a new session per request
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
