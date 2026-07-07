@@ -47,3 +47,26 @@ class OrderOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# Data returned after login: the JWT itself
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    role: str
+
+# Data required to create a new employee account (owner-only action)
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    role: Literal["owner", "employee"]
+
+# Data returned when listing/confirming a user (never includes the password)
+class UserOut(BaseModel):
+    id: int
+    username: str
+    role: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
