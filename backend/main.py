@@ -8,6 +8,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import Optional
 from datetime import datetime, timezone
+from fastapi.responses import StreamingResponse
+import csv
+import io
 from database import get_db
 import models
 import schemas
@@ -150,3 +153,45 @@ def update_order_status(order_id: int, status_update: schemas.OrderStatusUpdate,
     db.commit()
     db.refresh(order)
     return order
+
+# Dashboard summary: counts of orders per status, plus overdue count. Owner-only.
+@app.get("/dashboard/summary", response_model=schemas.DashboardSummary)
+def dashboard_summary(db: Session = Depends(get_db), current_user: models.User = Depends(auth.require_owner)):
+    cutoff = logic.get_overdue_cutoff()
+
+    return schemas.DashboardSummary(
+        received=db.query(models.Order).filter(models.Order.status == "received").count(),
+        in_progress=db.query(models.Order).filter(models.Order.status == "in_progress").count(),
+        ready=db.query(models.Order).filter(models.Order.status == "ready").count(),
+        collected=db.query(models.Order).filter(models.Order.status == "collected").count(),
+        overdue=db.query(models.Order).filter(
+            models.Order.status == "ready",
+            models.Order.ready_at <= cutoff
+        ).count(),
+    )
+
+
+# Exports all orders as a downloadable CSV file. Owner-only.
+@app.get("/dashboard/export")
+def export_orders_csv(db: Session = Depends(get_db), current_user: models.User = Depends(auth.require_owner)):
+    orders = db.query(models.Order).order_by(models.Order.created_at.desc()).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Ticket Number", "Customer ID", "Service Type", "Quantity",
+        "Unit Price", "Total Price", "Status", "Created At", "Ready At", "Collected At"
+    ])
+    for order in orders:
+        writer.writerow([
+            order.ticket_number, order.customer_id, order.service_type, order.quantity,
+            order.unit_price, order.total_price, order.status,
+            order.created_at, order.ready_at, order.collected_at
+        ])
+    output.seek(0)
+
+    return StreamingResponse(
+        output,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=qlms_orders_export.csv"}
+    )

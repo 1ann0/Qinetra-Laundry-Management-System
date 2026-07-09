@@ -70,3 +70,11 @@ class UserOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+# Data returned by the dashboard: order counts by status, plus overdue count
+class DashboardSummary(BaseModel):
+    received: int
+    in_progress: int
+    ready: int
+    collected: int
+    overdue: int
