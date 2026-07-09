@@ -65,13 +65,22 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db), current
 
 
 # Creates a new customer
-@app.post("/customers", response_model=schemas.CustomerOut)
+@app.post("/customers", response_model=schemas.CustomerCreateResponse)
 def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_db)):
+    # Check for an existing customer with the same phone number, before creating the new one
+    existing = db.query(models.Customer).filter(models.Customer.phone == customer.phone).first()
+
     new_customer = models.Customer(name=customer.name, phone=customer.phone)
     db.add(new_customer)
     db.commit()
     db.refresh(new_customer)
-    return new_customer
+
+    # If a match was found, attach a warning instead of blocking creation
+    warning = None
+    if existing:
+        warning = f"This phone number is already linked to '{existing.name}' (customer ID {existing.id}). A new record was still created — verify this isn't a duplicate."
+
+    return schemas.CustomerCreateResponse(customer=new_customer, duplicate_warning=warning)
 
 
 # Lists all customers, or searches by name/phone if 'search' is given

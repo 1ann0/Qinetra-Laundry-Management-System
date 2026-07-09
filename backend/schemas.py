@@ -20,6 +20,12 @@ class CustomerOut(BaseModel):
     class Config:
         from_attributes = True
 
+# Response returned specifically after creating a customer.
+# Includes a warning if the phone number was already linked to an existing customer.
+class CustomerCreateResponse(BaseModel):
+    customer: CustomerOut
+    duplicate_warning: Optional[str] = None
+
 
 # Data required to create an order
 class OrderCreate(BaseModel):
