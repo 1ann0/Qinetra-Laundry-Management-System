@@ -1,0 +1,79 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/auth-context";
+
+export default function LoginForm() {
+  const router = useRouter();
+  const { isAuthenticated, isLoading, login } = useAuth();
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.replace("/workspace");
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const username = String(formData.get("username") || "").trim();
+    const password = String(formData.get("password") || "");
+
+    if (!username || !password) {
+      setError("Enter both your username and password.");
+      return;
+    }
+
+    setError("");
+    setIsSubmitting(true);
+
+    try {
+      await login(username, password);
+      router.replace("/workspace");
+    } catch (loginError) {
+      setError(loginError.message || "Login failed. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} noValidate>
+      <div className="form-field">
+        <label htmlFor="username">Username</label>
+        <input
+          id="username"
+          name="username"
+          type="text"
+          autoComplete="username"
+          autoFocus
+          disabled={isSubmitting}
+        />
+      </div>
+
+      <div className="form-field">
+        <label htmlFor="password">Password</label>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          disabled={isSubmitting}
+        />
+      </div>
+
+      {error ? (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+
+      <button className="primary-button" type="submit" disabled={isSubmitting}>
+        {isSubmitting ? "Signing in…" : "Sign in to QLMS"}
+      </button>
+    </form>
+  );
+}
