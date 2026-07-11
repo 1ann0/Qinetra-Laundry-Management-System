@@ -5,11 +5,13 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
 import models
 
-# PLACEHOLDER RATES — replace with real prices from the owner interview.
+# Rates confirmed for Qinetra Laundry's current service catalogue.
 PRICING = {
     "wash_fold": 150,      # KES per kg
-    "duvet": 600,          # KES per duvet
-    "dry_cleaning": 400,   # KES per item
+    "duvet": 800,          # KES per duvet
+    "dry_cleaning_shirt": 350,
+    "dry_cleaning_trouser": 350,
+    "dry_cleaning_suit": 750,
 }
 
 # How many days an order can sit in 'ready' status before it's considered overdue

@@ -66,7 +66,11 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db), current
 
 # Creates a new customer
 @app.post("/customers", response_model=schemas.CustomerCreateResponse)
-def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_db)):
+def create_customer(
+    customer: schemas.CustomerCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
     # Check for an existing customer with the same phone number, before creating the new one
     existing = db.query(models.Customer).filter(models.Customer.phone == customer.phone).first()
 
@@ -85,7 +89,11 @@ def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_
 
 # Lists all customers, or searches by name/phone if 'search' is given
 @app.get("/customers", response_model=list[schemas.CustomerOut])
-def list_customers(search: Optional[str] = None, db: Session = Depends(get_db)):
+def list_customers(
+    search: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
     query = db.query(models.Customer)
 
     if search:
@@ -101,7 +109,11 @@ def list_customers(search: Optional[str] = None, db: Session = Depends(get_db)):
 
 # Creates a new order: checks the customer exists, calculates price, generates ticket number
 @app.post("/orders", response_model=schemas.OrderOut)
-def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
+def create_order(
+    order: schemas.OrderCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
     customer = db.query(models.Customer).filter(models.Customer.id == order.customer_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -125,7 +137,11 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
 
 # Lists all orders, optionally filtered by status (received/in_progress/ready/collected)
 @app.get("/orders", response_model=list[schemas.OrderOut])
-def list_orders(status: Optional[str] = None, db: Session = Depends(get_db)):
+def list_orders(
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
     query = db.query(models.Order)
 
     if status:
@@ -137,7 +153,10 @@ def list_orders(status: Optional[str] = None, db: Session = Depends(get_db)):
 # Dedicated overdue section: orders stuck in 'ready' status past the threshold.
 # Computed fresh on every request — nothing stored, no scheduled job.
 @app.get("/orders/overdue", response_model=list[schemas.OrderOut])
-def list_overdue_orders(db: Session = Depends(get_db)):
+def list_overdue_orders(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
     cutoff = logic.get_overdue_cutoff()
     return db.query(models.Order).filter(
         models.Order.status == "ready",
@@ -147,7 +166,12 @@ def list_overdue_orders(db: Session = Depends(get_db)):
 
 # Updates an order's status, and stamps ready_at / collected_at when relevant
 @app.patch("/orders/{order_id}/status", response_model=schemas.OrderOut)
-def update_order_status(order_id: int, status_update: schemas.OrderStatusUpdate, db: Session = Depends(get_db)):
+def update_order_status(
+    order_id: int,
+    status_update: schemas.OrderStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")

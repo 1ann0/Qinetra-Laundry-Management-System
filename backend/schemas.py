@@ -30,7 +30,13 @@ class CustomerCreateResponse(BaseModel):
 # Data required to create an order
 class OrderCreate(BaseModel):
     customer_id: int
-    service_type: Literal["wash_fold", "duvet", "dry_cleaning"]
+    service_type: Literal[
+        "wash_fold",
+        "duvet",
+        "dry_cleaning_shirt",
+        "dry_cleaning_trouser",
+        "dry_cleaning_suit",
+    ]
     quantity: float
 
 # Data required to update an order's status
