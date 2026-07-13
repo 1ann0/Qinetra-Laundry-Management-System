@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 
 const MODULES = [
@@ -7,7 +8,8 @@ const MODULES = [
     number: "02",
     title: "Customer records",
     description: "Register customers and find them quickly by name or phone.",
-    phase: "Next: Customer Module",
+    phase: "Open customer registration",
+    href: "/customers",
   },
   {
     number: "03",
@@ -43,7 +45,16 @@ export default function WorkspacePage() {
             <span className="module-number">{module.number}</span>
             <h2>{module.title}</h2>
             <p>{module.description}</p>
-            <span className="phase-label">{module.phase}</span>
+            {module.href ? (
+              <Link
+                className="mt-5 inline-flex text-sm font-bold text-[#005AAB] no-underline hover:underline"
+                href={module.href}
+              >
+                {module.phase}
+              </Link>
+            ) : (
+              <span className="phase-label">{module.phase}</span>
+            )}
           </article>
         ))}
       </section>

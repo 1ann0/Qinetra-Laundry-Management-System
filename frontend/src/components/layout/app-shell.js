@@ -30,6 +30,7 @@ export default function AppShell({ children }) {
 
         <nav className="app-nav" aria-label="Main navigation">
           <Link href="/workspace">Workspace</Link>
+          <Link href="/customers">Customers</Link>
           {role === "owner" ? <Link href="/dashboard">Dashboard</Link> : null}
         </nav>
 

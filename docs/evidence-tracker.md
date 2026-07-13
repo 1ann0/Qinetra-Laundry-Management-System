@@ -1,7 +1,7 @@
 # QLMS Evidence Tracker
 
 Track evidence for the final presentation/viva here. Check items off as you capture them.
-Screenshots go in docs/evidence/ using the naming pattern: 01-description.png, 02-description.png...
+Screenshots go in docs/diagrams/evidence/ using the naming pattern: 01-description.png, 02-description.png...
 
 ## Backend Feature Tests (screenshots of /docs responses)
 
@@ -16,9 +16,9 @@ Screenshots go in docs/evidence/ using the naming pattern: 01-description.png, 0
 
 ## Frontend Screens (once built)
 
-- [ ] 09 - Login screen
+- [x] 09 - Login screen
 - [ ] 10 - Owner dashboard
-- [ ] 11 - Customer registration form
+- [x] 11 - Customer registration form
 - [ ] 12 - Customer search screen
 - [ ] 13 - Order entry screen
 - [ ] 14 - Order status update (staff view)
@@ -38,3 +38,4 @@ Screenshots go in docs/evidence/ using the naming pattern: 01-description.png, 0
 - Screenshot = browser response body from /docs, or the actual frontend screen
 - Capture immediately after confirming a feature works — don't wait
 - Git commit history is backup evidence too (git log --oneline shows progression)
+- Screenshot 10 stays open until the real owner dashboard is built in Phase 5
