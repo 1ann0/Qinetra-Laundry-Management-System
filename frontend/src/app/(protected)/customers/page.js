@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useAuth } from "@/context/auth-context";
 
@@ -102,6 +103,12 @@ export default function CustomerRegistrationPage() {
           Add the customer before creating their laundry order. Both owners and
           employees can use this form.
         </p>
+        <Link
+          className="mt-4 inline-flex font-bold text-[#005AAB] no-underline hover:underline"
+          href="/customers/search"
+        >
+          Search customer records
+        </Link>
       </div>
 
       <form
