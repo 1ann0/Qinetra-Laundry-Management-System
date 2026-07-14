@@ -15,7 +15,8 @@ const MODULES = [
     number: "03",
     title: "Laundry orders",
     description: "Price services, create orders, and issue clear ticket numbers.",
-    phase: "Phase 3: Order & Pricing",
+    phase: "Open order entry",
+    href: "/orders",
   },
   {
     number: "04",

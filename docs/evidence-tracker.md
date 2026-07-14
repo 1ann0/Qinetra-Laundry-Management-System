@@ -20,7 +20,7 @@ Screenshots go in docs/diagrams/evidence/ using the naming pattern: 01-descripti
 - [ ] 10 - Owner dashboard
 - [x] 11 - Customer registration form
 - [x] 12 - Customer search screen
-- [ ] 13 - Order entry screen
+- [x] 13 - Order entry screen
 - [ ] 14 - Order status update (staff view)
 - [ ] 15 - Overdue orders section (staff/owner view)
 - [ ] 16 - Reports/CSV export screen
