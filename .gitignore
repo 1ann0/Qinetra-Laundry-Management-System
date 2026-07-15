@@ -1,13 +1,36 @@
-# Node
+# Node and Next.js generated files
 node_modules/
 .next/
-frontend/.env.local
+out/
+coverage/
+.vercel/
 
-# Python
-backend/venv/
-backend/__pycache__/
-backend/.env
+# Python generated files
+venv/
+__pycache__/
 *.pyc
 
-# OS
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Private working notes and local tools
+AGENTS.md
+CLAUDE.md
+LEARNING_NOTES.md
+PRESENTATION_NOTES.md
+docs/evidence-tracker.md
+.agents/
+.codex/
+
+# Editors and logs
+.vscode/
+.idea/
+*.code-workspace
+*.log
+
+# Operating system files
 .DS_Store
+Thumbs.db
+Desktop.ini
