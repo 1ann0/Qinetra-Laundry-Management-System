@@ -20,6 +20,10 @@ There is no customer portal. Online payments, multiple branches and automatic me
 - Service selection and price preview
 - Backend price calculation
 - Daily laundry ticket generation
+- Four-stage order status tracking
+- Overdue collection identification
+- Owner dashboard summary
+- CSV order export
 - Protected staff pages
 
 ## Technology used
@@ -61,4 +65,4 @@ Open `http://localhost:3000` in a browser.
 
 ## Project status
 
-The backend is complete. Frontend phases 1 to 3 are complete, covering authentication, customers, order entry, pricing and ticket display.
+The backend is complete. Frontend phases 1 to 5 are complete, covering authentication, customers, order entry, pricing, status tracking, overdue orders, the owner dashboard and CSV export.
