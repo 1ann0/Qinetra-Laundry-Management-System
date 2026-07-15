@@ -143,6 +143,13 @@ export default function OrderEntryPage() {
         >
           Register a customer first
         </Link>
+        <span className="mx-3 text-slate-300">|</span>
+        <Link
+          className="mt-4 inline-flex font-bold text-[#005AAB] no-underline hover:underline"
+          href="/orders/status"
+        >
+          Track order status
+        </Link>
       </div>
 
       <form

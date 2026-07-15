@@ -22,7 +22,8 @@ const MODULES = [
     number: "04",
     title: "Status tracking",
     description: "Move work through four stages and identify overdue collections.",
-    phase: "Phase 4: Status & Overdue",
+    phase: "Open status tracking",
+    href: "/orders/status",
   },
 ];
 
