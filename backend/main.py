@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from fastapi.responses import StreamingResponse
 import csv
 import io
+import os
 from database import get_db
 import models
 import schemas
@@ -19,10 +20,17 @@ import auth
 
 app = FastAPI()
 
-# Allows the frontend (different domain) to call this backend
+# Allow only the configured frontend addresses to call the API from a browser.
+local_origins = "http://localhost:3000,http://127.0.0.1:3000"
+allowed_origins = [
+    origin.strip()
+    for origin in os.getenv("ALLOWED_ORIGINS", local_origins).split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
