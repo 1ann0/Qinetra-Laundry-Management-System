@@ -23,6 +23,7 @@ PRESENTATION_NOTES.md
 docs/evidence-tracker.md
 .agents/
 .codex/
+.codex-remote-attachments/
 
 # Editors and logs
 .vscode/
