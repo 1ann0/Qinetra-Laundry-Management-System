@@ -10,6 +10,9 @@ export default function LoginForm() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Keep the password hidden by default, but let staff check what they typed.
+  const [showPassword, setShowPassword] = useState(false);
+
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
       router.replace("/workspace");
@@ -56,13 +59,24 @@ export default function LoginForm() {
 
       <div className="form-field">
         <label htmlFor="password">Password</label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          disabled={isSubmitting}
-        />
+        <div className="password-input-row">
+          <input
+            id="password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            autoComplete="current-password"
+            disabled={isSubmitting}
+          />
+          <button
+            className="password-toggle"
+            type="button"
+            aria-pressed={showPassword}
+            onClick={() => setShowPassword((currentValue) => !currentValue)}
+            disabled={isSubmitting}
+          >
+            {showPassword ? "Hide" : "Show"}
+          </button>
+        </div>
       </div>
 
       {error ? (

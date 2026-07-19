@@ -2,13 +2,22 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 
+// Display the protected pages with navigation shared by every signed-in user.
 export default function AppShell({ children }) {
+  const pathname = usePathname();
   const router = useRouter();
   const { role, logout } = useAuth();
 
+  // Keep the main module highlighted while the user is on one of its related pages.
+  const isWorkspacePage = pathname === "/workspace";
+  const isCustomersPage = pathname.startsWith("/customers");
+  const isOrdersPage = pathname.startsWith("/orders");
+  const isDashboardPage = pathname === "/dashboard";
+
+  // Clear the saved session before returning the user to the login page.
   function handleLogout() {
     logout();
     router.replace("/login");
@@ -29,10 +38,32 @@ export default function AppShell({ children }) {
         </Link>
 
         <nav className="app-nav" aria-label="Main navigation">
-          <Link href="/workspace">Workspace</Link>
-          <Link href="/customers">Customers</Link>
-          <Link href="/orders">Orders</Link>
-          {role === "owner" ? <Link href="/dashboard">Dashboard</Link> : null}
+          <Link
+            href="/workspace"
+            aria-current={isWorkspacePage ? "page" : undefined}
+          >
+            Workspace
+          </Link>
+          <Link
+            href="/customers"
+            aria-current={isCustomersPage ? "page" : undefined}
+          >
+            Customers
+          </Link>
+          <Link
+            href="/orders"
+            aria-current={isOrdersPage ? "page" : undefined}
+          >
+            Orders
+          </Link>
+          {role === "owner" ? (
+            <Link
+              href="/dashboard"
+              aria-current={isDashboardPage ? "page" : undefined}
+            >
+              Dashboard
+            </Link>
+          ) : null}
         </nav>
 
         <div className="session-controls">
@@ -43,7 +74,9 @@ export default function AppShell({ children }) {
         </div>
       </header>
 
-      <main className="app-main">{children}</main>
+      <main className={`app-main ${isWorkspacePage ? "workspace-main" : ""}`}>
+        {children}
+      </main>
     </div>
   );
 }
