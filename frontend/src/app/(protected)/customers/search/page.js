@@ -57,9 +57,19 @@ export default function CustomerSearchPage() {
           blank to view all customer records.
         </p>
         <Link
-          className="mt-4 inline-flex font-bold text-[#005AAB] no-underline hover:underline"
+          className="mt-4 inline-flex items-center gap-2 font-bold text-[#005AAB] no-underline hover:underline"
           href="/customers"
         >
+          <svg
+            aria-hidden="true"
+            className="h-5 w-5 shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M12 5v14M5 12h14" />
+          </svg>
           Register a new customer
         </Link>
       </div>
@@ -68,7 +78,7 @@ export default function CustomerSearchPage() {
         className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
         onSubmit={handleSearch}
       >
-        <label className="mb-2 block font-semibold text-slate-800" htmlFor="search">
+        <label className="mb-2 block text-lg font-bold text-slate-800" htmlFor="search">
           Customer name or phone
         </label>
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -83,10 +93,21 @@ export default function CustomerSearchPage() {
             placeholder="Example: Jane or 0712"
           />
           <button
-            className="inline-flex min-h-12 items-center justify-center rounded-xl bg-[#005AAB] px-6 font-bold text-white hover:bg-[#004782] disabled:cursor-wait disabled:opacity-60"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#005AAB] px-6 font-bold text-white hover:bg-[#004782] disabled:cursor-wait disabled:opacity-60"
             type="submit"
             disabled={isLoading}
           >
+            <svg
+              aria-hidden="true"
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-4-4" />
+            </svg>
             {isLoading ? "Searching…" : "Search customers"}
           </button>
         </div>
@@ -126,6 +147,9 @@ export default function CustomerSearchPage() {
                     <th className="px-6 py-3 font-semibold" scope="col">
                       Phone number
                     </th>
+                    <th className="px-6 py-3 font-semibold" scope="col">
+                      Action
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -136,6 +160,14 @@ export default function CustomerSearchPage() {
                       </td>
                       <td className="px-6 py-4 font-semibold">{customer.name}</td>
                       <td className="whitespace-nowrap px-6 py-4">{customer.phone}</td>
+                      <td className="whitespace-nowrap px-6 py-4">
+                        <Link
+                          className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[#005AAB] px-4 font-bold text-[#005AAB] no-underline hover:bg-blue-50"
+                          href={`/orders?customerId=${customer.id}`}
+                        >
+                          Create order
+                        </Link>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

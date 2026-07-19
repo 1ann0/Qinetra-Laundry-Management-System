@@ -37,8 +37,10 @@ function getOrderError(customerId, serviceCode, quantity) {
 export default function OrderEntryPage() {
   const { authenticatedRequest } = useAuth();
 
-  // Store the customer list and the two values used for the live price estimate.
+  // Store the customer list, customer selection and values used for the price estimate.
   const [customers, setCustomers] = useState([]);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [serviceCode, setServiceCode] = useState(SERVICES[0].code);
   const [quantity, setQuantity] = useState("1");
 
@@ -53,7 +55,18 @@ export default function OrderEntryPage() {
     async function loadCustomers() {
       try {
         const response = await authenticatedRequest("/customers");
+        const requestedCustomerId = new URLSearchParams(
+          window.location.search,
+        ).get("customerId");
+        const customerExists = response.some(
+          (customer) => String(customer.id) === requestedCustomerId,
+        );
+
         setCustomers(response);
+
+        if (customerExists) {
+          setSelectedCustomerId(requestedCustomerId);
+        }
       } catch (loadError) {
         setError(loadError.message || "Customers could not be loaded.");
       } finally {
@@ -63,6 +76,28 @@ export default function OrderEntryPage() {
 
     loadCustomers();
   }, [authenticatedRequest]);
+
+  // Move the created ticket into view after React has added it to the page.
+  useEffect(() => {
+    if (createdOrder) {
+      document.getElementById("created-order-result")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }, [createdOrder]);
+
+  // Filter the customers already loaded from the backend by name or phone.
+  // Keep the selected customer visible even when the search text changes.
+  const normalizedCustomerSearch = customerSearch.trim().toLowerCase();
+  const visibleCustomers = customers.filter((customer) => {
+    const matchesSearch =
+      !normalizedCustomerSearch ||
+      customer.name.toLowerCase().includes(normalizedCustomerSearch) ||
+      customer.phone.includes(normalizedCustomerSearch);
+
+    return matchesSearch || String(customer.id) === selectedCustomerId;
+  });
 
   // Calculate only a preview for the employee; FastAPI calculates the final total.
   const selectedService = SERVICES_BY_CODE[serviceCode];
@@ -76,8 +111,7 @@ export default function OrderEntryPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     const form = event.currentTarget;
-    const formData = new FormData(form);
-    const customerId = Number(formData.get("customer_id"));
+    const customerId = Number(selectedCustomerId);
     const orderQuantity = Number(quantity);
     const validationError = getOrderError(
       customerId,
@@ -115,6 +149,8 @@ export default function OrderEntryPage() {
       });
 
       form.reset();
+      setCustomerSearch("");
+      setSelectedCustomerId("");
       setServiceCode(SERVICES[0].code);
       setQuantity("1");
     } catch (orderError) {
@@ -137,19 +173,40 @@ export default function OrderEntryPage() {
           Select the customer and laundry service. The backend will confirm the
           price and generate the ticket number.
         </p>
-        <Link
-          className="mt-4 inline-flex font-bold text-[#005AAB] no-underline hover:underline"
-          href="/customers"
-        >
-          Register a customer first
-        </Link>
-        <span className="mx-3 text-slate-300">|</span>
-        <Link
-          className="mt-4 inline-flex font-bold text-[#005AAB] no-underline hover:underline"
-          href="/orders/status"
-        >
-          Track order status
-        </Link>
+        <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3">
+          <Link
+            className="inline-flex items-center gap-2 font-bold text-[#005AAB] no-underline hover:underline"
+            href="/customers"
+          >
+            <svg
+              aria-hidden="true"
+              className="h-5 w-5 shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Register a customer first
+          </Link>
+          <Link
+            className="inline-flex items-center gap-2 font-bold text-[#005AAB] no-underline hover:underline"
+            href="/orders/status"
+          >
+            <svg
+              aria-hidden="true"
+              className="h-5 w-5 shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M5 12h14m-5-5 5 5-5 5" />
+            </svg>
+            Track order status
+          </Link>
+        </div>
       </div>
 
       <form
@@ -159,6 +216,24 @@ export default function OrderEntryPage() {
       >
         <div>
           <div className="mb-5">
+            <label className="mb-2 block font-semibold text-slate-800" htmlFor="customer_search">
+              Find customer
+            </label>
+            <input
+              className="min-h-12 w-full rounded-xl border border-slate-300 px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
+              id="customer_search"
+              type="search"
+              value={customerSearch}
+              onChange={(event) => setCustomerSearch(event.target.value)}
+              disabled={isLoadingCustomers || isSubmitting}
+              placeholder="Search by customer name or phone"
+            />
+            <p className="mt-2 text-sm text-slate-500">
+              This filters the customer list below.
+            </p>
+          </div>
+
+          <div className="mb-5">
             <label className="mb-2 block font-semibold text-slate-800" htmlFor="customer_id">
               Customer
             </label>
@@ -166,13 +241,18 @@ export default function OrderEntryPage() {
               className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
               id="customer_id"
               name="customer_id"
-              defaultValue=""
+              value={selectedCustomerId}
+              onChange={(event) => setSelectedCustomerId(event.target.value)}
               disabled={isLoadingCustomers || isSubmitting}
             >
               <option value="">
-                {isLoadingCustomers ? "Loading customers…" : "Select a customer"}
+                {isLoadingCustomers
+                  ? "Loading customers…"
+                  : visibleCustomers.length === 0
+                    ? "No matching customers"
+                    : "Select a customer"}
               </option>
-              {customers.map((customer) => (
+              {visibleCustomers.map((customer) => (
                 <option key={customer.id} value={customer.id}>
                   {customer.name} — {customer.phone}
                 </option>
@@ -250,7 +330,12 @@ export default function OrderEntryPage() {
       </form>
 
       {createdOrder ? (
-        <section className="mt-8 rounded-2xl border border-green-300 bg-green-50 p-6 sm:p-8">
+        <section
+          className="mt-8 scroll-mt-6 rounded-2xl border border-green-300 bg-green-50 p-6 sm:p-8"
+          id="created-order-result"
+          role="status"
+          aria-live="polite"
+        >
           <p className="text-sm font-bold uppercase tracking-wide text-green-800">
             Order created
           </p>

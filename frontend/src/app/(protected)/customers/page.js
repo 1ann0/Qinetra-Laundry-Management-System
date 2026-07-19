@@ -104,9 +104,20 @@ export default function CustomerRegistrationPage() {
           employees can use this form.
         </p>
         <Link
-          className="mt-4 inline-flex font-bold text-[#005AAB] no-underline hover:underline"
+          className="mt-4 inline-flex items-center gap-2 font-bold text-[#005AAB] no-underline hover:underline"
           href="/customers/search"
         >
+          <svg
+            aria-hidden="true"
+            className="h-5 w-5 shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
           Search customer records
         </Link>
       </div>
