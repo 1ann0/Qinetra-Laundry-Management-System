@@ -48,9 +48,9 @@ function getNextStatus(status) {
 
 // Use action wording that makes the result of each button clear.
 function getActionLabel(status) {
-  if (status === "received") return "Mark in progress";
-  if (status === "in_progress") return "Mark ready for collection";
-  if (status === "ready") return "Mark collected";
+  if (status === "received") return "Move to In Progress";
+  if (status === "in_progress") return "Move to Ready for Collection";
+  if (status === "ready") return "Mark as Collected";
   return "";
 }
 
@@ -366,14 +366,17 @@ export default function OrderStatusPage() {
                 ) : null}
 
                 {nextStatus ? (
-                  <button
-                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#005AAB] px-5 font-bold text-white hover:bg-[#004782] disabled:cursor-wait disabled:opacity-60 sm:w-auto"
-                    type="button"
-                    disabled={updatingOrderId !== null}
-                    onClick={() => updateStatus(order)}
-                  >
-                    {isUpdating ? "Updating…" : getActionLabel(order.status)}
-                  </button>
+                  <div>
+                    <p className="mb-2 text-sm font-bold text-slate-700">Next action</p>
+                    <button
+                      className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#005AAB] px-5 font-bold text-white shadow-sm hover:bg-[#004782] disabled:cursor-wait disabled:opacity-60 sm:w-auto"
+                      type="button"
+                      disabled={updatingOrderId !== null}
+                      onClick={() => updateStatus(order)}
+                    >
+                      {isUpdating ? "Updating…" : getActionLabel(order.status)}
+                    </button>
+                  </div>
                 ) : (
                   <p className="font-semibold text-green-700">Order completed and collected.</p>
                 )}
