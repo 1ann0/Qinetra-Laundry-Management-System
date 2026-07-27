@@ -10,9 +10,44 @@ const UNIT_OPTIONS = [
   { value: "pair", label: "Per pair" },
 ];
 
+const RECORDING_MODE_OPTIONS = [
+  { value: "none", label: "No clothing list" },
+  { value: "tally", label: "Quick tally" },
+  { value: "detailed", label: "Individual garment details" },
+];
+
 // Keep catalogue entries in alphabetical order after adding or editing them.
 function sortByName(items) {
   return [...items].sort((first, second) => first.name.localeCompare(second.name));
+}
+
+// Turn the saved recording value into wording the owner can recognise.
+function getRecordingModeLabel(mode) {
+  return (
+    RECORDING_MODE_OPTIONS.find((option) => option.value === mode)?.label ||
+    "No clothing list"
+  );
+}
+
+// Keep validation and success messages beside the action that produced them.
+function ActionFeedback({ feedback }) {
+  if (!feedback) {
+    return null;
+  }
+
+  const isError = feedback.type === "error";
+  return (
+    <p
+      className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
+        isError
+          ? "border-red-300 bg-red-50 text-red-800"
+          : "border-green-300 bg-green-50 text-green-800"
+      }`}
+      role={isError ? "alert" : "status"}
+    >
+      {feedback.text}
+    </p>
+  );
 }
 
 // Display service prices in a familiar Kenya shilling format.
@@ -38,6 +73,7 @@ function ShopSetupContent() {
   const [serviceName, setServiceName] = useState("");
   const [serviceUnit, setServiceUnit] = useState("item");
   const [servicePrice, setServicePrice] = useState("");
+  const [serviceRecordingMode, setServiceRecordingMode] = useState("none");
 
   // Use one small form for adding or renaming a clothing item.
   const [editingItemId, setEditingItemId] = useState(null);
@@ -45,8 +81,11 @@ function ShopSetupContent() {
 
   // Give the owner clear feedback while an action is being saved.
   const [busyAction, setBusyAction] = useState("");
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const [pageError, setPageError] = useState("");
+  const [serviceFormFeedback, setServiceFormFeedback] = useState(null);
+  const [serviceActionFeedback, setServiceActionFeedback] = useState(null);
+  const [itemFormFeedback, setItemFormFeedback] = useState(null);
+  const [itemActionFeedback, setItemActionFeedback] = useState(null);
 
   // Load active and inactive entries so the owner can reactivate old choices.
   useEffect(() => {
@@ -60,7 +99,9 @@ function ShopSetupContent() {
         setServices(sortByName(serviceResponse));
         setItemTypes(sortByName(itemResponse));
       } catch (loadError) {
-        setError(loadError.message || "The shop catalogue could not be loaded.");
+        setPageError(
+          loadError.message || "The shop catalogue could not be loaded.",
+        );
       } finally {
         setIsLoading(false);
       }
@@ -75,6 +116,8 @@ function ShopSetupContent() {
     setServiceName("");
     setServiceUnit("item");
     setServicePrice("");
+    setServiceRecordingMode("none");
+    setServiceFormFeedback(null);
   }
 
   // Place an existing service in the form so the owner can change it.
@@ -83,8 +126,9 @@ function ShopSetupContent() {
     setServiceName(service.name);
     setServiceUnit(service.unit);
     setServicePrice(String(service.unit_price));
-    setError("");
-    setMessage("");
+    setServiceRecordingMode(service.item_recording_mode || "none");
+    setServiceFormFeedback(null);
+    setServiceActionFeedback(null);
 
     // Move the form into view because the selected service may be far down the list.
     window.requestAnimationFrame(() => {
@@ -98,19 +142,32 @@ function ShopSetupContent() {
   // Add a service or save changes to the selected service.
   async function handleServiceSubmit(event) {
     event.preventDefault();
-    setError("");
-    setMessage("");
+    setServiceFormFeedback(null);
 
     const cleanedName = serviceName.trim();
     const numericPrice = Number(servicePrice);
 
     if (!cleanedName) {
-      setError("Enter a service name.");
+      setServiceFormFeedback({
+        type: "error",
+        text: "Enter a service name.",
+      });
       return;
     }
 
     if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
-      setError("Enter a service price greater than zero.");
+      setServiceFormFeedback({
+        type: "error",
+        text: "Enter a service price greater than zero.",
+      });
+      return;
+    }
+
+    if (serviceRecordingMode === "detailed" && serviceUnit === "kg") {
+      setServiceFormFeedback({
+        type: "error",
+        text: "Individual garment details must use per item or per pair pricing.",
+      });
       return;
     }
 
@@ -129,6 +186,7 @@ function ShopSetupContent() {
             name: cleanedName,
             unit: serviceUnit,
             unit_price: numericPrice,
+            item_recording_mode: serviceRecordingMode,
           }),
         },
       );
@@ -143,9 +201,15 @@ function ShopSetupContent() {
         ),
       );
       resetServiceForm();
-      setMessage(isEditing ? "Service changes saved." : "New service added.");
+      setServiceFormFeedback({
+        type: "success",
+        text: isEditing ? "Service changes saved." : "New service added.",
+      });
     } catch (saveError) {
-      setError(saveError.message || "The service could not be saved.");
+      setServiceFormFeedback({
+        type: "error",
+        text: saveError.message || "The service could not be saved.",
+      });
     } finally {
       setBusyAction("");
     }
@@ -154,8 +218,7 @@ function ShopSetupContent() {
   // Hide or restore a service without deleting its older records.
   async function toggleService(service) {
     setBusyAction(`service-${service.id}`);
-    setError("");
-    setMessage("");
+    setServiceActionFeedback(null);
 
     try {
       const updatedService = await authenticatedRequest(
@@ -176,13 +239,20 @@ function ShopSetupContent() {
           ),
         ),
       );
-      setMessage(
-        updatedService.is_active
+      setServiceActionFeedback({
+        targetId: service.id,
+        type: "success",
+        text: updatedService.is_active
           ? `${updatedService.name} is available again.`
           : `${updatedService.name} will not appear in new orders.`,
-      );
+      });
     } catch (updateError) {
-      setError(updateError.message || "The service status could not be changed.");
+      setServiceActionFeedback({
+        targetId: service.id,
+        type: "error",
+        text:
+          updateError.message || "The service status could not be changed.",
+      });
     } finally {
       setBusyAction("");
     }
@@ -192,25 +262,28 @@ function ShopSetupContent() {
   function resetItemForm() {
     setEditingItemId(null);
     setItemName("");
+    setItemFormFeedback(null);
   }
 
   // Place an existing clothing item name in the form for editing.
   function startItemEdit(itemType) {
     setEditingItemId(itemType.id);
     setItemName(itemType.name);
-    setError("");
-    setMessage("");
+    setItemFormFeedback(null);
+    setItemActionFeedback(null);
   }
 
   // Add a clothing name or save a change to the selected one.
   async function handleItemSubmit(event) {
     event.preventDefault();
-    setError("");
-    setMessage("");
+    setItemFormFeedback(null);
 
     const cleanedName = itemName.trim();
     if (!cleanedName) {
-      setError("Enter a clothing item name.");
+      setItemFormFeedback({
+        type: "error",
+        text: "Enter a clothing item name.",
+      });
       return;
     }
 
@@ -239,9 +312,15 @@ function ShopSetupContent() {
         ),
       );
       resetItemForm();
-      setMessage(isEditing ? "Clothing item updated." : "Clothing item added.");
+      setItemFormFeedback({
+        type: "success",
+        text: isEditing ? "Clothing item updated." : "Clothing item added.",
+      });
     } catch (saveError) {
-      setError(saveError.message || "The clothing item could not be saved.");
+      setItemFormFeedback({
+        type: "error",
+        text: saveError.message || "The clothing item could not be saved.",
+      });
     } finally {
       setBusyAction("");
     }
@@ -250,8 +329,7 @@ function ShopSetupContent() {
   // Hide or restore a clothing item without removing its history.
   async function toggleItemType(itemType) {
     setBusyAction(`item-${itemType.id}`);
-    setError("");
-    setMessage("");
+    setItemActionFeedback(null);
 
     try {
       const updatedItem = await authenticatedRequest(
@@ -270,15 +348,21 @@ function ShopSetupContent() {
           ),
         ),
       );
-      setMessage(
-        updatedItem.is_active
+      setItemActionFeedback({
+        targetId: itemType.id,
+        type: "success",
+        text: updatedItem.is_active
           ? `${updatedItem.name} is available again.`
           : `${updatedItem.name} will not appear in the item tally.`,
-      );
+      });
     } catch (updateError) {
-      setError(
-        updateError.message || "The clothing item status could not be changed.",
-      );
+      setItemActionFeedback({
+        targetId: itemType.id,
+        type: "error",
+        text:
+          updateError.message ||
+          "The clothing item status could not be changed.",
+      });
     } finally {
       setBusyAction("");
     }
@@ -299,21 +383,12 @@ function ShopSetupContent() {
         </p>
       </div>
 
-      {error ? (
+      {pageError ? (
         <p
           className="mb-6 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800"
           role="alert"
         >
-          {error}
-        </p>
-      ) : null}
-
-      {message ? (
-        <p
-          className="mb-6 rounded-xl border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800"
-          role="status"
-        >
-          {message}
+          {pageError}
         </p>
       ) : null}
 
@@ -396,6 +471,29 @@ function ShopSetupContent() {
                 </div>
               </div>
 
+              <label
+                className="mt-4 block font-semibold text-slate-800"
+                htmlFor="service-recording-mode"
+              >
+                How are items recorded?
+              </label>
+              <select
+                className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-2 focus:ring-blue-100"
+                id="service-recording-mode"
+                value={serviceRecordingMode}
+                onChange={(event) => setServiceRecordingMode(event.target.value)}
+              >
+                {RECORDING_MODE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-sm leading-5 text-slate-500">
+                Quick tally counts clothing pieces. Individual details record
+                each garment, its condition and stain notes.
+              </p>
+
               <div className="mt-5 flex flex-wrap gap-3">
                 <button
                   className="min-h-11 rounded-xl bg-[#005AAB] px-5 font-bold text-white hover:bg-[#004782] disabled:cursor-wait disabled:opacity-60"
@@ -418,6 +516,7 @@ function ShopSetupContent() {
                   </button>
                 ) : null}
               </div>
+              <ActionFeedback feedback={serviceFormFeedback} />
             </form>
 
             <div className="mt-6 space-y-3">
@@ -447,6 +546,9 @@ function ShopSetupContent() {
                       <p className="mt-1 text-sm text-slate-600">
                         {formatKes(service.unit_price)} per {service.unit}
                       </p>
+                      <p className="mt-1 text-sm font-semibold text-[#005AAB]">
+                        {getRecordingModeLabel(service.item_recording_mode)}
+                      </p>
                     </div>
 
                     <div className="flex flex-wrap gap-3">
@@ -472,6 +574,13 @@ function ShopSetupContent() {
                       </button>
                     </div>
                   </div>
+                  <ActionFeedback
+                    feedback={
+                      serviceActionFeedback?.targetId === service.id
+                        ? serviceActionFeedback
+                        : null
+                    }
+                  />
                 </article>
               ))}
             </div>
@@ -530,53 +639,63 @@ function ShopSetupContent() {
                   </button>
                 ) : null}
               </div>
+              <ActionFeedback feedback={itemFormFeedback} />
             </form>
 
             <div className="mt-6 space-y-3">
               {itemTypes.map((itemType) => (
                 <article
-                  className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ${
+                  className={`rounded-xl border p-4 ${
                     itemType.is_active
                       ? "border-slate-200"
                       : "border-slate-200 bg-slate-50"
                   }`}
                   key={itemType.id}
                 >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-bold text-slate-900">{itemType.name}</h3>
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs font-bold ${
-                        itemType.is_active
-                          ? "bg-green-100 text-green-800"
-                          : "bg-slate-200 text-slate-700"
-                      }`}
-                    >
-                      {itemType.is_active ? "Active" : "Inactive"}
-                    </span>
-                  </div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-bold text-slate-900">{itemType.name}</h3>
+                      <span
+                        className={`rounded-full px-2 py-1 text-xs font-bold ${
+                          itemType.is_active
+                            ? "bg-green-100 text-green-800"
+                            : "bg-slate-200 text-slate-700"
+                        }`}
+                      >
+                        {itemType.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </div>
 
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      className="font-bold text-[#005AAB] hover:underline disabled:opacity-50"
-                      type="button"
-                      disabled={Boolean(busyAction)}
-                      onClick={() => startItemEdit(itemType)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="font-bold text-slate-700 hover:underline disabled:opacity-50"
-                      type="button"
-                      disabled={Boolean(busyAction)}
-                      onClick={() => toggleItemType(itemType)}
-                    >
-                      {busyAction === `item-${itemType.id}`
-                        ? "Saving…"
-                        : itemType.is_active
-                          ? "Deactivate"
-                          : "Reactivate"}
-                    </button>
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        className="font-bold text-[#005AAB] hover:underline disabled:opacity-50"
+                        type="button"
+                        disabled={Boolean(busyAction)}
+                        onClick={() => startItemEdit(itemType)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="font-bold text-slate-700 hover:underline disabled:opacity-50"
+                        type="button"
+                        disabled={Boolean(busyAction)}
+                        onClick={() => toggleItemType(itemType)}
+                      >
+                        {busyAction === `item-${itemType.id}`
+                          ? "Saving…"
+                          : itemType.is_active
+                            ? "Deactivate"
+                            : "Reactivate"}
+                      </button>
+                    </div>
                   </div>
+                  <ActionFeedback
+                    feedback={
+                      itemActionFeedback?.targetId === itemType.id
+                        ? itemActionFeedback
+                        : null
+                    }
+                  />
                 </article>
               ))}
             </div>
