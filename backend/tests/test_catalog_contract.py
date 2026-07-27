@@ -12,11 +12,13 @@ class CatalogSchemaTests(unittest.TestCase):
             name="  Shoe Cleaning  ",
             unit="pair",
             unit_price=600,
+            item_recording_mode="tally",
         )
 
         self.assertEqual(service.name, "Shoe Cleaning")
         self.assertEqual(service.unit, "pair")
         self.assertEqual(service.unit_price, 600)
+        self.assertEqual(service.item_recording_mode, "tally")
 
     # Prices must be positive so an accidental zero-priced service is rejected.
     def test_zero_service_price_is_rejected(self):
@@ -51,6 +53,16 @@ class CatalogSchemaTests(unittest.TestCase):
 
         self.assertFalse(service_update.is_active)
         self.assertFalse(item_update.is_active)
+
+    # Detailed garments need piece-based pricing so completion can be checked.
+    def test_detailed_garments_cannot_use_kg_pricing(self):
+        with self.assertRaises(ValidationError):
+            schemas.ServiceCreate(
+                name="Detailed Dry Cleaning",
+                unit="kg",
+                unit_price=500,
+                item_recording_mode="detailed",
+            )
 
 
 if __name__ == "__main__":

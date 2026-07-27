@@ -2,6 +2,7 @@
 # Defines our database tables as Python classes.
 
 from sqlalchemy import Boolean, Column, Integer, String, Numeric, ForeignKey, TIMESTAMP
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
 
@@ -35,6 +36,7 @@ class Service(Base):
     name = Column(String(100), unique=True, nullable=False)
     unit = Column(String(20), nullable=False)
     unit_price = Column(Numeric(10, 2), nullable=False)
+    item_recording_mode = Column(String(20), nullable=False, default="none")
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
@@ -64,3 +66,57 @@ class Order(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     ready_at = Column(TIMESTAMP(timezone=True), nullable=True)
     collected_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    # Detailed service lines are additive, so older orders can keep their
+    # original single-service columns while new mixed orders use these rows.
+    service_lines = relationship(
+        "OrderServiceLine",
+        back_populates="order",
+        cascade="all, delete-orphan",
+        order_by="OrderServiceLine.id",
+    )
+
+
+# A service selected within an order, with its original name and price saved.
+class OrderServiceLine(Base):
+    __tablename__ = "order_service_lines"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
+    service_id = Column(Integer, ForeignKey("services.id"), nullable=False)
+    service_name = Column(String(100), nullable=False)
+    service_unit = Column(String(20), nullable=False)
+    quantity = Column(Numeric(10, 2), nullable=False)
+    unit_price = Column(Numeric(10, 2), nullable=False)
+    subtotal = Column(Numeric(10, 2), nullable=False)
+    item_recording_mode = Column(String(20), nullable=False)
+    item_check_status = Column(String(20), nullable=False, default="not_required")
+
+    order = relationship("Order", back_populates="service_lines")
+    items = relationship(
+        "OrderItem",
+        back_populates="service_line",
+        cascade="all, delete-orphan",
+        order_by="OrderItem.id",
+    )
+
+
+# Clothing counted or identified under one particular order service.
+class OrderItem(Base):
+    __tablename__ = "order_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_service_line_id = Column(
+        Integer,
+        ForeignKey("order_service_lines.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    item_type_id = Column(Integer, ForeignKey("clothing_item_types.id"), nullable=False)
+    item_name = Column(String(100), nullable=False)
+    quantity = Column(Integer, nullable=False)
+    description = Column(String(200), nullable=True)
+    is_damaged = Column(Boolean, nullable=True)
+    damage_note = Column(String(300), nullable=True)
+    stain_note = Column(String(300), nullable=True)
+
+    service_line = relationship("OrderServiceLine", back_populates="items")

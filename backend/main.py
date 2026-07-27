@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import Optional
 from datetime import datetime, timezone
+from decimal import Decimal
 from fastapi.responses import StreamingResponse
 import csv
 import io
@@ -41,6 +42,87 @@ app.add_middleware(
 # Turn a service name into a short internal code used by the API and database.
 def make_service_code(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+
+
+# Validates and prepares clothing rows before an order or later edit is saved.
+# Inactive item types are only allowed when they were already on that order.
+def prepare_order_items(
+    db: Session,
+    item_inputs: list[schemas.OrderItemCreate],
+    recording_mode: str,
+    service_quantity: float,
+    allowed_inactive_ids: Optional[set[int]] = None,
+):
+    allowed_inactive_ids = allowed_inactive_ids or set()
+
+    if recording_mode == "none":
+        if item_inputs:
+            raise HTTPException(
+                status_code=400,
+                detail="This service does not require a clothing list",
+            )
+        return [], "not_required"
+
+    item_type_ids = [item.item_type_id for item in item_inputs]
+    if recording_mode == "tally" and len(item_type_ids) != len(set(item_type_ids)):
+        raise HTTPException(
+            status_code=400,
+            detail="Each clothing type should appear once in a quick tally",
+        )
+
+    if recording_mode == "detailed":
+        if any(item.quantity != 1 for item in item_inputs):
+            raise HTTPException(
+                status_code=400,
+                detail="Detailed garments must be recorded one at a time",
+            )
+        if any(item.is_damaged is None for item in item_inputs):
+            raise HTTPException(
+                status_code=400,
+                detail="Confirm whether every detailed garment is already damaged",
+            )
+        if sum(item.quantity for item in item_inputs) > service_quantity:
+            raise HTTPException(
+                status_code=400,
+                detail="Detailed garments cannot exceed the selected service quantity",
+            )
+
+    if not item_type_ids:
+        return [], "pending"
+
+    item_types = db.query(models.ClothingItemType).filter(
+        models.ClothingItemType.id.in_(set(item_type_ids))
+    ).all()
+    item_types_by_id = {item_type.id: item_type for item_type in item_types}
+
+    for item_type_id in set(item_type_ids):
+        item_type = item_types_by_id.get(item_type_id)
+        if not item_type:
+            raise HTTPException(status_code=400, detail="A clothing item was not found")
+        if not item_type.is_active and item_type_id not in allowed_inactive_ids:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{item_type.name} is inactive and cannot be added",
+            )
+
+    saved_items = [
+        models.OrderItem(
+            item_type_id=item.item_type_id,
+            item_name=item_types_by_id[item.item_type_id].name,
+            quantity=item.quantity,
+            description=item.description,
+            is_damaged=item.is_damaged,
+            damage_note=item.damage_note,
+            stain_note=item.stain_note,
+        )
+        for item in item_inputs
+    ]
+    item_status = logic.get_item_check_status(
+        recording_mode,
+        service_quantity,
+        [item.quantity for item in item_inputs],
+    )
+    return saved_items, item_status
 
 
 # Health check route
@@ -162,6 +244,7 @@ def create_service(
         name=service.name,
         unit=service.unit,
         unit_price=service.unit_price,
+        item_recording_mode=service.item_recording_mode,
     )
     db.add(new_service)
     db.commit()
@@ -182,6 +265,17 @@ def update_service(
         raise HTTPException(status_code=404, detail="Service not found")
 
     changes = service_update.model_dump(exclude_unset=True)
+    updated_unit = changes.get("unit", service.unit)
+    updated_recording_mode = changes.get(
+        "item_recording_mode",
+        service.item_recording_mode,
+    )
+    if updated_recording_mode == "detailed" and updated_unit == "kg":
+        raise HTTPException(
+            status_code=400,
+            detail="Detailed garment services must use item or pair pricing",
+        )
+
     if "name" in changes:
         duplicate = db.query(models.Service).filter(
             models.Service.id != service_id,
@@ -292,6 +386,99 @@ def create_order(
     return new_order
 
 
+# Creates a mixed-service order while keeping the old order fields as a
+# compatibility summary for the currently deployed frontend.
+@app.post("/orders/detailed", response_model=schemas.OrderOut)
+def create_detailed_order(
+    order: schemas.DetailedOrderCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    customer = db.query(models.Customer).filter(
+        models.Customer.id == order.customer_id
+    ).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    requested_service_ids = [line.service_id for line in order.services]
+    active_services = db.query(models.Service).filter(
+        models.Service.id.in_(requested_service_ids),
+        models.Service.is_active.is_(True),
+    ).all()
+    services_by_id = {service.id: service for service in active_services}
+
+    if len(services_by_id) != len(requested_service_ids):
+        raise HTTPException(
+            status_code=400,
+            detail="One or more selected services are unavailable",
+        )
+
+    prepared_lines = []
+    total_price = Decimal("0")
+
+    for line_input in order.services:
+        service = services_by_id[line_input.service_id]
+        quantity = Decimal(str(line_input.quantity))
+
+        if service.unit != "kg" and quantity != quantity.to_integral_value():
+            raise HTTPException(
+                status_code=400,
+                detail=f"{service.name} requires a whole-number quantity",
+            )
+
+        saved_items, item_status = prepare_order_items(
+            db,
+            line_input.items,
+            service.item_recording_mode,
+            line_input.quantity,
+        )
+        unit_price = Decimal(str(service.unit_price))
+        subtotal = unit_price * quantity
+        total_price += subtotal
+
+        prepared_lines.append({
+            "service": service,
+            "quantity": quantity,
+            "unit_price": unit_price,
+            "subtotal": subtotal,
+            "items": saved_items,
+            "item_status": item_status,
+        })
+
+    first_line = prepared_lines[0]
+    is_mixed_order = len(prepared_lines) > 1
+    ticket_number = logic.generate_ticket_number(db)
+
+    new_order = models.Order(
+        ticket_number=ticket_number,
+        customer_id=order.customer_id,
+        service_type="mixed" if is_mixed_order else first_line["service"].code,
+        quantity=len(prepared_lines) if is_mixed_order else first_line["quantity"],
+        unit_price=total_price if is_mixed_order else first_line["unit_price"],
+        total_price=total_price,
+    )
+
+    for prepared in prepared_lines:
+        service = prepared["service"]
+        service_line = models.OrderServiceLine(
+            service_id=service.id,
+            service_name=service.name,
+            service_unit=service.unit,
+            quantity=prepared["quantity"],
+            unit_price=prepared["unit_price"],
+            subtotal=prepared["subtotal"],
+            item_recording_mode=service.item_recording_mode,
+            item_check_status=prepared["item_status"],
+            items=prepared["items"],
+        )
+        new_order.service_lines.append(service_line)
+
+    db.add(new_order)
+    db.commit()
+    db.refresh(new_order)
+    return new_order
+
+
 # Lists all orders, optionally filtered by status (received/in_progress/ready/collected)
 @app.get("/orders", response_model=list[schemas.OrderOut])
 def list_orders(
@@ -321,6 +508,66 @@ def list_overdue_orders(
     ).order_by(models.Order.ready_at.asc()).all()
 
 
+# Returns one complete order for its individual receipt and item-editing page.
+@app.get("/orders/{order_id}", response_model=schemas.OrderOut)
+def get_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return order
+
+
+# Replaces one service's clothing records when an employee completes the check later.
+@app.put(
+    "/orders/{order_id}/services/{service_line_id}/items",
+    response_model=schemas.OrderServiceLineOut,
+)
+def replace_order_service_items(
+    order_id: int,
+    service_line_id: int,
+    item_update: schemas.OrderItemsUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if order.status in {"ready", "collected"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Clothing items cannot be changed after the order is ready",
+        )
+
+    service_line = db.query(models.OrderServiceLine).filter(
+        models.OrderServiceLine.id == service_line_id,
+        models.OrderServiceLine.order_id == order_id,
+    ).first()
+    if not service_line:
+        raise HTTPException(status_code=404, detail="Order service not found")
+
+    existing_item_type_ids = {item.item_type_id for item in service_line.items}
+    saved_items, item_status = prepare_order_items(
+        db,
+        item_update.items,
+        service_line.item_recording_mode,
+        float(service_line.quantity),
+        allowed_inactive_ids=existing_item_type_ids,
+    )
+
+    service_line.items.clear()
+    service_line.items.extend(saved_items)
+    service_line.item_check_status = item_status
+
+    db.commit()
+    db.refresh(service_line)
+    return service_line
+
+
 # Updates an order's status, and stamps ready_at / collected_at when relevant
 @app.patch("/orders/{order_id}/status", response_model=schemas.OrderOut)
 def update_order_status(
@@ -332,6 +579,17 @@ def update_order_status(
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+
+    if status_update.status in {"ready", "collected"}:
+        pending_item_checks = db.query(models.OrderServiceLine).filter(
+            models.OrderServiceLine.order_id == order_id,
+            models.OrderServiceLine.item_check_status == "pending",
+        ).count()
+        if pending_item_checks:
+            raise HTTPException(
+                status_code=400,
+                detail="Complete the pending clothing check before this order is ready",
+            )
 
     order.status = status_update.status
 
