@@ -12,6 +12,7 @@ from fastapi.responses import StreamingResponse
 import csv
 import io
 import os
+import re
 from database import get_db
 import models
 import schemas
@@ -35,6 +36,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Turn a service name into a short internal code used by the API and database.
+def make_service_code(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+
 
 # Health check route
 @app.get("/")
@@ -113,6 +120,148 @@ def list_customers(
         )
 
     return query.order_by(models.Customer.id.desc()).all()
+
+
+# Lists active laundry services for staff, or all services for the owner setup page.
+@app.get("/catalog/services", response_model=list[schemas.ServiceOut])
+def list_services(
+    include_inactive: bool = False,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    query = db.query(models.Service)
+
+    if not include_inactive:
+        query = query.filter(models.Service.is_active.is_(True))
+
+    return query.order_by(models.Service.name.asc()).all()
+
+
+# Adds a laundry service. Only the owner can change the shop catalogue.
+@app.post("/catalog/services", response_model=schemas.ServiceOut)
+def create_service(
+    service: schemas.ServiceCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+):
+    service_code = make_service_code(service.name)
+    if not service_code:
+        raise HTTPException(status_code=400, detail="Enter a service name using letters or numbers")
+
+    existing = db.query(models.Service).filter(
+        or_(
+            models.Service.code == service_code,
+            models.Service.name.ilike(service.name),
+        )
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="A similar service already exists")
+
+    new_service = models.Service(
+        code=service_code,
+        name=service.name,
+        unit=service.unit,
+        unit_price=service.unit_price,
+    )
+    db.add(new_service)
+    db.commit()
+    db.refresh(new_service)
+    return new_service
+
+
+# Updates a service or hides it from future orders without removing its history.
+@app.patch("/catalog/services/{service_id}", response_model=schemas.ServiceOut)
+def update_service(
+    service_id: int,
+    service_update: schemas.ServiceUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+):
+    service = db.query(models.Service).filter(models.Service.id == service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    changes = service_update.model_dump(exclude_unset=True)
+    if "name" in changes:
+        duplicate = db.query(models.Service).filter(
+            models.Service.id != service_id,
+            models.Service.name.ilike(changes["name"]),
+        ).first()
+        if duplicate:
+            raise HTTPException(status_code=400, detail="A service with this name already exists")
+
+    for field, value in changes.items():
+        setattr(service, field, value)
+
+    db.commit()
+    db.refresh(service)
+    return service
+
+
+# Lists clothing names used by the tally screen.
+@app.get("/catalog/item-types", response_model=list[schemas.ClothingItemTypeOut])
+def list_clothing_item_types(
+    include_inactive: bool = False,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    query = db.query(models.ClothingItemType)
+
+    if not include_inactive:
+        query = query.filter(models.ClothingItemType.is_active.is_(True))
+
+    return query.order_by(models.ClothingItemType.name.asc()).all()
+
+
+# Adds a clothing item name to the tally list. Owner-only.
+@app.post("/catalog/item-types", response_model=schemas.ClothingItemTypeOut)
+def create_clothing_item_type(
+    item_type: schemas.ClothingItemTypeCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+):
+    existing = db.query(models.ClothingItemType).filter(
+        models.ClothingItemType.name.ilike(item_type.name)
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="This clothing item already exists")
+
+    new_item_type = models.ClothingItemType(name=item_type.name)
+    db.add(new_item_type)
+    db.commit()
+    db.refresh(new_item_type)
+    return new_item_type
+
+
+# Updates or deactivates a clothing item without deleting old records.
+@app.patch("/catalog/item-types/{item_type_id}", response_model=schemas.ClothingItemTypeOut)
+def update_clothing_item_type(
+    item_type_id: int,
+    item_update: schemas.ClothingItemTypeUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+):
+    item_type = db.query(models.ClothingItemType).filter(
+        models.ClothingItemType.id == item_type_id
+    ).first()
+    if not item_type:
+        raise HTTPException(status_code=404, detail="Clothing item not found")
+
+    changes = item_update.model_dump(exclude_unset=True)
+    if "name" in changes:
+        duplicate = db.query(models.ClothingItemType).filter(
+            models.ClothingItemType.id != item_type_id,
+            models.ClothingItemType.name.ilike(changes["name"]),
+        ).first()
+        if duplicate:
+            raise HTTPException(status_code=400, detail="This clothing item already exists")
+
+    for field, value in changes.items():
+        setattr(item_type, field, value)
+
+    db.commit()
+    db.refresh(item_type)
+    return item_type
 
 
 # Creates a new order: checks the customer exists, calculates price, generates ticket number

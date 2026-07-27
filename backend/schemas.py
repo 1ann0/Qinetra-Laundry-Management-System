@@ -1,7 +1,7 @@
 # schemas.py
 # Validates data coming in/out of the API. Kept separate from models.py.
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from typing import Literal, Optional
 
@@ -25,6 +25,93 @@ class CustomerOut(BaseModel):
 class CustomerCreateResponse(BaseModel):
     customer: CustomerOut
     duplicate_warning: Optional[str] = None
+
+
+# Data required when the owner adds a laundry service.
+class ServiceCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    unit: Literal["kg", "item", "pair"]
+    unit_price: float = Field(gt=0)
+
+    @field_validator("name")
+    @classmethod
+    def clean_name(cls, value: str):
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Service name cannot be blank")
+        return cleaned
+
+
+# Optional fields the owner can change on an existing service.
+class ServiceUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    unit: Optional[Literal["kg", "item", "pair"]] = None
+    unit_price: Optional[float] = Field(default=None, gt=0)
+    is_active: Optional[bool] = None
+
+    @field_validator("name")
+    @classmethod
+    def clean_name(cls, value: Optional[str]):
+        if value is None:
+            return value
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Service name cannot be blank")
+        return cleaned
+
+
+# Service information returned to the frontend.
+class ServiceOut(BaseModel):
+    id: int
+    code: str
+    name: str
+    unit: str
+    unit_price: float
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Data required when the owner adds a clothing item name.
+class ClothingItemTypeCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+
+    @field_validator("name")
+    @classmethod
+    def clean_name(cls, value: str):
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Clothing item name cannot be blank")
+        return cleaned
+
+
+# Optional fields the owner can change on an existing clothing item.
+class ClothingItemTypeUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    is_active: Optional[bool] = None
+
+    @field_validator("name")
+    @classmethod
+    def clean_name(cls, value: Optional[str]):
+        if value is None:
+            return value
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Clothing item name cannot be blank")
+        return cleaned
+
+
+# Clothing item information returned to the frontend.
+class ClothingItemTypeOut(BaseModel):
+    id: int
+    name: str
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 # Data required to create an order

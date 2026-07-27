@@ -16,6 +16,7 @@ export default function AppShell({ children }) {
   const isCustomersPage = pathname.startsWith("/customers");
   const isOrdersPage = pathname.startsWith("/orders");
   const isDashboardPage = pathname === "/dashboard";
+  const isSettingsPage = pathname.startsWith("/settings");
 
   // Clear the saved session before returning the user to the login page.
   function handleLogout() {
@@ -37,7 +38,7 @@ export default function AppShell({ children }) {
           />
         </Link>
 
-        <nav className="app-nav" aria-label="Main navigation">
+        <nav className="app-nav flex-wrap" aria-label="Main navigation">
           <Link
             href="/workspace"
             aria-current={isWorkspacePage ? "page" : undefined}
@@ -57,12 +58,20 @@ export default function AppShell({ children }) {
             Orders
           </Link>
           {role === "owner" ? (
-            <Link
-              href="/dashboard"
-              aria-current={isDashboardPage ? "page" : undefined}
-            >
-              Dashboard
-            </Link>
+            <>
+              <Link
+                href="/dashboard"
+                aria-current={isDashboardPage ? "page" : undefined}
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/settings/catalog"
+                aria-current={isSettingsPage ? "page" : undefined}
+              >
+                Shop setup
+              </Link>
+            </>
           ) : null}
         </nav>
 

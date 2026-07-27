@@ -33,6 +33,13 @@ const MODULES = [
     actions: [{ label: "Open owner dashboard", href: "/dashboard" }],
     ownerOnly: true,
   },
+  {
+    number: "05",
+    title: "Shop setup",
+    description: "Manage the services, prices and clothing names used for new orders.",
+    actions: [{ label: "Open shop setup", href: "/settings/catalog" }],
+    ownerOnly: true,
+  },
 ];
 
 // Show the central feature list allowed for the signed-in role.
@@ -53,10 +60,7 @@ export default function WorkspacePage() {
         </p>
       </section>
 
-      <section
-        className={`module-grid ${role === "owner" ? "owner-grid" : ""}`}
-        aria-label="QLMS features"
-      >
+      <section className="module-grid" aria-label="QLMS features">
         {visibleModules.map((module) => (
           <article className="module-card" key={module.number}>
             <div className="module-card-heading">

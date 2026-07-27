@@ -1,7 +1,7 @@
 # models.py
-# Defines our database tables as Python classes (users, customers, orders).
+# Defines our database tables as Python classes.
 
-from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, TIMESTAMP
+from sqlalchemy import Boolean, Column, Integer, String, Numeric, ForeignKey, TIMESTAMP
 from sqlalchemy.sql import func
 from database import Base
 
@@ -23,6 +23,29 @@ class Customer(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     phone = Column(String(20), nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+
+# Laundry services the owner can manage without changing the code.
+class Service(Base):
+    __tablename__ = "services"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(50), unique=True, nullable=False)
+    name = Column(String(100), unique=True, nullable=False)
+    unit = Column(String(20), nullable=False)
+    unit_price = Column(Numeric(10, 2), nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+
+# Clothing names used by the employee when tallying received items.
+class ClothingItemType(Base):
+    __tablename__ = "clothing_item_types"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
 
