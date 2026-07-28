@@ -54,6 +54,12 @@ function getActionLabel(status) {
   return "";
 }
 
+function getPaymentLabel(status) {
+  if (status === "part_paid") return "Part paid";
+  if (status === "paid") return "Paid";
+  return "Not paid";
+}
+
 export default function OrderStatusPage() {
   const { authenticatedRequest } = useAuth();
 
@@ -62,6 +68,7 @@ export default function OrderStatusPage() {
   const [orders, setOrders] = useState([]);
   const [overdueCount, setOverdueCount] = useState(0);
   const [overdueOrderIds, setOverdueOrderIds] = useState([]);
+  const [outstandingCount, setOutstandingCount] = useState(0);
 
   // Track the selected list and rerun loading after a successful update.
   const [filter, setFilter] = useState("all");
@@ -73,6 +80,21 @@ export default function OrderStatusPage() {
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+
+  // A dashboard link can open this page directly on outstanding payments.
+  useEffect(() => {
+    const requestedFilter = new URLSearchParams(window.location.search).get(
+      "filter",
+    );
+
+    const filterTimer = window.setTimeout(() => {
+      if (requestedFilter === "outstanding") {
+        setFilter("outstanding");
+      }
+    }, 0);
+
+    return () => window.clearTimeout(filterTimer);
+  }, []);
 
   // Load customers once because order responses only contain a customer ID.
   useEffect(() => {
@@ -99,19 +121,24 @@ export default function OrderStatusPage() {
       const orderPath =
         filter === "overdue"
           ? "/orders/overdue"
+          : filter === "outstanding"
+            ? "/orders?outstanding=true"
           : filter === "all"
             ? "/orders"
             : `/orders?status=${filter}`;
 
       try {
-        const [orderResponse, overdueResponse] = await Promise.all([
+        const [orderResponse, overdueResponse, outstandingResponse] =
+          await Promise.all([
           authenticatedRequest(orderPath),
           authenticatedRequest("/orders/overdue"),
+          authenticatedRequest("/orders?outstanding=true"),
         ]);
 
         setOrders(orderResponse);
         setOverdueCount(overdueResponse.length);
         setOverdueOrderIds(overdueResponse.map((order) => order.id));
+        setOutstandingCount(outstandingResponse.length);
       } catch (loadError) {
         setError(loadError.message || "Orders could not be loaded.");
         setOrders([]);
@@ -218,19 +245,32 @@ export default function OrderStatusPage() {
                 </option>
               ))}
               <option value="overdue">Overdue collection</option>
+              <option value="outstanding">Outstanding payment</option>
             </select>
           </div>
 
-          <button
-            className="inline-flex min-h-12 items-center justify-center rounded-xl border border-amber-300 bg-amber-50 px-5 font-bold text-amber-900 hover:bg-amber-100"
-            type="button"
-            onClick={() => {
-              setFilter("overdue");
-              setSuccessMessage("");
-            }}
-          >
-            Overdue orders: {overdueCount}
-          </button>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button
+              className="inline-flex min-h-12 items-center justify-center rounded-xl border border-red-300 bg-red-50 px-5 font-bold text-red-900 hover:bg-red-100"
+              type="button"
+              onClick={() => {
+                setFilter("outstanding");
+                setSuccessMessage("");
+              }}
+            >
+              Payment outstanding: {outstandingCount}
+            </button>
+            <button
+              className="inline-flex min-h-12 items-center justify-center rounded-xl border border-amber-300 bg-amber-50 px-5 font-bold text-amber-900 hover:bg-amber-100"
+              type="button"
+              onClick={() => {
+                setFilter("overdue");
+                setSuccessMessage("");
+              }}
+            >
+              Overdue orders: {overdueCount}
+            </button>
+          </div>
         </div>
       </section>
 
@@ -271,6 +311,17 @@ export default function OrderStatusPage() {
             );
             const nextStatus = getNextStatus(order.status);
             const service = SERVICES_BY_CODE[order.service_type];
+            const serviceLines = order.service_lines || [];
+            const hasPendingItemCheck = serviceLines.some(
+              (line) => line.item_check_status === "pending",
+            );
+            const hasOutstandingBalance = Number(order.balance_due) > 0;
+            const itemCheckBlocksNextStage =
+              order.status === "in_progress" && hasPendingItemCheck;
+            const paymentBlocksCollection =
+              order.status === "ready" && hasOutstandingBalance;
+            const canMoveForward =
+              !itemCheckBlocksNextStage && !paymentBlocksCollection;
             const isUpdating = updatingOrderId === order.id;
 
             return (
@@ -295,29 +346,63 @@ export default function OrderStatusPage() {
                         Overdue
                       </span>
                     ) : null}
+                    {hasPendingItemCheck ? (
+                      <span className="w-fit rounded-full bg-amber-100 px-4 py-2 text-sm font-bold text-amber-900">
+                        Item check pending
+                      </span>
+                    ) : null}
+                    <span
+                      className={`w-fit rounded-full px-4 py-2 text-sm font-bold ${
+                        order.payment_status === "paid"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {getPaymentLabel(order.payment_status)}
+                    </span>
                     <span className="w-fit rounded-full bg-blue-100 px-4 py-2 text-sm font-bold text-[#005AAB]">
                       {getStatusLabel(order.status)}
                     </span>
                   </div>
                 </div>
 
-                <div className="my-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <div className="my-5 grid grid-cols-2 gap-4 lg:grid-cols-5">
                   <div>
                     <p className="text-sm text-slate-500">Service</p>
                     <p className="mt-1 font-semibold text-slate-900">
-                      {service?.label || order.service_type}
+                      {serviceLines.length > 0
+                        ? serviceLines
+                            .map((line) => line.service_name)
+                            .join(", ")
+                        : service?.label || order.service_type}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-slate-500">Quantity</p>
                     <p className="mt-1 font-semibold text-slate-900">
-                      {order.quantity} {service?.unit || "units"}
+                      {serviceLines.length > 0
+                        ? `${serviceLines.length} ${
+                            serviceLines.length === 1 ? "service" : "services"
+                          }`
+                        : `${order.quantity} ${service?.unit || "units"}`}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-slate-500">Total price</p>
                     <p className="mt-1 font-semibold text-slate-900">
                       {formatKes(order.total_price)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500">Balance</p>
+                    <p
+                      className={`mt-1 font-semibold ${
+                        hasOutstandingBalance
+                          ? "text-red-700"
+                          : "text-green-700"
+                      }`}
+                    >
+                      {formatKes(order.balance_due)}
                     </p>
                   </div>
                   <div>
@@ -366,19 +451,64 @@ export default function OrderStatusPage() {
                 ) : null}
 
                 {nextStatus ? (
-                  <div>
-                    <p className="mb-2 text-sm font-bold text-slate-700">Next action</p>
-                    <button
-                      className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#005AAB] px-5 font-bold text-white shadow-sm hover:bg-[#004782] disabled:cursor-wait disabled:opacity-60 sm:w-auto"
-                      type="button"
-                      disabled={updatingOrderId !== null}
-                      onClick={() => updateStatus(order)}
-                    >
-                      {isUpdating ? "Updating…" : getActionLabel(order.status)}
-                    </button>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <p className="mb-2 text-sm font-bold text-slate-700">
+                        Next action
+                      </p>
+                      {itemCheckBlocksNextStage ? (
+                        <p className="text-sm font-semibold text-amber-900">
+                          Complete the pending item check before marking this
+                          order ready.
+                        </p>
+                      ) : paymentBlocksCollection ? (
+                        <p className="text-sm font-semibold text-red-800">
+                          Record the {formatKes(order.balance_due)} balance
+                          before collection.
+                        </p>
+                      ) : (
+                        <p className="text-sm text-slate-600">
+                          {getActionLabel(order.status)}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <Link
+                        className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#005AAB] px-5 font-bold text-[#005AAB] no-underline hover:bg-blue-50"
+                        href={`/orders/${order.id}`}
+                      >
+                        {itemCheckBlocksNextStage
+                          ? "Complete item check"
+                          : paymentBlocksCollection
+                            ? "Record payment"
+                            : "View order and receipt"}
+                      </Link>
+                      {canMoveForward ? (
+                        <button
+                          className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#005AAB] px-5 font-bold text-white shadow-sm hover:bg-[#004782] disabled:cursor-wait disabled:opacity-60 sm:w-auto"
+                          type="button"
+                          disabled={updatingOrderId !== null}
+                          onClick={() => updateStatus(order)}
+                        >
+                          {isUpdating
+                            ? "Updating…"
+                            : getActionLabel(order.status)}
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                 ) : (
-                  <p className="font-semibold text-green-700">Order completed and collected.</p>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="font-semibold text-green-700">
+                      Order completed and collected.
+                    </p>
+                    <Link
+                      className="font-bold text-[#005AAB] hover:underline"
+                      href={`/orders/${order.id}`}
+                    >
+                      View order and receipt
+                    </Link>
+                  </div>
                 )}
               </article>
             );

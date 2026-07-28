@@ -16,6 +16,12 @@ const RECORDING_MODE_OPTIONS = [
   { value: "detailed", label: "Individual garment details" },
 ];
 
+const SERVICE_CATEGORY_OPTIONS = [
+  { value: "general", label: "Laundry service" },
+  { value: "dry_cleaning", label: "Dry Cleaning garment" },
+];
+const SUIT_BAG_CODE = "dry_cleaning_suit_bag";
+
 // Keep catalogue entries in alphabetical order after adding or editing them.
 function sortByName(items) {
   return [...items].sort((first, second) => first.name.localeCompare(second.name));
@@ -70,7 +76,10 @@ function ShopSetupContent() {
 
   // Use the same service form for adding a new service or editing one.
   const [editingServiceId, setEditingServiceId] = useState(null);
+  const [editingServiceCode, setEditingServiceCode] = useState("");
   const [serviceName, setServiceName] = useState("");
+  const [serviceCategory, setServiceCategory] = useState("general");
+  const [serviceItemTypeId, setServiceItemTypeId] = useState("");
   const [serviceUnit, setServiceUnit] = useState("item");
   const [servicePrice, setServicePrice] = useState("");
   const [serviceRecordingMode, setServiceRecordingMode] = useState("none");
@@ -113,7 +122,10 @@ function ShopSetupContent() {
   // Return the service form to its normal add-service state.
   function resetServiceForm() {
     setEditingServiceId(null);
+    setEditingServiceCode("");
     setServiceName("");
+    setServiceCategory("general");
+    setServiceItemTypeId("");
     setServiceUnit("item");
     setServicePrice("");
     setServiceRecordingMode("none");
@@ -123,7 +135,14 @@ function ShopSetupContent() {
   // Place an existing service in the form so the owner can change it.
   function startServiceEdit(service) {
     setEditingServiceId(service.id);
+    setEditingServiceCode(service.code);
     setServiceName(service.name);
+    setServiceCategory(service.category || "general");
+    setServiceItemTypeId(
+      service.default_item_type_id
+        ? String(service.default_item_type_id)
+        : "",
+    );
     setServiceUnit(service.unit);
     setServicePrice(String(service.unit_price));
     setServiceRecordingMode(service.item_recording_mode || "none");
@@ -146,6 +165,17 @@ function ShopSetupContent() {
 
     const cleanedName = serviceName.trim();
     const numericPrice = Number(servicePrice);
+    const isSuitBag = editingServiceCode === SUIT_BAG_CODE;
+    const savedUnit = serviceCategory === "dry_cleaning" ? "item" : serviceUnit;
+    const savedRecordingMode = isSuitBag
+      ? "none"
+      : serviceCategory === "dry_cleaning"
+        ? "detailed"
+        : serviceRecordingMode;
+    const linkedItemTypeId =
+      serviceCategory === "dry_cleaning" && !isSuitBag
+        ? Number(serviceItemTypeId)
+        : null;
 
     if (!cleanedName) {
       setServiceFormFeedback({
@@ -163,7 +193,19 @@ function ShopSetupContent() {
       return;
     }
 
-    if (serviceRecordingMode === "detailed" && serviceUnit === "kg") {
+    if (
+      serviceCategory === "dry_cleaning" &&
+      !isSuitBag &&
+      !linkedItemTypeId
+    ) {
+      setServiceFormFeedback({
+        type: "error",
+        text: "Select the garment this Dry Cleaning price is for.",
+      });
+      return;
+    }
+
+    if (savedRecordingMode === "detailed" && savedUnit === "kg") {
       setServiceFormFeedback({
         type: "error",
         text: "Individual garment details must use per item or per pair pricing.",
@@ -184,9 +226,11 @@ function ShopSetupContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name: cleanedName,
-            unit: serviceUnit,
+            unit: savedUnit,
             unit_price: numericPrice,
-            item_recording_mode: serviceRecordingMode,
+            category: serviceCategory,
+            default_item_type_id: linkedItemTypeId,
+            item_recording_mode: savedRecordingMode,
           }),
         },
       );
@@ -418,9 +462,40 @@ function ShopSetupContent() {
 
               <label
                 className="mt-4 block font-semibold text-slate-800"
+                htmlFor="service-category"
+              >
+                Service category
+              </label>
+              <select
+                className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                id="service-category"
+                value={serviceCategory}
+                disabled={editingServiceCode === SUIT_BAG_CODE}
+                onChange={(event) => {
+                  const nextCategory = event.target.value;
+                  setServiceCategory(nextCategory);
+                  setServiceItemTypeId("");
+                  if (nextCategory === "dry_cleaning") {
+                    setServiceUnit("item");
+                    setServiceRecordingMode("detailed");
+                  }
+                  setServiceFormFeedback(null);
+                }}
+              >
+                {SERVICE_CATEGORY_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+
+              <label
+                className="mt-4 block font-semibold text-slate-800"
                 htmlFor="service-name"
               >
-                Service name
+                {serviceCategory === "dry_cleaning"
+                  ? "Garment/service name"
+                  : "Service name"}
               </label>
               <input
                 className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-2 focus:ring-blue-100"
@@ -442,6 +517,7 @@ function ShopSetupContent() {
                     className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-2 focus:ring-blue-100"
                     id="service-unit"
                     value={serviceUnit}
+                    disabled={serviceCategory === "dry_cleaning"}
                     onChange={(event) => setServiceUnit(event.target.value)}
                   >
                     {UNIT_OPTIONS.map((option) => (
@@ -471,28 +547,75 @@ function ShopSetupContent() {
                 </div>
               </div>
 
-              <label
-                className="mt-4 block font-semibold text-slate-800"
-                htmlFor="service-recording-mode"
-              >
-                How are items recorded?
-              </label>
-              <select
-                className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-2 focus:ring-blue-100"
-                id="service-recording-mode"
-                value={serviceRecordingMode}
-                onChange={(event) => setServiceRecordingMode(event.target.value)}
-              >
-                {RECORDING_MODE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-2 text-sm leading-5 text-slate-500">
-                Quick tally counts clothing pieces. Individual details record
-                each garment, its condition and stain notes.
-              </p>
+              {serviceCategory === "dry_cleaning" &&
+              editingServiceCode !== SUIT_BAG_CODE ? (
+                <>
+                  <label
+                    className="mt-4 block font-semibold text-slate-800"
+                    htmlFor="service-item-type"
+                  >
+                    Garment linked to this price
+                  </label>
+                  <select
+                    className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-2 focus:ring-blue-100"
+                    id="service-item-type"
+                    value={serviceItemTypeId}
+                    onChange={(event) =>
+                      setServiceItemTypeId(event.target.value)
+                    }
+                  >
+                    <option value="">Select a garment</option>
+                    {itemTypes
+                      .filter(
+                        (itemType) =>
+                          itemType.is_active ||
+                          itemType.id === Number(serviceItemTypeId),
+                      )
+                      .map((itemType) => (
+                        <option key={itemType.id} value={itemType.id}>
+                          {itemType.name}
+                          {itemType.is_active ? "" : " (inactive)"}
+                        </option>
+                      ))}
+                  </select>
+                  <p className="mt-2 text-sm leading-5 text-slate-500">
+                    Employees will select this garment once, then only record
+                    its colour, condition and stain notes.
+                  </p>
+                </>
+              ) : serviceCategory === "dry_cleaning" ? (
+                <p className="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-slate-700">
+                  The suit bag is an optional Dry Cleaning add-on and does not
+                  require garment condition details.
+                </p>
+              ) : (
+                <>
+                  <label
+                    className="mt-4 block font-semibold text-slate-800"
+                    htmlFor="service-recording-mode"
+                  >
+                    How are items recorded?
+                  </label>
+                  <select
+                    className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-2 focus:ring-blue-100"
+                    id="service-recording-mode"
+                    value={serviceRecordingMode}
+                    onChange={(event) =>
+                      setServiceRecordingMode(event.target.value)
+                    }
+                  >
+                    {RECORDING_MODE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-2 text-sm leading-5 text-slate-500">
+                    Quick tally counts clothing pieces. Individual details
+                    record each garment, its condition and stain notes.
+                  </p>
+                </>
+              )}
 
               <div className="mt-5 flex flex-wrap gap-3">
                 <button

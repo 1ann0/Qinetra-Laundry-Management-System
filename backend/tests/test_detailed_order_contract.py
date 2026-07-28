@@ -1,3 +1,4 @@
+import asyncio
 import unittest
 
 from fastapi import HTTPException
@@ -108,6 +109,7 @@ class DetailedOrderRouteTests(unittest.TestCase):
             ("POST", "/orders/detailed"),
             ("GET", "/orders/{order_id}"),
             ("PUT", "/orders/{order_id}/services/{service_line_id}/items"),
+            ("POST", "/orders/{order_id}/payments"),
         }
 
         for route in main.app.routes:
@@ -168,6 +170,9 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
             self.trouser,
         ])
         self.db.commit()
+        self.dry_cleaning.category = "dry_cleaning"
+        self.dry_cleaning.default_item_type_id = self.shirt.id
+        self.db.commit()
 
     def tearDown(self):
         self.db.close()
@@ -189,9 +194,9 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
                     "items": [
                         {"item_type_id": self.shirt.id, "is_damaged": False},
                         {
-                            "item_type_id": self.trouser.id,
+                            "item_type_id": self.shirt.id,
                             "is_damaged": True,
-                            "damage_note": "Small tear near pocket",
+                            "damage_note": "Small tear near cuff",
                         },
                     ],
                 },
@@ -206,6 +211,30 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
         self.assertEqual(order.service_lines[0].item_check_status, "completed")
         self.assertEqual(order.service_lines[1].item_check_status, "completed")
         self.assertEqual(order.service_lines[1].service_name, "Dry Cleaning - Shirt")
+        self.assertEqual(order.service_lines[1].fixed_item_type_id, self.shirt.id)
+
+    # A fixed Shirt service cannot be submitted with Trouser garment details.
+    def test_fixed_dry_cleaning_garment_cannot_be_changed(self):
+        request = schemas.DetailedOrderCreate(
+            customer_id=self.customer.id,
+            services=[
+                {
+                    "service_id": self.dry_cleaning.id,
+                    "quantity": 1,
+                    "items": [
+                        {
+                            "item_type_id": self.trouser.id,
+                            "is_damaged": False,
+                        }
+                    ],
+                }
+            ],
+        )
+
+        with self.assertRaises(HTTPException) as wrong_garment:
+            main.create_detailed_order(request, self.db, self.user)
+
+        self.assertEqual(wrong_garment.exception.status_code, 400)
 
     # Choosing "Do this later" saves the order but blocks the Ready stage.
     def test_pending_tally_blocks_ready_until_items_are_added(self):
@@ -223,6 +252,13 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
         service_line = order.service_lines[0]
 
         self.assertEqual(service_line.item_check_status, "pending")
+
+        main.update_order_status(
+            order.id,
+            schemas.OrderStatusUpdate(status="in_progress"),
+            self.db,
+            self.user,
+        )
 
         with self.assertRaises(HTTPException) as blocked:
             main.update_order_status(
@@ -250,6 +286,200 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
         )
 
         self.assertEqual(ready_order.status, "ready")
+
+    # Deposits append to payment history and collection waits for the full balance.
+    def test_deposit_and_final_payment_control_collection(self):
+        request = schemas.DetailedOrderCreate(
+            customer_id=self.customer.id,
+            services=[
+                {
+                    "service_id": self.wash_fold.id,
+                    "quantity": 4,
+                    "items": [{"item_type_id": self.shirt.id, "quantity": 4}],
+                }
+            ],
+        )
+        order = main.create_detailed_order(request, self.db, self.user)
+
+        deposit_order = main.record_order_payment(
+            order.id,
+            schemas.PaymentCreate(
+                payment_method="cash",
+                amount=200,
+                confirmed=True,
+            ),
+            self.db,
+            self.user,
+        )
+        self.assertEqual(float(deposit_order.amount_paid), 200)
+        self.assertEqual(float(deposit_order.balance_due), 400)
+        self.assertEqual(deposit_order.payment_status, "part_paid")
+
+        main.update_order_status(
+            order.id,
+            schemas.OrderStatusUpdate(status="in_progress"),
+            self.db,
+            self.user,
+        )
+        main.update_order_status(
+            order.id,
+            schemas.OrderStatusUpdate(status="ready"),
+            self.db,
+            self.user,
+        )
+
+        with self.assertRaises(HTTPException) as blocked:
+            main.update_order_status(
+                order.id,
+                schemas.OrderStatusUpdate(status="collected"),
+                self.db,
+                self.user,
+            )
+        self.assertEqual(blocked.exception.status_code, 400)
+
+        paid_order = main.record_order_payment(
+            order.id,
+            schemas.PaymentCreate(
+                payment_method="mpesa",
+                amount=400,
+                confirmed=True,
+            ),
+            self.db,
+            self.user,
+        )
+        self.assertEqual(float(paid_order.balance_due), 0)
+        self.assertEqual(paid_order.payment_status, "paid")
+        self.assertEqual(len(paid_order.payments), 2)
+
+        collected_order = main.update_order_status(
+            order.id,
+            schemas.OrderStatusUpdate(status="collected"),
+            self.db,
+            self.user,
+        )
+        self.assertEqual(collected_order.status, "collected")
+
+    # Staff must confirm receipt and cannot record more than the order balance.
+    def test_unconfirmed_and_excess_payments_are_rejected(self):
+        request = schemas.DetailedOrderCreate(
+            customer_id=self.customer.id,
+            services=[
+                {
+                    "service_id": self.wash_fold.id,
+                    "quantity": 1,
+                    "items": [{"item_type_id": self.shirt.id, "quantity": 1}],
+                }
+            ],
+        )
+        order = main.create_detailed_order(request, self.db, self.user)
+
+        with self.assertRaises(HTTPException) as unconfirmed:
+            main.record_order_payment(
+                order.id,
+                schemas.PaymentCreate(
+                    payment_method="mpesa",
+                    amount=100,
+                    confirmed=False,
+                ),
+                self.db,
+                self.user,
+            )
+        self.assertEqual(unconfirmed.exception.status_code, 400)
+
+        with self.assertRaises(HTTPException) as excess:
+            main.record_order_payment(
+                order.id,
+                schemas.PaymentCreate(
+                    payment_method="cash",
+                    amount=200,
+                    confirmed=True,
+                ),
+                self.db,
+                self.user,
+            )
+        self.assertEqual(excess.exception.status_code, 400)
+
+        with self.assertRaises(HTTPException) as too_small:
+            main.record_order_payment(
+                order.id,
+                schemas.PaymentCreate(
+                    payment_method="cash",
+                    amount=0.001,
+                    confirmed=True,
+                ),
+                self.db,
+                self.user,
+            )
+        self.assertEqual(too_small.exception.status_code, 400)
+
+    # Direct API calls cannot skip the normal four-stage workflow.
+    def test_order_status_cannot_skip_a_stage(self):
+        request = schemas.DetailedOrderCreate(
+            customer_id=self.customer.id,
+            services=[
+                {
+                    "service_id": self.wash_fold.id,
+                    "quantity": 1,
+                    "items": [{"item_type_id": self.shirt.id, "quantity": 1}],
+                }
+            ],
+        )
+        order = main.create_detailed_order(request, self.db, self.user)
+
+        with self.assertRaises(HTTPException) as skipped:
+            main.update_order_status(
+                order.id,
+                schemas.OrderStatusUpdate(status="ready"),
+                self.db,
+                self.user,
+            )
+        self.assertEqual(skipped.exception.status_code, 400)
+
+    # The tracker, owner summary and CSV must agree with the receipt balance.
+    def test_payment_balance_is_consistent_across_reports(self):
+        request = schemas.DetailedOrderCreate(
+            customer_id=self.customer.id,
+            services=[
+                {
+                    "service_id": self.wash_fold.id,
+                    "quantity": 4,
+                    "items": [{"item_type_id": self.shirt.id, "quantity": 4}],
+                }
+            ],
+        )
+        order = main.create_detailed_order(request, self.db, self.user)
+        main.record_order_payment(
+            order.id,
+            schemas.PaymentCreate(
+                payment_method="cash",
+                amount=200,
+                confirmed=True,
+            ),
+            self.db,
+            self.user,
+        )
+
+        outstanding_orders = main.list_orders(
+            outstanding=True,
+            db=self.db,
+            current_user=self.user,
+        )
+        summary = main.dashboard_summary(self.db, self.user)
+        csv_response = main.export_orders_csv(self.db, self.user)
+
+        async def read_csv():
+            parts = []
+            async for part in csv_response.body_iterator:
+                parts.append(part if isinstance(part, bytes) else part.encode())
+            return b"".join(parts).decode()
+
+        csv_text = asyncio.run(read_csv())
+
+        self.assertEqual([item.id for item in outstanding_orders], [order.id])
+        self.assertEqual(summary.unpaid, 1)
+        self.assertEqual(summary.outstanding_balance, 400)
+        self.assertIn("Wash & Fold (4 kg)", csv_text)
+        self.assertIn(",600.00,200.00,400.00,part_paid,cash,", csv_text)
 
 
 if __name__ == "__main__":

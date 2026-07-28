@@ -32,6 +32,8 @@ class ServiceCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     unit: Literal["kg", "item", "pair"]
     unit_price: float = Field(gt=0)
+    category: Literal["general", "dry_cleaning"] = "general"
+    default_item_type_id: Optional[int] = Field(default=None, gt=0)
     item_recording_mode: Literal["none", "tally", "detailed"] = "none"
 
     @field_validator("name")
@@ -46,6 +48,17 @@ class ServiceCreate(BaseModel):
     def check_detailed_service_unit(self):
         if self.item_recording_mode == "detailed" and self.unit == "kg":
             raise ValueError("Detailed garment services must use item or pair pricing")
+        if (
+            self.category == "dry_cleaning"
+            and self.item_recording_mode == "detailed"
+            and self.default_item_type_id is None
+        ):
+            raise ValueError("Select the garment linked to this Dry Cleaning service")
+        if (
+            self.default_item_type_id is not None
+            and self.item_recording_mode != "detailed"
+        ):
+            raise ValueError("A linked garment requires individual garment details")
         return self
 
 
@@ -54,6 +67,8 @@ class ServiceUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=100)
     unit: Optional[Literal["kg", "item", "pair"]] = None
     unit_price: Optional[float] = Field(default=None, gt=0)
+    category: Optional[Literal["general", "dry_cleaning"]] = None
+    default_item_type_id: Optional[int] = Field(default=None, gt=0)
     item_recording_mode: Optional[Literal["none", "tally", "detailed"]] = None
     is_active: Optional[bool] = None
 
@@ -75,6 +90,8 @@ class ServiceOut(BaseModel):
     name: str
     unit: str
     unit_price: float
+    category: str
+    default_item_type_id: Optional[int]
     item_recording_mode: str
     is_active: bool
     created_at: datetime
@@ -199,6 +216,7 @@ class OrderServiceLineOut(BaseModel):
     quantity: float
     unit_price: float
     subtotal: float
+    fixed_item_type_id: Optional[int]
     item_recording_mode: str
     item_check_status: str
     items: list[OrderItemOut] = Field(default_factory=list)
@@ -210,6 +228,25 @@ class OrderServiceLineOut(BaseModel):
 # Replaces the saved items for one order service when staff return later.
 class OrderItemsUpdate(BaseModel):
     items: list[OrderItemCreate] = Field(default_factory=list)
+
+
+# A manually confirmed Cash or M-PESA payment.
+class PaymentCreate(BaseModel):
+    payment_method: Literal["cash", "mpesa"]
+    amount: float = Field(gt=0)
+    confirmed: bool
+
+
+# Payment history shown on the receipt.
+class PaymentOut(BaseModel):
+    id: int
+    payment_method: str
+    amount: float
+    confirmed_by_username: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 # Data required to update an order's status
@@ -230,6 +267,10 @@ class OrderOut(BaseModel):
     ready_at: Optional[datetime]
     collected_at: Optional[datetime]
     service_lines: list[OrderServiceLineOut] = Field(default_factory=list)
+    amount_paid: float
+    balance_due: float
+    payment_status: str
+    payments: list[PaymentOut] = Field(default_factory=list)
 
     class Config:
         from_attributes = True
@@ -264,3 +305,5 @@ class DashboardSummary(BaseModel):
     ready: int
     collected: int
     overdue: int
+    unpaid: int
+    outstanding_balance: float

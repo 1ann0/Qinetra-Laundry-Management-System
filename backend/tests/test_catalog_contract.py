@@ -64,6 +64,27 @@ class CatalogSchemaTests(unittest.TestCase):
                 item_recording_mode="detailed",
             )
 
+    # A Dry Cleaning price must identify the garment it is charging for.
+    def test_dry_cleaning_service_requires_linked_garment(self):
+        with self.assertRaises(ValidationError):
+            schemas.ServiceCreate(
+                name="Dry Cleaning - Jacket",
+                unit="item",
+                unit_price=500,
+                category="dry_cleaning",
+                item_recording_mode="detailed",
+            )
+
+        service = schemas.ServiceCreate(
+            name="Dry Cleaning - Jacket",
+            unit="item",
+            unit_price=500,
+            category="dry_cleaning",
+            default_item_type_id=4,
+            item_recording_mode="detailed",
+        )
+        self.assertEqual(service.default_item_type_id, 4)
+
 
 if __name__ == "__main__":
     unittest.main()

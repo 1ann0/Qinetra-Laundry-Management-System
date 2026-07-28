@@ -19,10 +19,17 @@ function downloadCsvFile(csvText) {
   URL.revokeObjectURL(downloadUrl);
 }
 
+function formatKes(amount) {
+  return `KES ${Number(amount).toLocaleString("en-KE", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
 function DashboardContent() {
   const { authenticatedRequest } = useAuth();
 
-  // Store the five values returned by the owner-only summary endpoint.
+  // Store the status, overdue and payment values from the owner-only endpoint.
   const [summary, setSummary] = useState(null);
 
   // Keep page loading separate from CSV downloading so each action has clear feedback.
@@ -143,28 +150,59 @@ function DashboardContent() {
           Loading dashboard…
         </p>
       ) : summary ? (
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label="Order summary">
-          {summaryCards.map((card) => (
-            <article
-              className={`rounded-2xl border p-6 shadow-sm ${
-                card.isWarning
-                  ? "border-amber-300 bg-amber-50"
-                  : "border-slate-200 bg-white"
-              }`}
-              key={card.label}
-            >
-              <p
-                className={`text-sm font-bold uppercase tracking-wide ${
-                  card.isWarning ? "text-amber-900" : "text-slate-500"
-                }`}
-              >
-                {card.label}
+        <>
+          <section className="mb-6 rounded-2xl border-2 border-red-300 bg-red-50 p-5 shadow-sm sm:flex sm:items-center sm:justify-between sm:p-6">
+            <div>
+              <p className="text-sm font-bold uppercase tracking-wide text-red-800">
+                Payments needing attention
               </p>
-              <p className="mt-3 text-4xl font-bold text-slate-900">{card.value}</p>
-              <p className="mt-2 text-sm text-slate-600">{card.description}</p>
-            </article>
-          ))}
-        </section>
+              <p className="mt-2 text-3xl font-bold text-slate-900">
+                {formatKes(summary.outstanding_balance)}
+              </p>
+              <p className="mt-2 text-sm text-slate-700">
+                {summary.unpaid}{" "}
+                {summary.unpaid === 1 ? "order has" : "orders have"} a balance
+                remaining.
+              </p>
+            </div>
+            <Link
+              className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-red-700 px-5 font-bold text-white no-underline hover:bg-red-800 sm:mt-0"
+              href="/orders/status?filter=outstanding"
+            >
+              View outstanding orders
+            </Link>
+          </section>
+
+          <section
+            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            aria-label="Order summary"
+          >
+            {summaryCards.map((card) => (
+              <article
+                className={`rounded-2xl border p-6 shadow-sm ${
+                  card.isWarning
+                    ? "border-amber-300 bg-amber-50"
+                    : "border-slate-200 bg-white"
+                }`}
+                key={card.label}
+              >
+                <p
+                  className={`text-sm font-bold uppercase tracking-wide ${
+                    card.isWarning ? "text-amber-900" : "text-slate-500"
+                  }`}
+                >
+                  {card.label}
+                </p>
+                <p className="mt-3 text-4xl font-bold text-slate-900">
+                  {card.value}
+                </p>
+                <p className="mt-2 text-sm text-slate-600">
+                  {card.description}
+                </p>
+              </article>
+            ))}
+          </section>
+        </>
       ) : null}
 
       <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">

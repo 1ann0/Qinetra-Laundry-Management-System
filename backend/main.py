@@ -44,6 +44,42 @@ def make_service_code(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
 
 
+# Validate the garment linked to a fixed Dry Cleaning service.
+def get_service_item_type(
+    db: Session,
+    item_type_id: Optional[int],
+    allowed_inactive_id: Optional[int] = None,
+):
+    if item_type_id is None:
+        return None
+
+    item_type = db.query(models.ClothingItemType).filter(
+        models.ClothingItemType.id == item_type_id
+    ).first()
+    if not item_type:
+        raise HTTPException(status_code=400, detail="The linked garment was not found")
+    if not item_type.is_active and item_type_id != allowed_inactive_id:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{item_type.name} is inactive and cannot be linked",
+        )
+    return item_type
+
+
+# Stop a fixed-price garment service from being saved under a different item name.
+def check_fixed_service_items(
+    item_inputs: list[schemas.OrderItemCreate],
+    fixed_item_type_id: Optional[int],
+):
+    if fixed_item_type_id and any(
+        item.item_type_id != fixed_item_type_id for item in item_inputs
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="The clothing details must match the selected Dry Cleaning garment",
+        )
+
+
 # Validates and prepares clothing rows before an order or later edit is saved.
 # Inactive item types are only allowed when they were already on that order.
 def prepare_order_items(
@@ -239,11 +275,14 @@ def create_service(
     if existing:
         raise HTTPException(status_code=400, detail="A similar service already exists")
 
+    get_service_item_type(db, service.default_item_type_id)
     new_service = models.Service(
         code=service_code,
         name=service.name,
         unit=service.unit,
         unit_price=service.unit_price,
+        category=service.category,
+        default_item_type_id=service.default_item_type_id,
         item_recording_mode=service.item_recording_mode,
     )
     db.add(new_service)
@@ -270,11 +309,36 @@ def update_service(
         "item_recording_mode",
         service.item_recording_mode,
     )
+    updated_category = changes.get("category", service.category)
+    updated_item_type_id = changes.get(
+        "default_item_type_id",
+        service.default_item_type_id,
+    )
     if updated_recording_mode == "detailed" and updated_unit == "kg":
         raise HTTPException(
             status_code=400,
             detail="Detailed garment services must use item or pair pricing",
         )
+    if (
+        updated_category == "dry_cleaning"
+        and updated_recording_mode == "detailed"
+        and updated_item_type_id is None
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Select the garment linked to this Dry Cleaning service",
+        )
+    if updated_item_type_id is not None and updated_recording_mode != "detailed":
+        raise HTTPException(
+            status_code=400,
+            detail="A linked garment requires individual garment details",
+        )
+
+    get_service_item_type(
+        db,
+        updated_item_type_id,
+        allowed_inactive_id=service.default_item_type_id,
+    )
 
     if "name" in changes:
         duplicate = db.query(models.Service).filter(
@@ -426,6 +490,10 @@ def create_detailed_order(
                 detail=f"{service.name} requires a whole-number quantity",
             )
 
+        check_fixed_service_items(
+            line_input.items,
+            service.default_item_type_id,
+        )
         saved_items, item_status = prepare_order_items(
             db,
             line_input.items,
@@ -467,6 +535,7 @@ def create_detailed_order(
             quantity=prepared["quantity"],
             unit_price=prepared["unit_price"],
             subtotal=prepared["subtotal"],
+            fixed_item_type_id=service.default_item_type_id,
             item_recording_mode=service.item_recording_mode,
             item_check_status=prepared["item_status"],
             items=prepared["items"],
@@ -483,6 +552,7 @@ def create_detailed_order(
 @app.get("/orders", response_model=list[schemas.OrderOut])
 def list_orders(
     status: Optional[str] = None,
+    outstanding: bool = False,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user),
 ):
@@ -491,7 +561,10 @@ def list_orders(
     if status:
         query = query.filter(models.Order.status == status)
 
-    return query.order_by(models.Order.created_at.desc()).all()
+    orders = query.order_by(models.Order.created_at.desc()).all()
+    if outstanding:
+        return [order for order in orders if order.balance_due > 0]
+    return orders
 
 
 # Dedicated overdue section: orders stuck in 'ready' status past the threshold.
@@ -533,7 +606,13 @@ def replace_order_service_items(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user),
 ):
-    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    # Lock the order while replacing items so two devices cannot overwrite a check.
+    order = (
+        db.query(models.Order)
+        .filter(models.Order.id == order_id)
+        .with_for_update()
+        .first()
+    )
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
@@ -551,6 +630,10 @@ def replace_order_service_items(
         raise HTTPException(status_code=404, detail="Order service not found")
 
     existing_item_type_ids = {item.item_type_id for item in service_line.items}
+    check_fixed_service_items(
+        item_update.items,
+        service_line.fixed_item_type_id,
+    )
     saved_items, item_status = prepare_order_items(
         db,
         item_update.items,
@@ -568,6 +651,61 @@ def replace_order_service_items(
     return service_line
 
 
+# Records a confirmed Cash or M-PESA payment without overwriting earlier payments.
+@app.post("/orders/{order_id}/payments", response_model=schemas.OrderOut)
+def record_order_payment(
+    order_id: int,
+    payment: schemas.PaymentCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    # Lock this order while checking its balance so two staff cannot overpay it.
+    order = (
+        db.query(models.Order)
+        .filter(models.Order.id == order_id)
+        .with_for_update()
+        .first()
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if order.status == "collected":
+        raise HTTPException(
+            status_code=400,
+            detail="Payments cannot be changed after an order is collected",
+        )
+
+    if not payment.confirmed:
+        raise HTTPException(
+            status_code=400,
+            detail="Confirm that the shop received the payment before saving it",
+        )
+
+    payment_amount = Decimal(str(payment.amount)).quantize(Decimal("0.01"))
+    if payment_amount <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Payment must be at least KES 0.01",
+        )
+    if payment_amount > order.balance_due:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Payment cannot exceed the remaining balance of KES {order.balance_due}",
+        )
+
+    new_payment = models.Payment(
+        order_id=order.id,
+        payment_method=payment.payment_method,
+        amount=payment_amount,
+        confirmed_by_id=current_user.id,
+        confirmed_by_username=current_user.username,
+    )
+    db.add(new_payment)
+    db.commit()
+    db.refresh(order)
+    return order
+
+
 # Updates an order's status, and stamps ready_at / collected_at when relevant
 @app.patch("/orders/{order_id}/status", response_model=schemas.OrderOut)
 def update_order_status(
@@ -576,11 +714,28 @@ def update_order_status(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user),
 ):
-    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    # Lock the row so two devices cannot move the same order at the same time.
+    order = (
+        db.query(models.Order)
+        .filter(models.Order.id == order_id)
+        .with_for_update()
+        .first()
+    )
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    if status_update.status in {"ready", "collected"}:
+    next_status = {
+        "received": "in_progress",
+        "in_progress": "ready",
+        "ready": "collected",
+    }.get(order.status)
+    if status_update.status != next_status:
+        raise HTTPException(
+            status_code=400,
+            detail="Orders can only move forward by one stage at a time",
+        )
+
+    if status_update.status == "ready":
         pending_item_checks = db.query(models.OrderServiceLine).filter(
             models.OrderServiceLine.order_id == order_id,
             models.OrderServiceLine.item_check_status == "pending",
@@ -590,6 +745,12 @@ def update_order_status(
                 status_code=400,
                 detail="Complete the pending clothing check before this order is ready",
             )
+
+    if status_update.status == "collected" and order.balance_due > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Record the remaining payment of KES {order.balance_due} before collection",
+        )
 
     order.status = status_update.status
 
@@ -606,6 +767,10 @@ def update_order_status(
 @app.get("/dashboard/summary", response_model=schemas.DashboardSummary)
 def dashboard_summary(db: Session = Depends(get_db), current_user: models.User = Depends(auth.require_owner)):
     cutoff = logic.get_overdue_cutoff()
+    all_orders = db.query(models.Order).all()
+    outstanding_orders = [
+        order for order in all_orders if order.balance_due > 0
+    ]
 
     return schemas.DashboardSummary(
         received=db.query(models.Order).filter(models.Order.status == "received").count(),
@@ -616,6 +781,11 @@ def dashboard_summary(db: Session = Depends(get_db), current_user: models.User =
             models.Order.status == "ready",
             models.Order.ready_at <= cutoff
         ).count(),
+        unpaid=len(outstanding_orders),
+        outstanding_balance=sum(
+            (order.balance_due for order in outstanding_orders),
+            Decimal("0"),
+        ),
     )
 
 
@@ -624,16 +794,39 @@ def dashboard_summary(db: Session = Depends(get_db), current_user: models.User =
 def export_orders_csv(db: Session = Depends(get_db), current_user: models.User = Depends(auth.require_owner)):
     orders = db.query(models.Order).order_by(models.Order.created_at.desc()).all()
 
+    # Keep spreadsheet quantities short while money always has two decimal places.
+    def format_quantity(value):
+        return format(Decimal(str(value)).normalize(), "f")
+
+    def format_money(value):
+        return f"{Decimal(str(value)):.2f}"
+
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow([
-        "Ticket Number", "Customer ID", "Service Type", "Quantity",
-        "Unit Price", "Total Price", "Status", "Created At", "Ready At", "Collected At"
+        "Ticket Number", "Customer ID", "Services", "Total Price",
+        "Amount Paid", "Balance Due", "Payment Status", "Payment Methods",
+        "Status", "Created At", "Ready At", "Collected At"
     ])
     for order in orders:
+        service_summary = (
+            "; ".join(
+                f"{line.service_name} ({format_quantity(line.quantity)} {line.service_unit})"
+                for line in order.service_lines
+            )
+            if order.service_lines
+            else f"{order.service_type} ({order.quantity})"
+        )
+        payment_methods = (
+            ", ".join(payment.payment_method for payment in order.payments)
+            if order.payments
+            else "None"
+        )
         writer.writerow([
-            order.ticket_number, order.customer_id, order.service_type, order.quantity,
-            order.unit_price, order.total_price, order.status,
+            order.ticket_number, order.customer_id, service_summary,
+            format_money(order.total_price), format_money(order.amount_paid),
+            format_money(order.balance_due),
+            order.payment_status, payment_methods, order.status,
             order.created_at, order.ready_at, order.collected_at
         ])
     output.seek(0)
