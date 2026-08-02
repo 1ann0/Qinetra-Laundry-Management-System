@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from fastapi.responses import StreamingResponse
 import csv
@@ -19,6 +19,9 @@ import models
 import schemas
 import logic
 import auth
+
+# Kenya uses UTC+3 throughout the year, with no daylight-saving changes.
+NAIROBI_TIMEZONE = timezone(timedelta(hours=3))
 
 app = FastAPI()
 
@@ -44,6 +47,35 @@ def make_service_code(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
 
 
+# Use the employee-confirmed promise, or calculate one from the slowest service.
+def get_promised_ready_at(
+    requested_time: Optional[datetime],
+    turnaround_minutes: int,
+    peak_delay_minutes: int,
+) -> datetime:
+    now = datetime.now(timezone.utc)
+
+    if requested_time is None:
+        return now + timedelta(
+            minutes=turnaround_minutes + peak_delay_minutes,
+        )
+
+    if requested_time.tzinfo is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Promised completion time must include a timezone",
+        )
+
+    promised_time = requested_time.astimezone(timezone.utc)
+    if promised_time <= now:
+        raise HTTPException(
+            status_code=400,
+            detail="Promised completion time must be in the future",
+        )
+
+    return promised_time
+
+
 # Validate the garment linked to a fixed Dry Cleaning service.
 def get_service_item_type(
     db: Session,
@@ -62,6 +94,11 @@ def get_service_item_type(
         raise HTTPException(
             status_code=400,
             detail=f"{item_type.name} is inactive and cannot be linked",
+        )
+    if item_type.item_group not in {"dry_cleaning", "both"}:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{item_type.name} is not in the Dry Cleaning garment list",
         )
     return item_type
 
@@ -139,6 +176,20 @@ def prepare_order_items(
             raise HTTPException(
                 status_code=400,
                 detail=f"{item_type.name} is inactive and cannot be added",
+            )
+        expected_group = (
+            "laundry" if recording_mode == "tally" else "dry_cleaning"
+        )
+        if (
+            item_type.item_group not in {expected_group, "both"}
+            and item_type_id not in allowed_inactive_ids
+        ):
+            list_name = (
+                "Laundry tally" if expected_group == "laundry" else "Dry Cleaning"
+            )
+            raise HTTPException(
+                status_code=400,
+                detail=f"{item_type.name} is not in the {list_name} list",
             )
 
     saved_items = [
@@ -284,6 +335,9 @@ def create_service(
         category=service.category,
         default_item_type_id=service.default_item_type_id,
         item_recording_mode=service.item_recording_mode,
+        turnaround_minutes=service.turnaround_minutes or (
+            4320 if service.category == "dry_cleaning" else 180
+        ),
     )
     db.add(new_service)
     db.commit()
@@ -384,7 +438,10 @@ def create_clothing_item_type(
     if existing:
         raise HTTPException(status_code=400, detail="This clothing item already exists")
 
-    new_item_type = models.ClothingItemType(name=item_type.name)
+    new_item_type = models.ClothingItemType(
+        name=item_type.name,
+        item_group=item_type.item_group,
+    )
     db.add(new_item_type)
     db.commit()
     db.refresh(new_item_type)
@@ -413,6 +470,18 @@ def update_clothing_item_type(
         ).first()
         if duplicate:
             raise HTTPException(status_code=400, detail="This clothing item already exists")
+
+    if changes.get("item_group") == "laundry":
+        linked_service = db.query(models.Service).filter(
+            models.Service.default_item_type_id == item_type_id,
+            models.Service.category == "dry_cleaning",
+            models.Service.is_active.is_(True),
+        ).first()
+        if linked_service:
+            raise HTTPException(
+                status_code=400,
+                detail="This garment is linked to an active Dry Cleaning service",
+            )
 
     for field, value in changes.items():
         setattr(item_type, field, value)
@@ -443,6 +512,12 @@ def create_order(
         quantity=order.quantity,
         unit_price=unit_price,
         total_price=total_price,
+        promised_ready_at=get_promised_ready_at(
+            order.promised_ready_at,
+            4320 if order.service_type.startswith("dry_cleaning") else 180,
+            order.peak_delay_minutes,
+        ),
+        peak_delay_minutes=order.peak_delay_minutes,
     )
     db.add(new_order)
     db.commit()
@@ -476,6 +551,15 @@ def create_detailed_order(
             status_code=400,
             detail="One or more selected services are unavailable",
         )
+
+    turnaround_minutes = max(
+        service.turnaround_minutes for service in active_services
+    )
+    promised_ready_at = get_promised_ready_at(
+        order.promised_ready_at,
+        turnaround_minutes,
+        order.peak_delay_minutes,
+    )
 
     prepared_lines = []
     total_price = Decimal("0")
@@ -524,6 +608,8 @@ def create_detailed_order(
         quantity=len(prepared_lines) if is_mixed_order else first_line["quantity"],
         unit_price=total_price if is_mixed_order else first_line["unit_price"],
         total_price=total_price,
+        promised_ready_at=promised_ready_at,
+        peak_delay_minutes=order.peak_delay_minutes,
     )
 
     for prepared in prepared_lines:
@@ -553,6 +639,8 @@ def create_detailed_order(
 def list_orders(
     status: Optional[str] = None,
     outstanding: bool = False,
+    due_today: bool = False,
+    production_late: bool = False,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user),
 ):
@@ -561,7 +649,27 @@ def list_orders(
     if status:
         query = query.filter(models.Order.status == status)
 
-    orders = query.order_by(models.Order.created_at.desc()).all()
+    now = datetime.now(timezone.utc)
+    if due_today:
+        local_now = now.astimezone(NAIROBI_TIMEZONE)
+        local_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+        local_end = local_start + timedelta(days=1)
+        query = query.filter(
+            models.Order.status != "collected",
+            models.Order.promised_ready_at >= local_start.astimezone(timezone.utc),
+            models.Order.promised_ready_at < local_end.astimezone(timezone.utc),
+        )
+
+    if production_late:
+        query = query.filter(
+            models.Order.status.in_(["received", "in_progress"]),
+            models.Order.promised_ready_at < now,
+        )
+
+    if due_today or production_late:
+        orders = query.order_by(models.Order.promised_ready_at.asc()).all()
+    else:
+        orders = query.order_by(models.Order.created_at.desc()).all()
     if outstanding:
         return [order for order in orders if order.balance_due > 0]
     return orders

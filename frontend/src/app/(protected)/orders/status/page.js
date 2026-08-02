@@ -69,6 +69,10 @@ export default function OrderStatusPage() {
   const [overdueCount, setOverdueCount] = useState(0);
   const [overdueOrderIds, setOverdueOrderIds] = useState([]);
   const [outstandingCount, setOutstandingCount] = useState(0);
+  const [dueTodayCount, setDueTodayCount] = useState(0);
+  const [dueTodayOrderIds, setDueTodayOrderIds] = useState([]);
+  const [productionLateCount, setProductionLateCount] = useState(0);
+  const [productionLateOrderIds, setProductionLateOrderIds] = useState([]);
 
   // Track the selected list and rerun loading after a successful update.
   const [filter, setFilter] = useState("all");
@@ -88,8 +92,13 @@ export default function OrderStatusPage() {
     );
 
     const filterTimer = window.setTimeout(() => {
-      if (requestedFilter === "outstanding") {
-        setFilter("outstanding");
+      const supportedDirectFilters = [
+        "outstanding",
+        "due_today",
+        "production_late",
+      ];
+      if (supportedDirectFilters.includes(requestedFilter)) {
+        setFilter(requestedFilter);
       }
     }, 0);
 
@@ -123,22 +132,40 @@ export default function OrderStatusPage() {
           ? "/orders/overdue"
           : filter === "outstanding"
             ? "/orders?outstanding=true"
+          : filter === "due_today"
+            ? "/orders?due_today=true"
+          : filter === "production_late"
+            ? "/orders?production_late=true"
           : filter === "all"
             ? "/orders"
             : `/orders?status=${filter}`;
 
       try {
-        const [orderResponse, overdueResponse, outstandingResponse] =
+        const [
+          orderResponse,
+          overdueResponse,
+          outstandingResponse,
+          dueTodayResponse,
+          productionLateResponse,
+        ] =
           await Promise.all([
           authenticatedRequest(orderPath),
           authenticatedRequest("/orders/overdue"),
           authenticatedRequest("/orders?outstanding=true"),
+          authenticatedRequest("/orders?due_today=true"),
+          authenticatedRequest("/orders?production_late=true"),
         ]);
 
         setOrders(orderResponse);
         setOverdueCount(overdueResponse.length);
         setOverdueOrderIds(overdueResponse.map((order) => order.id));
         setOutstandingCount(outstandingResponse.length);
+        setDueTodayCount(dueTodayResponse.length);
+        setDueTodayOrderIds(dueTodayResponse.map((order) => order.id));
+        setProductionLateCount(productionLateResponse.length);
+        setProductionLateOrderIds(
+          productionLateResponse.map((order) => order.id),
+        );
       } catch (loadError) {
         setError(loadError.message || "Orders could not be loaded.");
         setOrders([]);
@@ -246,10 +273,32 @@ export default function OrderStatusPage() {
               ))}
               <option value="overdue">Overdue collection</option>
               <option value="outstanding">Outstanding payment</option>
+              <option value="due_today">Promised for today</option>
+              <option value="production_late">Production late</option>
             </select>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              className="inline-flex min-h-12 items-center justify-center rounded-xl border border-blue-300 bg-blue-50 px-5 font-bold text-[#005AAB] hover:bg-blue-100"
+              type="button"
+              onClick={() => {
+                setFilter("due_today");
+                setSuccessMessage("");
+              }}
+            >
+              Due today: {dueTodayCount}
+            </button>
+            <button
+              className="inline-flex min-h-12 items-center justify-center rounded-xl border border-red-300 bg-red-50 px-5 font-bold text-red-900 hover:bg-red-100"
+              type="button"
+              onClick={() => {
+                setFilter("production_late");
+                setSuccessMessage("");
+              }}
+            >
+              Production late: {productionLateCount}
+            </button>
             <button
               className="inline-flex min-h-12 items-center justify-center rounded-xl border border-red-300 bg-red-50 px-5 font-bold text-red-900 hover:bg-red-100"
               type="button"
@@ -268,7 +317,7 @@ export default function OrderStatusPage() {
                 setSuccessMessage("");
               }}
             >
-              Overdue orders: {overdueCount}
+              Collection overdue: {overdueCount}
             </button>
           </div>
         </div>
@@ -341,9 +390,19 @@ export default function OrderStatusPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
+                    {productionLateOrderIds.includes(order.id) ? (
+                      <span className="w-fit rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-900">
+                        Production late
+                      </span>
+                    ) : null}
+                    {dueTodayOrderIds.includes(order.id) ? (
+                      <span className="w-fit rounded-full bg-blue-100 px-4 py-2 text-sm font-bold text-[#005AAB]">
+                        Due today
+                      </span>
+                    ) : null}
                     {overdueOrderIds.includes(order.id) ? (
                       <span className="w-fit rounded-full bg-amber-100 px-4 py-2 text-sm font-bold text-amber-900">
-                        Overdue
+                        Collection overdue
                       </span>
                     ) : null}
                     {hasPendingItemCheck ? (
@@ -366,7 +425,7 @@ export default function OrderStatusPage() {
                   </div>
                 </div>
 
-                <div className="my-5 grid grid-cols-2 gap-4 lg:grid-cols-5">
+                <div className="my-5 grid grid-cols-2 gap-4 lg:grid-cols-6">
                   <div>
                     <p className="text-sm text-slate-500">Service</p>
                     <p className="mt-1 font-semibold text-slate-900">
@@ -403,6 +462,14 @@ export default function OrderStatusPage() {
                       }`}
                     >
                       {formatKes(order.balance_due)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500">Promised ready</p>
+                    <p className="mt-1 font-semibold text-slate-900">
+                      {order.promised_ready_at
+                        ? formatDateTime(order.promised_ready_at)
+                        : "Older order; not set"}
                     </p>
                   </div>
                   <div>

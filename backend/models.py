@@ -44,6 +44,7 @@ class Service(Base):
         nullable=True,
     )
     item_recording_mode = Column(String(20), nullable=False, default="none")
+    turnaround_minutes = Column(Integer, nullable=False, default=180)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
@@ -54,6 +55,7 @@ class ClothingItemType(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), unique=True, nullable=False)
+    item_group = Column(String(20), nullable=False, default="laundry")
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
@@ -71,6 +73,8 @@ class Order(Base):
     total_price = Column(Numeric, nullable=False)
     status = Column(String(20), nullable=False, default="received")
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    promised_ready_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    peak_delay_minutes = Column(Integer, nullable=False, default=0)
     ready_at = Column(TIMESTAMP(timezone=True), nullable=True)
     collected_at = Column(TIMESTAMP(timezone=True), nullable=True)
 

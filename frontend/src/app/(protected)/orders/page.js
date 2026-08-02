@@ -24,6 +24,39 @@ function formatKes(amount) {
   })}`;
 }
 
+// Keep completion times readable on the form, receipt and WhatsApp message.
+function formatDateTime(value) {
+  if (!value) return "Not set";
+  return new Intl.DateTimeFormat("en-KE", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+// Convert a Date into the local format required by a datetime-local input.
+function formatDateTimeInput(date) {
+  const pad = (value) => String(value).padStart(2, "0");
+  return [
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+    `${pad(date.getHours())}:${pad(date.getMinutes())}`,
+  ].join("T");
+}
+
+// Suggest a completion time from the slowest service on the ticket.
+function getSuggestedReadyInput(serviceLines, isPeakTime) {
+  if (serviceLines.length === 0) return "";
+
+  const turnaroundMinutes = serviceLines.reduce(
+    (longestTime, serviceLine) =>
+      Math.max(longestTime, serviceLine.turnaround_minutes),
+    0,
+  );
+  const peakDelayMinutes = isPeakTime ? 60 : 0;
+  return formatDateTimeInput(
+    new Date(Date.now() + (turnaroundMinutes + peakDelayMinutes) * 60 * 1000),
+  );
+}
+
 // Empty optional text becomes null in the API request.
 function cleanOptionalText(value) {
   const cleaned = value.trim();
@@ -41,6 +74,7 @@ function createServiceLine(service) {
     category: service.category,
     fixed_item_type_id: service.default_item_type_id,
     item_recording_mode: service.item_recording_mode,
+    turnaround_minutes: Number(service.turnaround_minutes) || 180,
     quantity: "1",
     defer_items: false,
     items:
@@ -52,10 +86,12 @@ function createServiceLine(service) {
 
 // Dry Cleaning is the category, so employees only need the garment wording.
 function getServiceDisplayName(service) {
+  const serviceName = service.name || service.service_name || "Unnamed service";
+
   if (service.category === "dry_cleaning") {
-    return service.name.replace(/^Dry Cleaning\s*-\s*/i, "");
+    return serviceName.replace(/^Dry Cleaning\s*-\s*/i, "");
   }
-  return service.name;
+  return serviceName;
 }
 
 // Detailed service quantity comes from its garment cards.
@@ -126,6 +162,24 @@ function getOrderError(customerId, serviceLines) {
   return "";
 }
 
+// A promised time is required and must still be in the future when submitted.
+function getPromisedTimeError(promisedReadyAt) {
+  if (!promisedReadyAt) {
+    return "Confirm when the order will be ready.";
+  }
+
+  const promisedTime = new Date(promisedReadyAt);
+  if (Number.isNaN(promisedTime.getTime())) {
+    return "Enter a valid promised completion time.";
+  }
+
+  if (promisedTime.getTime() <= Date.now()) {
+    return "The promised completion time must be in the future.";
+  }
+
+  return "";
+}
+
 // Explain the owner's recording choice inside each selected service.
 function getRecordingModeLabel(mode) {
   if (mode === "tally") return "Quick clothing tally";
@@ -188,6 +242,7 @@ function shareReceipt(order) {
     `Total: ${formatKes(order.total_price)}`,
     `Paid: ${formatKes(order.amount_paid)}`,
     `Balance: ${formatKes(order.balance_due)}`,
+    `Ready by: ${formatDateTime(order.promised_ready_at)}`,
     "Status: Received",
     "",
     "Thank you for choosing Qinetra Laundry.",
@@ -217,6 +272,10 @@ export default function OrderEntryPage() {
   const [serviceToAddId, setServiceToAddId] = useState("");
   const [selectedServices, setSelectedServices] = useState([]);
   const [serviceAddError, setServiceAddError] = useState("");
+
+  // Start from the slowest selected service, with an optional busy-period hour.
+  const [promisedReadyAt, setPromisedReadyAt] = useState("");
+  const [isPeakTime, setIsPeakTime] = useState(false);
 
   // Payment can be left unpaid, recorded in full, or recorded as a deposit.
   const [paymentChoice, setPaymentChoice] = useState("unpaid");
@@ -322,10 +381,9 @@ export default function OrderEntryPage() {
       return;
     }
 
-    setSelectedServices((currentServices) => [
-      ...currentServices,
-      createServiceLine(service),
-    ]);
+    const nextServices = [...selectedServices, createServiceLine(service)];
+    setSelectedServices(nextServices);
+    setPromisedReadyAt(getSuggestedReadyInput(nextServices, isPeakTime));
     setServiceToAddId("");
     setServiceAddError("");
   }
@@ -336,10 +394,12 @@ export default function OrderEntryPage() {
       return;
     }
 
-    setSelectedServices((currentServices) => [
-      ...currentServices,
+    const nextServices = [
+      ...selectedServices,
       createServiceLine(suitBagService),
-    ]);
+    ];
+    setSelectedServices(nextServices);
+    setPromisedReadyAt(getSuggestedReadyInput(nextServices, isPeakTime));
     setServiceAddError("");
   }
 
@@ -356,11 +416,11 @@ export default function OrderEntryPage() {
 
   // Remove a service that was selected by mistake.
   function removeService(serviceId) {
-    setSelectedServices((currentServices) =>
-      currentServices.filter(
-        (serviceLine) => serviceLine.service_id !== serviceId,
-      ),
+    const nextServices = selectedServices.filter(
+      (serviceLine) => serviceLine.service_id !== serviceId,
     );
+    setSelectedServices(nextServices);
+    setPromisedReadyAt(getSuggestedReadyInput(nextServices, isPeakTime));
     setError("");
   }
 
@@ -397,6 +457,8 @@ export default function OrderEntryPage() {
   function buildOrderPayload(customerId) {
     return {
       customer_id: customerId,
+      promised_ready_at: new Date(promisedReadyAt).toISOString(),
+      peak_delay_minutes: isPeakTime ? 60 : 0,
       services: selectedServices.map((serviceLine) => ({
         service_id: serviceLine.service_id,
         quantity: getServiceQuantity(serviceLine),
@@ -430,6 +492,7 @@ export default function OrderEntryPage() {
     event.preventDefault();
     const customerId = Number(selectedCustomerId);
     const orderError = getOrderError(customerId, selectedServices);
+    const promisedTimeError = getPromisedTimeError(promisedReadyAt);
     const paymentError = getPaymentError(
       paymentChoice,
       paymentAmountType,
@@ -438,6 +501,7 @@ export default function OrderEntryPage() {
     );
     const validationError =
       orderError ||
+      promisedTimeError ||
       paymentError ||
       (paymentChoice !== "unpaid" && !paymentConfirmed
         ? paymentChoice === "cash"
@@ -503,6 +567,8 @@ export default function OrderEntryPage() {
       setServiceCategoryToAdd("general");
       setServiceToAddId("");
       setSelectedServices([]);
+      setPromisedReadyAt("");
+      setIsPeakTime(false);
       setPaymentChoice("unpaid");
       setPaymentAmountType("full");
       setDepositAmount("");
@@ -886,7 +952,63 @@ export default function OrderEntryPage() {
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <h2 className="text-xl font-bold text-slate-900">3. Payment</h2>
+            <h2 className="text-xl font-bold text-slate-900">
+              3. Promised completion
+            </h2>
+            <p className="mt-2 text-slate-600">
+              The system suggests a time from the slowest selected service.
+              Confirm it with the customer or adjust it if needed.
+            </p>
+
+            <label className="mt-4 flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 font-semibold text-slate-800">
+              <input
+                className="mt-1"
+                type="checkbox"
+                checked={isPeakTime}
+                disabled={isSubmitting}
+                onChange={(event) => {
+                  const nextIsPeakTime = event.target.checked;
+                  setIsPeakTime(nextIsPeakTime);
+                  setPromisedReadyAt(
+                    getSuggestedReadyInput(selectedServices, nextIsPeakTime),
+                  );
+                  setError("");
+                }}
+              />
+              <span>
+                The shop is busy; add one hour to the suggested time.
+                <span className="mt-1 block text-sm font-normal text-slate-600">
+                  Use this only when the current workload needs extra time.
+                </span>
+              </span>
+            </label>
+
+            <label
+              className="mt-4 block font-semibold text-slate-800"
+              htmlFor="promised_ready_at"
+            >
+              Ready by
+            </label>
+            <input
+              className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100 sm:max-w-md"
+              id="promised_ready_at"
+              type="datetime-local"
+              value={promisedReadyAt}
+              disabled={isSubmitting || selectedServices.length === 0}
+              onChange={(event) => {
+                setPromisedReadyAt(event.target.value);
+                setError("");
+              }}
+            />
+            {selectedServices.length === 0 ? (
+              <p className="mt-2 text-sm text-slate-500">
+                Add a service first so the system can suggest a time.
+              </p>
+            ) : null}
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <h2 className="text-xl font-bold text-slate-900">4. Payment</h2>
             <p className="mt-2 text-slate-600">
               Record what the customer has paid now, or leave the balance for
               collection.
@@ -1074,6 +1196,13 @@ export default function OrderEntryPage() {
           </p>
 
           <div className="mt-5 border-t border-blue-200 pt-4 text-sm">
+            <p className="font-semibold text-slate-700">Promised ready</p>
+            <p className="mt-1 font-bold text-slate-900">
+              {formatDateTime(promisedReadyAt)}
+            </p>
+          </div>
+
+          <div className="mt-5 border-t border-blue-200 pt-4 text-sm">
             <p className="font-semibold text-slate-700">Payment choice</p>
             <p className="mt-1 font-bold text-slate-900">
               {paymentChoice === "unpaid"
@@ -1106,7 +1235,7 @@ export default function OrderEntryPage() {
               without creating another order.
             </p>
           ) : null}
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <div>
               <p className="text-sm text-slate-600">Customer</p>
               <p className="mt-1 font-bold text-slate-900">
@@ -1123,6 +1252,12 @@ export default function OrderEntryPage() {
               <p className="text-sm text-slate-600">Amount paid</p>
               <p className="mt-1 font-bold text-slate-900">
                 {formatKes(createdOrder.amount_paid)}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-slate-600">Promised ready</p>
+              <p className="mt-1 font-bold text-slate-900">
+                {formatDateTime(createdOrder.promised_ready_at)}
               </p>
             </div>
             <div>

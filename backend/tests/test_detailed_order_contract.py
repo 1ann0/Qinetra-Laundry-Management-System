@@ -1,5 +1,6 @@
 import asyncio
 import unittest
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
 from pydantic import ValidationError
@@ -72,6 +73,15 @@ class DetailedOrderSchemaTests(unittest.TestCase):
 
         self.assertEqual(item.description, "Navy shirt")
         self.assertIsNone(item.damage_note)
+
+    # Only the normal or one-hour peak delay can be saved on an order.
+    def test_unknown_peak_delay_is_rejected(self):
+        with self.assertRaises(ValidationError):
+            schemas.DetailedOrderCreate(
+                customer_id=4,
+                services=[{"service_id": 1, "quantity": 1}],
+                peak_delay_minutes=30,
+            )
 
 
 class ItemCheckRuleTests(unittest.TestCase):
@@ -158,7 +168,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
             unit_price=350,
             item_recording_mode="detailed",
         )
-        self.shirt = models.ClothingItemType(name="Shirt")
+        self.shirt = models.ClothingItemType(name="Shirt", item_group="both")
         self.trouser = models.ClothingItemType(name="Trouser")
 
         self.db.add_all([
@@ -212,6 +222,60 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
         self.assertEqual(order.service_lines[1].item_check_status, "completed")
         self.assertEqual(order.service_lines[1].service_name, "Dry Cleaning - Shirt")
         self.assertEqual(order.service_lines[1].fixed_item_type_id, self.shirt.id)
+
+    # Dry Cleaning-only garments cannot be inserted into a Wash & Fold tally.
+    def test_dry_cleaning_item_is_rejected_from_laundry_tally(self):
+        self.trouser.item_group = "dry_cleaning"
+        self.db.commit()
+
+        with self.assertRaises(HTTPException) as wrong_list:
+            main.prepare_order_items(
+                self.db,
+                [schemas.OrderItemCreate(item_type_id=self.trouser.id, quantity=1)],
+                "tally",
+                1,
+            )
+
+        self.assertEqual(wrong_list.exception.status_code, 400)
+        self.assertIn("Laundry tally", wrong_list.exception.detail)
+
+    # The employee-confirmed time is saved so the shop can track its promise.
+    def test_promised_completion_time_is_saved(self):
+        promised_time = datetime.now(timezone.utc) + timedelta(days=3)
+        request = schemas.DetailedOrderCreate(
+            customer_id=self.customer.id,
+            services=[
+                {
+                    "service_id": self.dry_cleaning.id,
+                    "quantity": 1,
+                    "items": [
+                        {"item_type_id": self.shirt.id, "is_damaged": False}
+                    ],
+                }
+            ],
+            promised_ready_at=promised_time,
+            peak_delay_minutes=60,
+        )
+
+        order = main.create_detailed_order(request, self.db, self.user)
+
+        # SQLite drops timezone information, so compare the same UTC values.
+        saved_time = order.promised_ready_at.replace(tzinfo=timezone.utc)
+        self.assertEqual(saved_time, promised_time)
+        self.assertEqual(order.peak_delay_minutes, 60)
+
+    # A direct API request cannot save a customer promise in the past.
+    def test_past_promised_completion_time_is_rejected(self):
+        request = schemas.DetailedOrderCreate(
+            customer_id=self.customer.id,
+            services=[{"service_id": self.wash_fold.id, "quantity": 1}],
+            promised_ready_at=datetime.now(timezone.utc) - timedelta(minutes=5),
+        )
+
+        with self.assertRaises(HTTPException) as invalid_time:
+            main.create_detailed_order(request, self.db, self.user)
+
+        self.assertEqual(invalid_time.exception.status_code, 400)
 
     # A fixed Shirt service cannot be submitted with Trouser garment details.
     def test_fixed_dry_cleaning_garment_cannot_be_changed(self):

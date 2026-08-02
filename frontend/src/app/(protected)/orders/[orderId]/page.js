@@ -324,6 +324,7 @@ export default function OrderDetailPage() {
       `Total: ${formatKes(order.total_price)}`,
       `Paid: ${formatKes(order.amount_paid)}`,
       `Balance: ${formatKes(order.balance_due)}`,
+      `Ready by: ${formatDateTime(order.promised_ready_at)}`,
       `Status: ${getStatusLabel(order.status)}`,
       "",
       order.status === "ready"
@@ -428,7 +429,7 @@ export default function OrderDetailPage() {
       ) : null}
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-        <div className="grid gap-5 border-b border-slate-200 pb-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-5 border-b border-slate-200 pb-6 sm:grid-cols-2 lg:grid-cols-5">
           <div>
             <p className="text-sm text-slate-500">Customer</p>
             <p className="mt-1 font-bold text-slate-900">
@@ -445,6 +446,14 @@ export default function OrderDetailPage() {
             <p className="text-sm text-slate-500">Status</p>
             <p className="mt-1 font-bold text-[#005AAB]">
               {getStatusLabel(order.status)}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-slate-500">Promised ready</p>
+            <p className="mt-1 font-bold text-slate-900">
+              {order.promised_ready_at
+                ? formatDateTime(order.promised_ready_at)
+                : "Older order; not set"}
             </p>
           </div>
           <div>

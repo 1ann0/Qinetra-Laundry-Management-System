@@ -20,6 +20,16 @@ class CatalogSchemaTests(unittest.TestCase):
         self.assertEqual(service.unit_price, 600)
         self.assertEqual(service.item_recording_mode, "tally")
 
+    # Turnaround must be positive because it becomes a customer promise.
+    def test_invalid_turnaround_is_rejected(self):
+        with self.assertRaises(ValidationError):
+            schemas.ServiceCreate(
+                name="Shoe Cleaning",
+                unit="pair",
+                unit_price=600,
+                turnaround_minutes=0,
+            )
+
     # Prices must be positive so an accidental zero-priced service is rejected.
     def test_zero_service_price_is_rejected(self):
         with self.assertRaises(ValidationError):
@@ -53,6 +63,14 @@ class CatalogSchemaTests(unittest.TestCase):
 
         self.assertFalse(service_update.is_active)
         self.assertFalse(item_update.is_active)
+
+    # Clothing names must state which employee list should display them.
+    def test_unknown_clothing_item_group_is_rejected(self):
+        with self.assertRaises(ValidationError):
+            schemas.ClothingItemTypeCreate(
+                name="Curtain",
+                item_group="household",
+            )
 
     # Detailed garments need piece-based pricing so completion can be checked.
     def test_detailed_garments_cannot_use_kg_pricing(self):

@@ -20,6 +20,23 @@ const SERVICE_CATEGORY_OPTIONS = [
   { value: "general", label: "Laundry service" },
   { value: "dry_cleaning", label: "Dry Cleaning garment" },
 ];
+const ITEM_GROUP_OPTIONS = [
+  { value: "laundry", label: "Laundry tally" },
+  { value: "dry_cleaning", label: "Dry Cleaning" },
+  { value: "both", label: "Both lists" },
+];
+const ITEM_CATALOGUE_SECTIONS = [
+  {
+    value: "laundry",
+    title: "Laundry tally items",
+    description: "Shown when employees count Wash & Fold and other laundry items.",
+  },
+  {
+    value: "dry_cleaning",
+    title: "Dry Cleaning garments",
+    description: "Used when the owner links a garment to a Dry Cleaning price.",
+  },
+];
 const SUIT_BAG_CODE = "dry_cleaning_suit_bag";
 
 // Keep catalogue entries in alphabetical order after adding or editing them.
@@ -65,6 +82,37 @@ function formatKes(value) {
   }).format(value);
 }
 
+// Show saved minutes as the simpler hours or days used by the owner.
+function getTurnaroundParts(minutes, category = "general") {
+  const savedMinutes = Number(minutes);
+
+  if (!Number.isFinite(savedMinutes) || savedMinutes <= 0) {
+    return category === "dry_cleaning"
+      ? { value: "3", unit: "days" }
+      : { value: "3", unit: "hours" };
+  }
+
+  if (savedMinutes >= 1440 && savedMinutes % 1440 === 0) {
+    return { value: String(savedMinutes / 1440), unit: "days" };
+  }
+
+  return { value: String(savedMinutes / 60), unit: "hours" };
+}
+
+function formatTurnaround(minutes) {
+  const parts = getTurnaroundParts(minutes);
+  const amount = Number(parts.value);
+  const label = amount === 1 ? parts.unit.slice(0, -1) : parts.unit;
+  return `${parts.value} ${label}`;
+}
+
+function getItemGroupLabel(group) {
+  return (
+    ITEM_GROUP_OPTIONS.find((option) => option.value === group)?.label ||
+    "Laundry tally"
+  );
+}
+
 function ShopSetupContent() {
   const { authenticatedRequest } = useAuth();
   const serviceFormRef = useRef(null);
@@ -83,10 +131,13 @@ function ShopSetupContent() {
   const [serviceUnit, setServiceUnit] = useState("item");
   const [servicePrice, setServicePrice] = useState("");
   const [serviceRecordingMode, setServiceRecordingMode] = useState("none");
+  const [serviceTurnaroundValue, setServiceTurnaroundValue] = useState("3");
+  const [serviceTurnaroundUnit, setServiceTurnaroundUnit] = useState("hours");
 
   // Use one small form for adding or renaming a clothing item.
   const [editingItemId, setEditingItemId] = useState(null);
   const [itemName, setItemName] = useState("");
+  const [itemGroup, setItemGroup] = useState("laundry");
 
   // Give the owner clear feedback while an action is being saved.
   const [busyAction, setBusyAction] = useState("");
@@ -129,6 +180,8 @@ function ShopSetupContent() {
     setServiceUnit("item");
     setServicePrice("");
     setServiceRecordingMode("none");
+    setServiceTurnaroundValue("3");
+    setServiceTurnaroundUnit("hours");
     setServiceFormFeedback(null);
   }
 
@@ -146,6 +199,12 @@ function ShopSetupContent() {
     setServiceUnit(service.unit);
     setServicePrice(String(service.unit_price));
     setServiceRecordingMode(service.item_recording_mode || "none");
+    const turnaround = getTurnaroundParts(
+      service.turnaround_minutes,
+      service.category,
+    );
+    setServiceTurnaroundValue(turnaround.value);
+    setServiceTurnaroundUnit(turnaround.unit);
     setServiceFormFeedback(null);
     setServiceActionFeedback(null);
 
@@ -165,6 +224,11 @@ function ShopSetupContent() {
 
     const cleanedName = serviceName.trim();
     const numericPrice = Number(servicePrice);
+    const numericTurnaroundValue = Number(serviceTurnaroundValue);
+    const turnaroundMinutes =
+      serviceTurnaroundUnit === "days"
+        ? numericTurnaroundValue * 1440
+        : numericTurnaroundValue * 60;
     const isSuitBag = editingServiceCode === SUIT_BAG_CODE;
     const savedUnit = serviceCategory === "dry_cleaning" ? "item" : serviceUnit;
     const savedRecordingMode = isSuitBag
@@ -189,6 +253,18 @@ function ShopSetupContent() {
       setServiceFormFeedback({
         type: "error",
         text: "Enter a service price greater than zero.",
+      });
+      return;
+    }
+
+    if (
+      !Number.isFinite(turnaroundMinutes) ||
+      turnaroundMinutes <= 0 ||
+      !Number.isInteger(turnaroundMinutes)
+    ) {
+      setServiceFormFeedback({
+        type: "error",
+        text: "Enter a valid completion time greater than zero.",
       });
       return;
     }
@@ -231,6 +307,7 @@ function ShopSetupContent() {
             category: serviceCategory,
             default_item_type_id: linkedItemTypeId,
             item_recording_mode: savedRecordingMode,
+            turnaround_minutes: turnaroundMinutes,
           }),
         },
       );
@@ -306,6 +383,7 @@ function ShopSetupContent() {
   function resetItemForm() {
     setEditingItemId(null);
     setItemName("");
+    setItemGroup("laundry");
     setItemFormFeedback(null);
   }
 
@@ -313,6 +391,7 @@ function ShopSetupContent() {
   function startItemEdit(itemType) {
     setEditingItemId(itemType.id);
     setItemName(itemType.name);
+    setItemGroup(itemType.item_group || "laundry");
     setItemFormFeedback(null);
     setItemActionFeedback(null);
   }
@@ -342,7 +421,10 @@ function ShopSetupContent() {
         {
           method: isEditing ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: cleanedName }),
+          body: JSON.stringify({
+            name: cleanedName,
+            item_group: itemGroup,
+          }),
         },
       );
 
@@ -478,6 +560,11 @@ function ShopSetupContent() {
                   if (nextCategory === "dry_cleaning") {
                     setServiceUnit("item");
                     setServiceRecordingMode("detailed");
+                    setServiceTurnaroundValue("3");
+                    setServiceTurnaroundUnit("days");
+                  } else {
+                    setServiceTurnaroundValue("3");
+                    setServiceTurnaroundUnit("hours");
                   }
                   setServiceFormFeedback(null);
                 }}
@@ -547,6 +634,40 @@ function ShopSetupContent() {
                 </div>
               </div>
 
+              <fieldset className="mt-4">
+                <legend className="font-semibold text-slate-800">
+                  Usual completion time
+                </legend>
+                <div className="mt-2 grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px]">
+                  <input
+                    className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-2 focus:ring-blue-100"
+                    min="0.25"
+                    step="0.25"
+                    type="number"
+                    value={serviceTurnaroundValue}
+                    onChange={(event) =>
+                      setServiceTurnaroundValue(event.target.value)
+                    }
+                    aria-label="Usual completion time amount"
+                  />
+                  <select
+                    className="min-h-12 rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-2 focus:ring-blue-100"
+                    value={serviceTurnaroundUnit}
+                    onChange={(event) =>
+                      setServiceTurnaroundUnit(event.target.value)
+                    }
+                    aria-label="Usual completion time unit"
+                  >
+                    <option value="hours">Hours</option>
+                    <option value="days">Calendar days</option>
+                  </select>
+                </div>
+                <p className="mt-2 text-sm leading-5 text-slate-500">
+                  This suggests when a new order will be ready. The employee
+                  can confirm or adjust it before saving the order.
+                </p>
+              </fieldset>
+
               {serviceCategory === "dry_cleaning" &&
               editingServiceCode !== SUIT_BAG_CODE ? (
                 <>
@@ -568,8 +689,11 @@ function ShopSetupContent() {
                     {itemTypes
                       .filter(
                         (itemType) =>
-                          itemType.is_active ||
-                          itemType.id === Number(serviceItemTypeId),
+                          ["dry_cleaning", "both"].includes(
+                            itemType.item_group,
+                          ) &&
+                          (itemType.is_active ||
+                            itemType.id === Number(serviceItemTypeId)),
                       )
                       .map((itemType) => (
                         <option key={itemType.id} value={itemType.id}>
@@ -672,6 +796,9 @@ function ShopSetupContent() {
                       <p className="mt-1 text-sm font-semibold text-[#005AAB]">
                         {getRecordingModeLabel(service.item_recording_mode)}
                       </p>
+                      <p className="mt-1 text-sm text-slate-600">
+                        Usually ready in {formatTurnaround(service.turnaround_minutes)}
+                      </p>
                     </div>
 
                     <div className="flex flex-wrap gap-3">
@@ -710,12 +837,10 @@ function ShopSetupContent() {
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <h2 className="text-2xl font-bold text-slate-900">
-              Clothing item names
-            </h2>
+            <h2 className="text-2xl font-bold text-slate-900">Clothing lists</h2>
             <p className="mt-2 leading-6 text-slate-600">
-              These names will become the quick tally choices employees use
-              while checking a customer&apos;s laundry.
+              Keep normal laundry tally items separate from Dry Cleaning
+              garments. Choose Both when a name is used in the two lists.
             </p>
 
             <form
@@ -739,6 +864,25 @@ function ShopSetupContent() {
                 value={itemName}
                 onChange={(event) => setItemName(event.target.value)}
               />
+
+              <label
+                className="mt-4 block font-semibold text-slate-800"
+                htmlFor="item-group"
+              >
+                Use this name in
+              </label>
+              <select
+                className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-2 focus:ring-blue-100"
+                id="item-group"
+                value={itemGroup}
+                onChange={(event) => setItemGroup(event.target.value)}
+              >
+                {ITEM_GROUP_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
 
               <div className="mt-5 flex flex-wrap gap-3">
                 <button
@@ -765,62 +909,93 @@ function ShopSetupContent() {
               <ActionFeedback feedback={itemFormFeedback} />
             </form>
 
-            <div className="mt-6 space-y-3">
-              {itemTypes.map((itemType) => (
-                <article
-                  className={`rounded-xl border p-4 ${
-                    itemType.is_active
-                      ? "border-slate-200"
-                      : "border-slate-200 bg-slate-50"
-                  }`}
-                  key={itemType.id}
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-bold text-slate-900">{itemType.name}</h3>
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs font-bold ${
-                          itemType.is_active
-                            ? "bg-green-100 text-green-800"
-                            : "bg-slate-200 text-slate-700"
-                        }`}
-                      >
-                        {itemType.is_active ? "Active" : "Inactive"}
-                      </span>
-                    </div>
+            <div className="mt-6 space-y-7">
+              {ITEM_CATALOGUE_SECTIONS.map((section) => {
+                const sectionItems = itemTypes.filter((itemType) =>
+                  [section.value, "both"].includes(itemType.item_group),
+                );
 
-                    <div className="flex flex-wrap gap-3">
-                      <button
-                        className="font-bold text-[#005AAB] hover:underline disabled:opacity-50"
-                        type="button"
-                        disabled={Boolean(busyAction)}
-                        onClick={() => startItemEdit(itemType)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="font-bold text-slate-700 hover:underline disabled:opacity-50"
-                        type="button"
-                        disabled={Boolean(busyAction)}
-                        onClick={() => toggleItemType(itemType)}
-                      >
-                        {busyAction === `item-${itemType.id}`
-                          ? "Saving…"
-                          : itemType.is_active
-                            ? "Deactivate"
-                            : "Reactivate"}
-                      </button>
+                return (
+                  <section key={section.value}>
+                    <h3 className="text-lg font-bold text-slate-900">
+                      {section.title}
+                    </h3>
+                    <p className="mt-1 text-sm leading-5 text-slate-600">
+                      {section.description}
+                    </p>
+                    <div className="mt-3 space-y-3">
+                      {sectionItems.length === 0 ? (
+                        <p className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-600">
+                          No items have been added to this list.
+                        </p>
+                      ) : (
+                        sectionItems.map((itemType) => (
+                          <article
+                            className={`rounded-xl border p-4 ${
+                              itemType.is_active
+                                ? "border-slate-200"
+                                : "border-slate-200 bg-slate-50"
+                            }`}
+                            key={`${section.value}-${itemType.id}`}
+                          >
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h4 className="font-bold text-slate-900">
+                                  {itemType.name}
+                                </h4>
+                                <span
+                                  className={`rounded-full px-2 py-1 text-xs font-bold ${
+                                    itemType.is_active
+                                      ? "bg-green-100 text-green-800"
+                                      : "bg-slate-200 text-slate-700"
+                                  }`}
+                                >
+                                  {itemType.is_active ? "Active" : "Inactive"}
+                                </span>
+                                {itemType.item_group === "both" ? (
+                                  <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-bold text-[#005AAB]">
+                                    {getItemGroupLabel(itemType.item_group)}
+                                  </span>
+                                ) : null}
+                              </div>
+
+                              <div className="flex flex-wrap gap-3">
+                                <button
+                                  className="font-bold text-[#005AAB] hover:underline disabled:opacity-50"
+                                  type="button"
+                                  disabled={Boolean(busyAction)}
+                                  onClick={() => startItemEdit(itemType)}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  className="font-bold text-slate-700 hover:underline disabled:opacity-50"
+                                  type="button"
+                                  disabled={Boolean(busyAction)}
+                                  onClick={() => toggleItemType(itemType)}
+                                >
+                                  {busyAction === `item-${itemType.id}`
+                                    ? "Saving…"
+                                    : itemType.is_active
+                                      ? "Deactivate"
+                                      : "Reactivate"}
+                                </button>
+                              </div>
+                            </div>
+                            <ActionFeedback
+                              feedback={
+                                itemActionFeedback?.targetId === itemType.id
+                                  ? itemActionFeedback
+                                  : null
+                              }
+                            />
+                          </article>
+                        ))
+                      )}
                     </div>
-                  </div>
-                  <ActionFeedback
-                    feedback={
-                      itemActionFeedback?.targetId === itemType.id
-                        ? itemActionFeedback
-                        : null
-                    }
-                  />
-                </article>
-              ))}
+                  </section>
+                );
+              })}
             </div>
           </section>
         </div>

@@ -1,5 +1,37 @@
 "use client";
 
+// Keep the usual Laundry tally items in the order provided by Qinetra.
+const LAUNDRY_TALLY_ORDER = [
+  "Shirt",
+  "T-shirt",
+  "Trouser",
+  "Jacket",
+  "Socks (Pair)",
+  "Single Sock",
+  "Underwear",
+  "Blouse",
+  "Bedsheet",
+  "Vest",
+  "Pillowcase",
+  "Shorts",
+  "Bra",
+  "Towel",
+];
+
+function sortLaundryTallyItems(itemTypes) {
+  return [...itemTypes].sort((first, second) => {
+    const firstPosition = LAUNDRY_TALLY_ORDER.indexOf(first.name);
+    const secondPosition = LAUNDRY_TALLY_ORDER.indexOf(second.name);
+    const firstIsKnown = firstPosition !== -1;
+    const secondIsKnown = secondPosition !== -1;
+
+    if (firstIsKnown && secondIsKnown) return firstPosition - secondPosition;
+    if (firstIsKnown) return -1;
+    if (secondIsKnown) return 1;
+    return first.name.localeCompare(second.name);
+  });
+}
+
 // Create one empty garment record for a detailed cleaning service.
 export function createBlankGarment(localId = 1, itemTypeId = "") {
   return {
@@ -23,11 +55,18 @@ export default function ServiceItemEntry({
   allowedInactiveItemTypeIds = [],
   fixedItemType = null,
 }) {
-  // Old receipt items stay selectable after deactivation, but other inactive names stay hidden.
+  // Keep Laundry tally choices separate from Dry Cleaning garment choices.
+  // Old receipt items stay visible even if their catalogue setting later changes.
   const allowedInactiveIds = new Set(allowedInactiveItemTypeIds);
+  const expectedItemGroup =
+    recordingMode === "tally" ? "laundry" : "dry_cleaning";
   const visibleItemTypes = itemTypes.filter(
-    (itemType) => itemType.is_active !== false || allowedInactiveIds.has(itemType.id),
+    (itemType) =>
+      allowedInactiveIds.has(itemType.id) ||
+      (itemType.is_active !== false &&
+        [expectedItemGroup, "both"].includes(itemType.item_group)),
   );
+  const tallyItemTypes = sortLaundryTallyItems(visibleItemTypes);
 
   // Add or remove one piece from the quick tally.
   function changeTally(itemTypeId, amount) {
@@ -102,7 +141,7 @@ export default function ServiceItemEntry({
         </div>
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          {visibleItemTypes.map((itemType) => {
+          {tallyItemTypes.map((itemType) => {
             const quantity =
               items.find((item) => item.item_type_id === itemType.id)
                 ?.quantity || 0;

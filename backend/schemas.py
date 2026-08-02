@@ -35,6 +35,7 @@ class ServiceCreate(BaseModel):
     category: Literal["general", "dry_cleaning"] = "general"
     default_item_type_id: Optional[int] = Field(default=None, gt=0)
     item_recording_mode: Literal["none", "tally", "detailed"] = "none"
+    turnaround_minutes: Optional[int] = Field(default=None, gt=0, le=525600)
 
     @field_validator("name")
     @classmethod
@@ -70,6 +71,7 @@ class ServiceUpdate(BaseModel):
     category: Optional[Literal["general", "dry_cleaning"]] = None
     default_item_type_id: Optional[int] = Field(default=None, gt=0)
     item_recording_mode: Optional[Literal["none", "tally", "detailed"]] = None
+    turnaround_minutes: Optional[int] = Field(default=None, gt=0, le=525600)
     is_active: Optional[bool] = None
 
     @field_validator("name")
@@ -93,6 +95,7 @@ class ServiceOut(BaseModel):
     category: str
     default_item_type_id: Optional[int]
     item_recording_mode: str
+    turnaround_minutes: int
     is_active: bool
     created_at: datetime
 
@@ -103,6 +106,7 @@ class ServiceOut(BaseModel):
 # Data required when the owner adds a clothing item name.
 class ClothingItemTypeCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
+    item_group: Literal["laundry", "dry_cleaning", "both"] = "laundry"
 
     @field_validator("name")
     @classmethod
@@ -116,6 +120,7 @@ class ClothingItemTypeCreate(BaseModel):
 # Optional fields the owner can change on an existing clothing item.
 class ClothingItemTypeUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    item_group: Optional[Literal["laundry", "dry_cleaning", "both"]] = None
     is_active: Optional[bool] = None
 
     @field_validator("name")
@@ -133,6 +138,7 @@ class ClothingItemTypeUpdate(BaseModel):
 class ClothingItemTypeOut(BaseModel):
     id: int
     name: str
+    item_group: str
     is_active: bool
     created_at: datetime
 
@@ -151,6 +157,8 @@ class OrderCreate(BaseModel):
         "dry_cleaning_suit",
     ]
     quantity: float
+    promised_ready_at: Optional[datetime] = None
+    peak_delay_minutes: Literal[0, 60] = 0
 
 
 # One clothing entry under a selected service.
@@ -183,6 +191,8 @@ class DetailedOrderServiceCreate(BaseModel):
 class DetailedOrderCreate(BaseModel):
     customer_id: int = Field(gt=0)
     services: list[DetailedOrderServiceCreate] = Field(min_length=1)
+    promised_ready_at: Optional[datetime] = None
+    peak_delay_minutes: Literal[0, 60] = 0
 
     @model_validator(mode="after")
     def prevent_duplicate_services(self):
@@ -264,6 +274,8 @@ class OrderOut(BaseModel):
     total_price: float
     status: str
     created_at: datetime
+    promised_ready_at: Optional[datetime]
+    peak_delay_minutes: int
     ready_at: Optional[datetime]
     collected_at: Optional[datetime]
     service_lines: list[OrderServiceLineOut] = Field(default_factory=list)
