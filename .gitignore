@@ -21,6 +21,8 @@ CLAUDE.md
 LEARNING_NOTES.md
 PRESENTATION_NOTES.md
 docs/evidence-tracker.md
+deliverables/
+tmp/
 .agents/
 .codex/
 .codex-remote-attachments/
