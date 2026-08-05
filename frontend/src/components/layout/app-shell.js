@@ -165,9 +165,6 @@ export default function AppShell({ children }) {
             height={942}
             priority
           />
-          <span className="sidebar-mark" aria-hidden="true">
-            Q
-          </span>
         </Link>
 
         <nav className="app-nav" aria-label="Main navigation">

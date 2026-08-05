@@ -274,18 +274,6 @@ a {
   border-radius: 9px;
 }
 
-.sidebar-mark {
-  display: none;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  border-radius: 12px;
-  background: var(--qinetra-navy);
-  color: white;
-  font-size: 1.2rem;
-  font-weight: 800;
-}
-
 .app-nav {
   display: flex;
   flex: 1;
@@ -433,13 +421,18 @@ a {
   --sidebar-width: 78px;
 }
 
-.sidebar-collapsed .header-logo,
 .sidebar-collapsed .nav-label {
   display: none;
 }
 
-.sidebar-collapsed .sidebar-mark {
-  display: grid;
+.sidebar-collapsed .header-logo {
+  display: block;
+  width: 50px;
+  border-radius: 7px;
+}
+
+.sidebar-collapsed .sidebar-brand {
+  padding-inline: 0;
 }
 
 .sidebar-collapsed .app-nav a {
@@ -642,10 +635,11 @@ a {
 
   .sidebar-collapsed .header-logo {
     display: block;
+    width: 150px;
   }
 
-  .sidebar-collapsed .sidebar-mark {
-    display: none;
+  .sidebar-collapsed .sidebar-brand {
+    padding-inline: 8px;
   }
 
   .sidebar-collapsed .nav-label {
