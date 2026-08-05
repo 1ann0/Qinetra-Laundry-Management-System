@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import Optional
-from datetime import datetime, timezone, timedelta
+from datetime import date, datetime, timezone, timedelta
 from decimal import Decimal
 from fastapi.responses import StreamingResponse
 import csv
@@ -74,6 +74,37 @@ def get_promised_ready_at(
         )
 
     return promised_time
+
+
+# Convert inclusive Nairobi calendar dates into the UTC boundaries stored by PostgreSQL.
+def get_financial_date_boundaries(start_date: date, end_date: date):
+    if end_date < start_date:
+        raise HTTPException(
+            status_code=400,
+            detail="End date cannot be before start date",
+        )
+
+    local_start = datetime.combine(
+        start_date,
+        datetime.min.time(),
+        tzinfo=NAIROBI_TIMEZONE,
+    )
+    local_end = datetime.combine(
+        end_date + timedelta(days=1),
+        datetime.min.time(),
+        tzinfo=NAIROBI_TIMEZONE,
+    )
+    return (
+        local_start.astimezone(timezone.utc),
+        local_end.astimezone(timezone.utc),
+    )
+
+
+# SQLite tests can return naive timestamps even though PostgreSQL keeps UTC offsets.
+def get_nairobi_payment_date(payment_time: datetime) -> date:
+    if payment_time.tzinfo is None:
+        payment_time = payment_time.replace(tzinfo=timezone.utc)
+    return payment_time.astimezone(NAIROBI_TIMEZONE).date()
 
 
 # Validate the garment linked to a fixed Dry Cleaning service.
@@ -894,6 +925,102 @@ def dashboard_summary(db: Session = Depends(get_db), current_user: models.User =
             (order.balance_due for order in outstanding_orders),
             Decimal("0"),
         ),
+    )
+
+
+# Date-filtered order value and received-money totals for the owner.
+@app.get("/dashboard/financial-summary", response_model=schemas.FinancialSummary)
+def financial_summary(
+    start_date: date,
+    end_date: date,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+):
+    range_start, range_end = get_financial_date_boundaries(start_date, end_date)
+
+    orders = db.query(models.Order).filter(
+        models.Order.created_at >= range_start,
+        models.Order.created_at < range_end,
+    ).all()
+    payments = db.query(models.Payment).filter(
+        models.Payment.created_at >= range_start,
+        models.Payment.created_at < range_end,
+        models.Payment.payment_method.in_(["cash", "mpesa"]),
+    ).all()
+
+    daily_totals = {
+        start_date + timedelta(days=day_offset): Decimal("0")
+        for day_offset in range((end_date - start_date).days + 1)
+    }
+    cash_received = Decimal("0")
+    mpesa_received = Decimal("0")
+    customer_totals = {}
+
+    payment_order_ids = {payment.order_id for payment in payments}
+    payment_orders = (
+        db.query(models.Order).filter(models.Order.id.in_(payment_order_ids)).all()
+        if payment_order_ids
+        else []
+    )
+    payment_orders_by_id = {order.id: order for order in payment_orders}
+    customer_ids = {order.customer_id for order in payment_orders}
+    customers = (
+        db.query(models.Customer).filter(models.Customer.id.in_(customer_ids)).all()
+        if customer_ids
+        else []
+    )
+    customers_by_id = {customer.id: customer for customer in customers}
+
+    for payment in payments:
+        payment_amount = Decimal(str(payment.amount))
+        if payment.payment_method == "cash":
+            cash_received += payment_amount
+        else:
+            mpesa_received += payment_amount
+
+        payment_date = get_nairobi_payment_date(payment.created_at)
+        daily_totals[payment_date] += payment_amount
+
+        order = payment_orders_by_id[payment.order_id]
+        customer_totals[order.customer_id] = (
+            customer_totals.get(order.customer_id, Decimal("0"))
+            + payment_amount
+        )
+
+    outstanding_orders = [order for order in orders if order.balance_due > 0]
+
+    return schemas.FinancialSummary(
+        start_date=start_date,
+        end_date=end_date,
+        orders_booked=len(orders),
+        order_value=sum(
+            (Decimal(str(order.total_price)) for order in orders),
+            Decimal("0"),
+        ),
+        cash_received=cash_received,
+        mpesa_received=mpesa_received,
+        total_received=cash_received + mpesa_received,
+        outstanding_orders=len(outstanding_orders),
+        outstanding_balance=sum(
+            (order.balance_due for order in outstanding_orders),
+            Decimal("0"),
+        ),
+        daily_received=[
+            schemas.DailyReceivedTotal(date=day, amount=amount)
+            for day, amount in daily_totals.items()
+        ],
+        customer_revenue=[
+            schemas.CustomerRevenue(
+                customer_id=customer_id,
+                customer_name=customers_by_id[customer_id].name,
+                customer_phone=customers_by_id[customer_id].phone,
+                total_received=amount,
+            )
+            for customer_id, amount in sorted(
+                customer_totals.items(),
+                key=lambda item: (-item[1], customers_by_id[item[0]].name.lower()),
+            )
+        ],
     )
 
 

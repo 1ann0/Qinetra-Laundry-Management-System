@@ -16,7 +16,9 @@ export default function AppShell({ children }) {
   const isCustomersPage = pathname.startsWith("/customers");
   const isOrdersPage = pathname.startsWith("/orders");
   const isDashboardPage = pathname === "/dashboard";
+  const isFinancePage = pathname.startsWith("/finance");
   const isSettingsPage = pathname.startsWith("/settings");
+  const homeHref = role === "owner" ? "/finance" : "/workspace";
 
   // Clear the saved session before returning the user to the login page.
   function handleLogout() {
@@ -27,7 +29,7 @@ export default function AppShell({ children }) {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <Link href="/workspace" aria-label="QLMS workspace">
+        <Link href={homeHref} aria-label="QLMS home">
           <Image
             className="header-logo"
             src="/qinetra-logo.jpg"
@@ -39,6 +41,14 @@ export default function AppShell({ children }) {
         </Link>
 
         <nav className="app-nav flex-wrap" aria-label="Main navigation">
+          {role === "owner" ? (
+            <Link
+              href="/finance"
+              aria-current={isFinancePage ? "page" : undefined}
+            >
+              Finance
+            </Link>
+          ) : null}
           <Link
             href="/workspace"
             aria-current={isWorkspacePage ? "page" : undefined}

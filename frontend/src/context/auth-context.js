@@ -76,6 +76,7 @@ export function AuthProvider({ children }) {
 
     storeSession(nextSession);
     setSession(nextSession);
+    return response.role;
   }, []);
 
   const authenticatedRequest = useCallback(

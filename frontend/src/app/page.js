@@ -6,13 +6,14 @@ import { useAuth } from "@/context/auth-context";
 
 export default function Home() {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, role } = useAuth();
 
   useEffect(() => {
     if (!isLoading) {
-      router.replace(isAuthenticated ? "/workspace" : "/login");
+      const signedInPath = role === "owner" ? "/finance" : "/workspace";
+      router.replace(isAuthenticated ? signedInPath : "/login");
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, role, router]);
 
   return (
     <main className="centered-page">

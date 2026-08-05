@@ -2,7 +2,7 @@
 # Validates data coming in/out of the API. Kept separate from models.py.
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal, Optional
 
 # Data required to create a customer
@@ -319,3 +319,32 @@ class DashboardSummary(BaseModel):
     overdue: int
     unpaid: int
     outstanding_balance: float
+
+
+# Money received on one Nairobi calendar day.
+class DailyReceivedTotal(BaseModel):
+    date: date
+    amount: float
+
+
+# Confirmed payments linked to one customer during the selected period.
+class CustomerRevenue(BaseModel):
+    customer_id: int
+    customer_name: str
+    customer_phone: str
+    total_received: float
+
+
+# Owner-only money snapshot for one inclusive Nairobi calendar date range.
+class FinancialSummary(BaseModel):
+    start_date: date
+    end_date: date
+    orders_booked: int
+    order_value: float
+    cash_received: float
+    mpesa_received: float
+    total_received: float
+    outstanding_orders: int
+    outstanding_balance: float
+    daily_received: list[DailyReceivedTotal]
+    customer_revenue: list[CustomerRevenue]

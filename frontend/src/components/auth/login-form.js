@@ -6,7 +6,7 @@ import { useAuth } from "@/context/auth-context";
 
 export default function LoginForm() {
   const router = useRouter();
-  const { isAuthenticated, isLoading, login } = useAuth();
+  const { isAuthenticated, isLoading, role, login } = useAuth();
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -15,9 +15,9 @@ export default function LoginForm() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.replace("/workspace");
+      router.replace(role === "owner" ? "/finance" : "/workspace");
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, role, router]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -34,8 +34,8 @@ export default function LoginForm() {
     setIsSubmitting(true);
 
     try {
-      await login(username, password);
-      router.replace("/workspace");
+      const signedInRole = await login(username, password);
+      router.replace(signedInRole === "owner" ? "/finance" : "/workspace");
     } catch (loginError) {
       setError(loginError.message || "Login failed. Please try again.");
     } finally {
