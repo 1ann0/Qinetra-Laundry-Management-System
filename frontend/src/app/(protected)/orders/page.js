@@ -269,9 +269,8 @@ export default function OrderEntryPage() {
   const [customerSearch, setCustomerSearch] = useState("");
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [serviceCategoryToAdd, setServiceCategoryToAdd] = useState("general");
-  const [serviceToAddId, setServiceToAddId] = useState("");
+  const [serviceSearch, setServiceSearch] = useState("");
   const [selectedServices, setSelectedServices] = useState([]);
-  const [serviceAddError, setServiceAddError] = useState("");
 
   // Start from the slowest selected service, with an optional busy-period hour.
   const [promisedReadyAt, setPromisedReadyAt] = useState("");
@@ -352,11 +351,19 @@ export default function OrderEntryPage() {
   const availableServices = catalogServices.filter(
     (service) => !selectedServiceIds.has(service.id),
   );
-  const availableCategoryServices = availableServices.filter(
-    (service) =>
+  const normalizedServiceSearch = serviceSearch.trim().toLowerCase();
+  const availableCategoryServices = availableServices.filter((service) => {
+    const matchesCategory =
       service.category === serviceCategoryToAdd &&
-      service.code !== SUIT_BAG_CODE,
-  );
+      service.code !== SUIT_BAG_CODE;
+    const matchesSearch =
+      !normalizedServiceSearch ||
+      getServiceDisplayName(service)
+        .toLowerCase()
+        .includes(normalizedServiceSearch);
+
+    return matchesCategory && matchesSearch;
+  });
   const suitBagService = catalogServices.find(
     (service) => service.code === SUIT_BAG_CODE,
   );
@@ -372,20 +379,16 @@ export default function OrderEntryPage() {
   );
 
   // Add one active catalogue service to the current ticket.
-  function addService() {
-    const serviceId = Number(serviceToAddId);
+  function addService(serviceId) {
     const service = catalogServices.find((item) => item.id === serviceId);
 
     if (!service) {
-      setServiceAddError("Select a laundry service to add.");
       return;
     }
 
     const nextServices = [...selectedServices, createServiceLine(service)];
     setSelectedServices(nextServices);
     setPromisedReadyAt(getSuggestedReadyInput(nextServices, isPeakTime));
-    setServiceToAddId("");
-    setServiceAddError("");
   }
 
   // Add the optional suit bag from its prompt without making staff find it again.
@@ -400,7 +403,6 @@ export default function OrderEntryPage() {
     ];
     setSelectedServices(nextServices);
     setPromisedReadyAt(getSuggestedReadyInput(nextServices, isPeakTime));
-    setServiceAddError("");
   }
 
   // Change one selected service while leaving the others untouched.
@@ -565,7 +567,7 @@ export default function OrderEntryPage() {
       setCustomerSearch("");
       setSelectedCustomerId("");
       setServiceCategoryToAdd("general");
-      setServiceToAddId("");
+      setServiceSearch("");
       setSelectedServices([]);
       setPromisedReadyAt("");
       setIsPeakTime(false);
@@ -582,10 +584,10 @@ export default function OrderEntryPage() {
   }
 
   return (
-    <section className="mx-auto max-w-6xl">
-      <div className="mb-8">
+    <section className="mx-auto max-w-6xl pb-20 lg:pb-0">
+      <div className="mb-7">
         <p className="mb-2 text-sm font-bold uppercase tracking-widest text-[#005AAB]">
-          Order and pricing module
+          Orders / New order
         </p>
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
           Create a laundry order
@@ -595,22 +597,6 @@ export default function OrderEntryPage() {
           received. FastAPI confirms the final price and ticket number.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3">
-          <Link
-            className="inline-flex items-center gap-2 font-bold text-[#005AAB] no-underline hover:underline"
-            href="/customers"
-          >
-            <svg
-              aria-hidden="true"
-              className="h-5 w-5 shrink-0"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            Register a customer first
-          </Link>
           <Link
             className="inline-flex items-center gap-2 font-bold text-[#005AAB] no-underline hover:underline"
             href="/orders/status"
@@ -631,13 +617,26 @@ export default function OrderEntryPage() {
       </div>
 
       <form
+        id="order-entry-form"
         className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]"
         onSubmit={handleSubmit}
         noValidate
       >
         <div className="space-y-6">
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <h2 className="text-xl font-bold text-slate-900">1. Customer</h2>
+          <section
+            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+            id="order-customer-step"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-xl font-bold text-slate-900">1. Customer</h2>
+              <Link
+                className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#005AAB] px-4 text-sm font-bold text-[#005AAB] no-underline hover:bg-blue-50"
+                href="/customers"
+              >
+                <span aria-hidden="true">+</span>
+                Add customer
+              </Link>
+            </div>
 
             <label
               className="mt-4 block font-semibold text-slate-800"
@@ -683,82 +682,102 @@ export default function OrderEntryPage() {
             </select>
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <section
+            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+            id="order-services-step"
+          >
             <h2 className="text-xl font-bold text-slate-900">2. Services</h2>
             <p className="mt-2 text-slate-600">
-              Add every service the customer is receiving on this ticket.
+              Search the shop catalogue and tap each service to add it to this
+              ticket.
             </p>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-[190px_minmax(0,1fr)_auto]">
-              <select
-                className="min-h-12 rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
-                value={serviceCategoryToAdd}
-                onChange={(event) => {
-                  setServiceCategoryToAdd(event.target.value);
-                  setServiceToAddId("");
-                  setServiceAddError("");
-                }}
-                disabled={isLoadingSetup || isSubmitting}
-                aria-label="Service category"
-              >
-                <option value="general">Laundry services</option>
-                <option value="dry_cleaning">Dry Cleaning</option>
-              </select>
-              <select
-                className="min-h-12 min-w-0 rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
-                value={serviceToAddId}
-                onChange={(event) => {
-                  setServiceToAddId(event.target.value);
-                  setServiceAddError("");
-                }}
-                disabled={
-                  isLoadingSetup ||
-                  isSubmitting ||
-                  availableCategoryServices.length === 0
-                }
-                aria-label={
-                  serviceCategoryToAdd === "dry_cleaning"
-                    ? "Dry Cleaning garment to add"
-                    : "Laundry service to add"
-                }
-              >
-                <option value="">
-                  {availableCategoryServices.length === 0
-                    ? "No more choices in this category"
-                    : serviceCategoryToAdd === "dry_cleaning"
-                      ? "Select a garment"
-                      : "Select a service"}
-                </option>
-                {availableCategoryServices.map((service) => (
-                  <option key={service.id} value={service.id}>
-                    {getServiceDisplayName(service)} —{" "}
-                    {formatKes(service.unit_price)} per {service.unit}
-                  </option>
-                ))}
-              </select>
-              <button
-                className="min-h-12 rounded-xl border border-[#005AAB] px-5 font-bold text-[#005AAB] hover:bg-blue-50 disabled:opacity-50"
-                type="button"
-                disabled={
-                  isLoadingSetup ||
-                  isSubmitting ||
-                  availableCategoryServices.length === 0
-                }
-                onClick={addService}
-              >
-                {serviceCategoryToAdd === "dry_cleaning"
-                  ? "Add garment"
-                  : "Add service"}
-              </button>
+            <div
+              className="mt-5 grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1.5 sm:max-w-md"
+              aria-label="Service category"
+            >
+              {[
+                { value: "general", label: "Laundry" },
+                { value: "dry_cleaning", label: "Dry Cleaning" },
+              ].map((category) => (
+                <button
+                  className={`min-h-11 rounded-lg px-4 font-bold ${
+                    serviceCategoryToAdd === category.value
+                      ? "bg-[#005AAB] text-white shadow-sm"
+                      : "bg-transparent text-slate-700 hover:bg-white"
+                  }`}
+                  type="button"
+                  aria-pressed={serviceCategoryToAdd === category.value}
+                  disabled={isLoadingSetup || isSubmitting}
+                  key={category.value}
+                  onClick={() => {
+                    setServiceCategoryToAdd(category.value);
+                    setServiceSearch("");
+                  }}
+                >
+                  {category.label}
+                </button>
+              ))}
             </div>
-            {serviceAddError ? (
-              <p
-                className="mt-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800"
-                role="alert"
-              >
-                {serviceAddError}
+
+            <label
+              className="mt-4 block font-semibold text-slate-800"
+              htmlFor="service_search"
+            >
+              {serviceCategoryToAdd === "dry_cleaning"
+                ? "Find a Dry Cleaning garment"
+                : "Find a laundry service"}
+            </label>
+            <input
+              className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
+              id="service_search"
+              key={serviceCategoryToAdd}
+              type="search"
+              value={serviceSearch}
+              disabled={isLoadingSetup || isSubmitting}
+              placeholder={
+                serviceCategoryToAdd === "dry_cleaning"
+                  ? "Example: suit, shirt or dress"
+                  : "Example: wash, duvet or iron"
+              }
+              onChange={(event) => setServiceSearch(event.target.value)}
+            />
+
+            {isLoadingSetup ? (
+              <p className="mt-4 rounded-xl bg-slate-50 px-4 py-5 text-center text-sm text-slate-600">
+                Loading services…
               </p>
-            ) : null}
+            ) : availableCategoryServices.length > 0 ? (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {availableCategoryServices.map((service) => (
+                  <button
+                    className="group flex min-h-24 items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 text-left hover:border-[#005AAB] hover:bg-blue-50 disabled:opacity-50"
+                    type="button"
+                    disabled={isSubmitting}
+                    key={service.id}
+                    onClick={() => addService(service.id)}
+                  >
+                    <span>
+                      <span className="block font-bold text-slate-900 group-hover:text-[#005AAB]">
+                        {getServiceDisplayName(service)}
+                      </span>
+                      <span className="mt-1 block text-sm text-slate-600">
+                        {formatKes(service.unit_price)} per {service.unit}
+                      </span>
+                    </span>
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-50 text-xl font-bold text-[#005AAB] group-hover:bg-[#005AAB] group-hover:text-white">
+                      +
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center text-sm text-slate-600">
+                {serviceSearch
+                  ? "No available service matches this search."
+                  : "Every service in this category is already on the ticket."}
+              </p>
+            )}
 
             {shouldOfferSuitBag ? (
               <div className="mt-5 flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -951,7 +970,10 @@ export default function OrderEntryPage() {
             )}
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <section
+            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+            id="order-completion-step"
+          >
             <h2 className="text-xl font-bold text-slate-900">
               3. Promised completion
             </h2>
@@ -1007,7 +1029,10 @@ export default function OrderEntryPage() {
             ) : null}
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <section
+            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+            id="order-payment-step"
+          >
             <h2 className="text-xl font-bold text-slate-900">4. Payment</h2>
             <p className="mt-2 text-slate-600">
               Record what the customer has paid now, or leave the balance for
@@ -1151,16 +1176,12 @@ export default function OrderEntryPage() {
             </p>
           ) : null}
 
-          <button
-            className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[#005AAB] px-6 font-bold text-white hover:bg-[#004782] disabled:cursor-wait disabled:opacity-60 sm:w-auto"
-            type="submit"
-            disabled={isSubmitting || isLoadingSetup}
-          >
-            {isSubmitting ? "Creating order…" : "Create order"}
-          </button>
         </div>
 
-        <aside className="h-fit rounded-2xl border border-blue-200 bg-blue-50 p-5 lg:sticky lg:top-6">
+        <aside
+          className="h-fit rounded-2xl border border-blue-200 bg-blue-50 p-5 lg:sticky lg:top-24"
+          id="order-review-step"
+        >
           <p className="text-sm font-bold uppercase tracking-wide text-[#005AAB]">
             Order estimate
           </p>
@@ -1212,8 +1233,40 @@ export default function OrderEntryPage() {
                   : "M-PESA Paybill"}
             </p>
           </div>
+
+          <button
+            className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[#005AAB] px-6 font-bold text-white hover:bg-[#004782] disabled:cursor-wait disabled:opacity-60"
+            type="submit"
+            disabled={isSubmitting || isLoadingSetup}
+          >
+            {isSubmitting ? "Creating order…" : "Create order"}
+          </button>
+          <p className="mt-3 text-center text-xs leading-5 text-slate-600">
+            FastAPI checks the final price and creates the ticket.
+          </p>
         </aside>
       </form>
+
+      {!createdOrder ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-4 border-t border-slate-200 bg-white px-4 py-3 shadow-[0_-8px_25px_rgba(15,23,42,0.12)] lg:hidden">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+              Order estimate
+            </p>
+            <p className="mt-0.5 text-lg font-bold text-slate-900">
+              {formatKes(estimatedTotal)}
+            </p>
+          </div>
+          <button
+            className="min-h-11 rounded-xl bg-[#005AAB] px-5 font-bold text-white disabled:cursor-wait disabled:opacity-60"
+            type="submit"
+            form="order-entry-form"
+            disabled={isSubmitting || isLoadingSetup}
+          >
+            {isSubmitting ? "Creating…" : "Create order"}
+          </button>
+        </div>
+      ) : null}
 
       {createdOrder ? (
         <section
