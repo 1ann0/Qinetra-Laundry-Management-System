@@ -57,6 +57,7 @@ class FinancialSummaryTests(unittest.TestCase):
             quantity=1,
             unit_price=total_price,
             total_price=total_price,
+            order_date=created_at.astimezone(main.NAIROBI_TIMEZONE).date(),
             created_at=created_at,
         )
         self.db.add(order)
@@ -70,6 +71,7 @@ class FinancialSummaryTests(unittest.TestCase):
             amount=amount,
             confirmed_by_id=self.owner.id,
             confirmed_by_username=self.owner.username,
+            received_date=created_at.astimezone(main.NAIROBI_TIMEZONE).date(),
             created_at=created_at,
         )
         self.db.add(payment)
@@ -115,6 +117,8 @@ class FinancialSummaryTests(unittest.TestCase):
         )
 
         self.assertEqual(summary.orders_booked, 1)
+        self.assertEqual(summary.gross_order_value, 600)
+        self.assertEqual(summary.discounts_given, 0)
         self.assertEqual(summary.order_value, 600)
         self.assertEqual(summary.cash_received, 200)
         self.assertEqual(summary.mpesa_received, 300)
@@ -214,6 +218,8 @@ class FinancialSummaryTests(unittest.TestCase):
         )
 
         self.assertEqual(summary.orders_booked, 0)
+        self.assertEqual(summary.gross_order_value, 0)
+        self.assertEqual(summary.discounts_given, 0)
         self.assertEqual(summary.order_value, 0)
         self.assertEqual(summary.cash_received, 0)
         self.assertEqual(summary.mpesa_received, 0)
@@ -248,7 +254,7 @@ class FinancialSummaryTests(unittest.TestCase):
 
         mixed_order = self.add_order(
             "QL-20260804-001",
-            1100,
+            1000,
             datetime(2026, 8, 4, 8, tzinfo=timezone.utc),
         )
         mixed_order.service_type = "mixed"
@@ -271,6 +277,7 @@ class FinancialSummaryTests(unittest.TestCase):
                 quantity=1,
                 unit_price=800,
                 subtotal=800,
+                discount_amount=100,
                 item_recording_mode="none",
                 item_check_status="not_required",
             ),
@@ -294,13 +301,16 @@ class FinancialSummaryTests(unittest.TestCase):
 
         self.assertEqual(
             [service.service_name for service in summary.top_services],
-            ["Duvet Cleaning", "Wash & Fold"],
+            ["Wash & Fold", "Duvet Cleaning"],
         )
-        self.assertEqual(summary.top_services[0].booked_value, 800)
-        self.assertEqual(summary.top_services[0].order_count, 1)
-        self.assertEqual(summary.top_services[1].booked_value, 750)
-        self.assertEqual(summary.top_services[1].quantity_booked, 5)
-        self.assertEqual(summary.top_services[1].order_count, 2)
+        self.assertEqual(summary.gross_order_value, 1550)
+        self.assertEqual(summary.discounts_given, 100)
+        self.assertEqual(summary.order_value, 1450)
+        self.assertEqual(summary.top_services[0].booked_value, 750)
+        self.assertEqual(summary.top_services[0].quantity_booked, 5)
+        self.assertEqual(summary.top_services[0].order_count, 2)
+        self.assertEqual(summary.top_services[1].booked_value, 700)
+        self.assertEqual(summary.top_services[1].order_count, 1)
 
     def test_end_date_before_start_date_is_rejected(self):
         with self.assertRaises(HTTPException) as invalid_range:

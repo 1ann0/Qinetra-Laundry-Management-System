@@ -184,6 +184,7 @@ class OrderItemCreate(BaseModel):
 class DetailedOrderServiceCreate(BaseModel):
     service_id: int = Field(gt=0)
     quantity: float = Field(gt=0)
+    discount_amount: float = Field(default=0, ge=0)
     items: list[OrderItemCreate] = Field(default_factory=list)
 
 
@@ -191,6 +192,8 @@ class DetailedOrderServiceCreate(BaseModel):
 class DetailedOrderCreate(BaseModel):
     customer_id: int = Field(gt=0)
     services: list[DetailedOrderServiceCreate] = Field(min_length=1)
+    order_date: Optional[date] = None
+    discount_reason: Optional[str] = Field(default=None, max_length=120)
     promised_ready_at: Optional[datetime] = None
     peak_delay_minutes: Literal[0, 60] = 0
 
@@ -199,6 +202,14 @@ class DetailedOrderCreate(BaseModel):
         service_ids = [service.service_id for service in self.services]
         if len(service_ids) != len(set(service_ids)):
             raise ValueError("Select each service only once per order")
+        self.discount_reason = (
+            self.discount_reason.strip() if self.discount_reason else None
+        )
+        if any(service.discount_amount > 0 for service in self.services):
+            if not self.discount_reason:
+                raise ValueError("Enter a reason for the discount")
+        else:
+            self.discount_reason = None
         return self
 
 
@@ -226,6 +237,8 @@ class OrderServiceLineOut(BaseModel):
     quantity: float
     unit_price: float
     subtotal: float
+    discount_amount: float
+    line_total: float
     fixed_item_type_id: Optional[int]
     item_recording_mode: str
     item_check_status: str
@@ -245,6 +258,7 @@ class PaymentCreate(BaseModel):
     payment_method: Literal["cash", "mpesa"]
     amount: float = Field(gt=0)
     confirmed: bool
+    received_date: Optional[date] = None
 
 
 # Payment history shown on the receipt.
@@ -253,6 +267,7 @@ class PaymentOut(BaseModel):
     payment_method: str
     amount: float
     confirmed_by_username: str
+    received_date: date
     created_at: datetime
 
     class Config:
@@ -271,8 +286,13 @@ class OrderOut(BaseModel):
     service_type: str
     quantity: float
     unit_price: float
+    subtotal_before_discount: float
+    discount_amount: float
     total_price: float
     status: str
+    order_date: date
+    discount_reason: Optional[str]
+    discounted_by_username: Optional[str]
     created_at: datetime
     promised_ready_at: Optional[datetime]
     peak_delay_minutes: int
@@ -350,6 +370,8 @@ class FinancialSummary(BaseModel):
     start_date: date
     end_date: date
     orders_booked: int
+    gross_order_value: float
+    discounts_given: float
     order_value: float
     cash_received: float
     mpesa_received: float

@@ -24,6 +24,23 @@ function formatDateTime(value) {
   }).format(new Date(value));
 }
 
+function getNairobiToday() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Nairobi",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function formatDate(value) {
+  if (!value) return "Not recorded";
+  return new Intl.DateTimeFormat("en-KE", {
+    dateStyle: "medium",
+    timeZone: "Africa/Nairobi",
+  }).format(new Date(`${value}T12:00:00+03:00`));
+}
+
 function getStatusLabel(status) {
   if (status === "in_progress") return "In Progress";
   if (status === "ready") return "Ready for Collection";
@@ -133,6 +150,8 @@ export default function OrderDetailPage() {
   // Payments are appended to history instead of changing an earlier record.
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentReceivedDate, setPaymentReceivedDate] =
+    useState(getNairobiToday);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [isRecordingPayment, setIsRecordingPayment] = useState(false);
   const [shareError, setShareError] = useState("");
@@ -257,6 +276,21 @@ export default function OrderDetailPage() {
       return;
     }
 
+    if (!paymentReceivedDate) {
+      setError("Select the date the payment was received.");
+      return;
+    }
+
+    if (paymentReceivedDate < order.order_date) {
+      setError("The payment date cannot be before the order date.");
+      return;
+    }
+
+    if (paymentReceivedDate > getNairobiToday()) {
+      setError("The payment date cannot be in the future.");
+      return;
+    }
+
     if (!paymentConfirmed) {
       setError(
         paymentMethod === "cash"
@@ -280,6 +314,7 @@ export default function OrderDetailPage() {
             payment_method: paymentMethod,
             amount,
             confirmed: true,
+            received_date: paymentReceivedDate,
           }),
         },
       );
@@ -287,6 +322,7 @@ export default function OrderDetailPage() {
       setOrder(updatedOrder);
       setPaymentAmount(String(updatedOrder.balance_due));
       setPaymentConfirmed(false);
+      setPaymentReceivedDate(getNairobiToday());
       setMessage(
         `${getPaymentMethodLabel(paymentMethod)} payment of ${formatKes(amount)} recorded.`,
       );
@@ -320,6 +356,7 @@ export default function OrderDetailPage() {
       heading,
       `Customer: ${customer?.name || `Customer ${order.customer_id}`}`,
       `Ticket: ${order.ticket_number}`,
+      `Order date: ${formatDate(order.order_date)}`,
       `Services: ${serviceNames}`,
       `Total: ${formatKes(order.total_price)}`,
       `Paid: ${formatKes(order.amount_paid)}`,
@@ -429,7 +466,7 @@ export default function OrderDetailPage() {
       ) : null}
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-        <div className="grid gap-5 border-b border-slate-200 pb-6 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-5 border-b border-slate-200 pb-6 sm:grid-cols-2 lg:grid-cols-6">
           <div>
             <p className="text-sm text-slate-500">Customer</p>
             <p className="mt-1 font-bold text-slate-900">
@@ -440,6 +477,12 @@ export default function OrderDetailPage() {
             <p className="text-sm text-slate-500">Phone</p>
             <p className="mt-1 font-bold text-slate-900">
               {customer?.phone || "Not available"}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-slate-500">Order date</p>
+            <p className="mt-1 font-bold text-slate-900">
+              {formatDate(order.order_date)}
             </p>
           </div>
           <div>
@@ -457,12 +500,29 @@ export default function OrderDetailPage() {
             </p>
           </div>
           <div>
-            <p className="text-sm text-slate-500">Created</p>
+            <p className="text-sm text-slate-500">Recorded in QLMS</p>
             <p className="mt-1 font-bold text-slate-900">
               {formatDateTime(order.created_at)}
             </p>
           </div>
         </div>
+
+        {Number(order.discount_amount) > 0 ? (
+          <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4">
+            <div className="flex flex-wrap justify-between gap-3">
+              <span className="font-semibold text-slate-700">
+                Catalogue subtotal: {formatKes(order.subtotal_before_discount)}
+              </span>
+              <span className="font-bold text-amber-900">
+                Discount: -{formatKes(order.discount_amount)}
+              </span>
+            </div>
+            <p className="mt-2 text-sm text-slate-700">
+              Reason: {order.discount_reason} · Recorded by {" "}
+              {order.discounted_by_username}
+            </p>
+          </div>
+        ) : null}
 
         <div className="mt-6 space-y-5">
           {order.service_lines.length === 0 ? (
@@ -486,9 +546,19 @@ export default function OrderDetailPage() {
                     </p>
                   </div>
                   <div className="text-right">
+                    {Number(serviceLine.discount_amount) > 0 ? (
+                      <p className="text-sm text-slate-500 line-through">
+                        {formatKes(serviceLine.subtotal)}
+                      </p>
+                    ) : null}
                     <p className="font-bold text-slate-900">
-                      {formatKes(serviceLine.subtotal)}
+                      {formatKes(serviceLine.line_total)}
                     </p>
+                    {Number(serviceLine.discount_amount) > 0 ? (
+                      <p className="mt-1 text-xs font-semibold text-amber-900">
+                        Saved {formatKes(serviceLine.discount_amount)}
+                      </p>
+                    ) : null}
                     <span
                       className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-bold ${
                         serviceLine.item_check_status === "pending"
@@ -590,9 +660,21 @@ export default function OrderDetailPage() {
           )}
         </div>
 
-        <div className="mt-6 grid gap-4 border-t border-slate-200 pt-6 sm:grid-cols-3">
+        <div className="mt-6 grid gap-4 border-t border-slate-200 pt-6 sm:grid-cols-2 lg:grid-cols-5">
           <div>
-            <p className="text-sm text-slate-500">Order total</p>
+            <p className="text-sm text-slate-500">Catalogue subtotal</p>
+            <p className="mt-1 text-xl font-bold text-slate-900">
+              {formatKes(order.subtotal_before_discount)}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-slate-500">Discount</p>
+            <p className="mt-1 text-xl font-bold text-amber-900">
+              -{formatKes(order.discount_amount)}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-slate-500">Final order total</p>
             <p className="mt-1 text-xl font-bold text-slate-900">
               {formatKes(order.total_price)}
             </p>
@@ -629,13 +711,14 @@ export default function OrderDetailPage() {
 
         {order.payments.length > 0 ? (
           <div className="mt-5 overflow-x-auto">
-            <table className="w-full min-w-[620px] text-left text-sm">
+            <table className="w-full min-w-[760px] text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-slate-600">
                   <th className="px-3 py-3 font-semibold">Method</th>
                   <th className="px-3 py-3 font-semibold">Amount</th>
                   <th className="px-3 py-3 font-semibold">Confirmed by</th>
-                  <th className="px-3 py-3 font-semibold">Date</th>
+                  <th className="px-3 py-3 font-semibold">Received date</th>
+                  <th className="px-3 py-3 font-semibold">Recorded in QLMS</th>
                 </tr>
               </thead>
               <tbody>
@@ -649,6 +732,9 @@ export default function OrderDetailPage() {
                     </td>
                     <td className="px-3 py-3 text-slate-700">
                       {payment.confirmed_by_username}
+                    </td>
+                    <td className="px-3 py-3 text-slate-700">
+                      {formatDate(payment.received_date)}
                     </td>
                     <td className="px-3 py-3 text-slate-700">
                       {formatDateTime(payment.created_at)}
@@ -677,7 +763,7 @@ export default function OrderDetailPage() {
               Remaining balance: {formatKes(order.balance_due)}
             </p>
 
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div>
                 <label
                   className="block font-semibold text-slate-800"
@@ -719,6 +805,28 @@ export default function OrderDetailPage() {
                   disabled={isRecordingPayment}
                   onChange={(event) => {
                     setPaymentAmount(event.target.value);
+                    setError("");
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  className="block font-semibold text-slate-800"
+                  htmlFor="payment_received_date"
+                >
+                  Date received
+                </label>
+                <input
+                  className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100"
+                  id="payment_received_date"
+                  type="date"
+                  min={order.order_date}
+                  max={getNairobiToday()}
+                  value={paymentReceivedDate}
+                  disabled={isRecordingPayment}
+                  onChange={(event) => {
+                    setPaymentReceivedDate(event.target.value);
                     setError("");
                   }}
                 />

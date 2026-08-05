@@ -24,6 +24,24 @@ function formatKes(amount) {
   })}`;
 }
 
+// Business dates follow the shop's Nairobi calendar, not the device timezone.
+function getNairobiToday() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Nairobi",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function formatDate(value) {
+  if (!value) return "Not set";
+  return new Intl.DateTimeFormat("en-KE", {
+    dateStyle: "medium",
+    timeZone: "Africa/Nairobi",
+  }).format(new Date(`${value}T12:00:00+03:00`));
+}
+
 // Keep completion times readable on the form, receipt and WhatsApp message.
 function formatDateTime(value) {
   if (!value) return "Not set";
@@ -76,6 +94,8 @@ function createServiceLine(service) {
     item_recording_mode: service.item_recording_mode,
     turnaround_minutes: Number(service.turnaround_minutes) || 180,
     quantity: "1",
+    discount_enabled: false,
+    discount_amount: "",
     defer_items: false,
     items:
       service.item_recording_mode === "detailed"
@@ -110,8 +130,27 @@ function getServiceSubtotal(serviceLine) {
     : 0;
 }
 
+function getServiceDiscount(serviceLine) {
+  if (!serviceLine.discount_enabled) return 0;
+  const discount = Number(serviceLine.discount_amount);
+  return Number.isFinite(discount) && discount > 0 ? discount : 0;
+}
+
+function getServiceTotal(serviceLine) {
+  return Math.max(
+    getServiceSubtotal(serviceLine) - getServiceDiscount(serviceLine),
+    0,
+  );
+}
+
 // Check all visible order values before sending them to FastAPI.
-function getOrderError(customerId, serviceLines) {
+function getOrderError(
+  customerId,
+  serviceLines,
+  discountReason,
+  orderDate,
+  today,
+) {
   if (!customerId) {
     return "Select the customer for this order.";
   }
@@ -120,11 +159,35 @@ function getOrderError(customerId, serviceLines) {
     return "Add at least one laundry service.";
   }
 
+  if (!orderDate) {
+    return "Select the order date.";
+  }
+
+  if (orderDate > today) {
+    return "The order date cannot be in the future.";
+  }
+
+  let hasDiscount = false;
+
   for (const serviceLine of serviceLines) {
     const quantity = getServiceQuantity(serviceLine);
+    const subtotal = getServiceSubtotal(serviceLine);
 
     if (!Number.isFinite(quantity) || quantity <= 0) {
       return `Enter a quantity greater than zero for ${serviceLine.service_name}.`;
+    }
+
+    if (serviceLine.discount_enabled) {
+      const discount = Number(serviceLine.discount_amount);
+      hasDiscount = true;
+
+      if (!Number.isFinite(discount) || discount <= 0) {
+        return `Enter a discount greater than zero for ${serviceLine.service_name}.`;
+      }
+
+      if (discount >= subtotal) {
+        return `The discount for ${serviceLine.service_name} must be less than its ${formatKes(subtotal)} subtotal.`;
+      }
     }
 
     if (
@@ -159,6 +222,10 @@ function getOrderError(customerId, serviceLines) {
     }
   }
 
+  if (hasDiscount && !discountReason.trim()) {
+    return "Explain why this order was discounted.";
+  }
+
   return "";
 }
 
@@ -188,9 +255,29 @@ function getRecordingModeLabel(mode) {
 }
 
 // Check payment choices before creating the order so an accidental entry is caught early.
-function getPaymentError(paymentChoice, paymentAmountType, depositAmount, total) {
+function getPaymentError(
+  paymentChoice,
+  paymentAmountType,
+  depositAmount,
+  total,
+  receivedDate,
+  orderDate,
+  today,
+) {
   if (paymentChoice === "unpaid") {
     return "";
+  }
+
+  if (!receivedDate) {
+    return "Select the date the payment was received.";
+  }
+
+  if (receivedDate < orderDate) {
+    return "The payment date cannot be before the order date.";
+  }
+
+  if (receivedDate > today) {
+    return "The payment date cannot be in the future.";
   }
 
   if (paymentAmountType === "deposit") {
@@ -238,6 +325,7 @@ function shareReceipt(order) {
     "Qinetra Laundry receipt",
     `Customer: ${order.customerName}`,
     `Ticket: ${order.ticket_number}`,
+    `Order date: ${formatDate(order.order_date)}`,
     `Services: ${serviceNames}`,
     `Total: ${formatKes(order.total_price)}`,
     `Paid: ${formatKes(order.amount_paid)}`,
@@ -258,6 +346,7 @@ function shareReceipt(order) {
 
 export default function OrderEntryPage() {
   const { authenticatedRequest } = useAuth();
+  const today = getNairobiToday();
 
   // Load the three lists needed to create a catalogue-based order.
   const [customers, setCustomers] = useState([]);
@@ -271,6 +360,9 @@ export default function OrderEntryPage() {
   const [serviceCategoryToAdd, setServiceCategoryToAdd] = useState("general");
   const [serviceSearch, setServiceSearch] = useState("");
   const [selectedServices, setSelectedServices] = useState([]);
+  const [isEarlierOrder, setIsEarlierOrder] = useState(false);
+  const [orderDate, setOrderDate] = useState(getNairobiToday);
+  const [discountReason, setDiscountReason] = useState("");
 
   // Start from the slowest selected service, with an optional busy-period hour.
   const [promisedReadyAt, setPromisedReadyAt] = useState("");
@@ -280,6 +372,8 @@ export default function OrderEntryPage() {
   const [paymentChoice, setPaymentChoice] = useState("unpaid");
   const [paymentAmountType, setPaymentAmountType] = useState("full");
   const [depositAmount, setDepositAmount] = useState("");
+  const [paymentReceivedDate, setPaymentReceivedDate] =
+    useState(getNairobiToday);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
 
   // Track form feedback and the final backend-created ticket.
@@ -373,8 +467,16 @@ export default function OrderEntryPage() {
     selectedServices.some((service) =>
       SUIT_BAG_PROMPT_CODES.has(service.service_code),
     );
-  const estimatedTotal = selectedServices.reduce(
+  const estimatedSubtotal = selectedServices.reduce(
     (total, serviceLine) => total + getServiceSubtotal(serviceLine),
+    0,
+  );
+  const estimatedDiscount = selectedServices.reduce(
+    (total, serviceLine) => total + getServiceDiscount(serviceLine),
+    0,
+  );
+  const estimatedTotal = selectedServices.reduce(
+    (total, serviceLine) => total + getServiceTotal(serviceLine),
     0,
   );
 
@@ -459,11 +561,15 @@ export default function OrderEntryPage() {
   function buildOrderPayload(customerId) {
     return {
       customer_id: customerId,
+      order_date: orderDate,
+      discount_reason:
+        estimatedDiscount > 0 ? cleanOptionalText(discountReason) : null,
       promised_ready_at: new Date(promisedReadyAt).toISOString(),
       peak_delay_minutes: isPeakTime ? 60 : 0,
       services: selectedServices.map((serviceLine) => ({
         service_id: serviceLine.service_id,
         quantity: getServiceQuantity(serviceLine),
+        discount_amount: getServiceDiscount(serviceLine),
         items:
           serviceLine.item_recording_mode === "detailed"
             ? serviceLine.items.map((item) => ({
@@ -493,13 +599,22 @@ export default function OrderEntryPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     const customerId = Number(selectedCustomerId);
-    const orderError = getOrderError(customerId, selectedServices);
+    const orderError = getOrderError(
+      customerId,
+      selectedServices,
+      discountReason,
+      orderDate,
+      today,
+    );
     const promisedTimeError = getPromisedTimeError(promisedReadyAt);
     const paymentError = getPaymentError(
       paymentChoice,
       paymentAmountType,
       depositAmount,
       estimatedTotal,
+      paymentReceivedDate,
+      orderDate,
+      today,
     );
     const validationError =
       orderError ||
@@ -548,6 +663,7 @@ export default function OrderEntryPage() {
                 payment_method: paymentChoice,
                 amount: paymentAmount,
                 confirmed: true,
+                received_date: paymentReceivedDate,
               }),
             },
           );
@@ -569,11 +685,15 @@ export default function OrderEntryPage() {
       setServiceCategoryToAdd("general");
       setServiceSearch("");
       setSelectedServices([]);
+      setIsEarlierOrder(false);
+      setOrderDate(today);
+      setDiscountReason("");
       setPromisedReadyAt("");
       setIsPeakTime(false);
       setPaymentChoice("unpaid");
       setPaymentAmountType("full");
       setDepositAmount("");
+      setPaymentReceivedDate(today);
       setPaymentConfirmed(false);
       setReceiptShareError("");
     } catch (orderError) {
@@ -680,6 +800,56 @@ export default function OrderEntryPage() {
                 </option>
               ))}
             </select>
+
+            <label className="mt-5 flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 font-semibold text-slate-800">
+              <input
+                className="mt-1"
+                type="checkbox"
+                checked={isEarlierOrder}
+                disabled={isSubmitting}
+                onChange={(event) => {
+                  const shouldUseEarlierDate = event.target.checked;
+                  setIsEarlierOrder(shouldUseEarlierDate);
+                  setOrderDate(today);
+                  setPaymentReceivedDate(today);
+                  setError("");
+                }}
+              />
+              <span>
+                This order was received on an earlier date.
+                <span className="mt-1 block text-sm font-normal text-slate-600">
+                  Leave this off for customers bringing laundry today.
+                </span>
+              </span>
+            </label>
+
+            {isEarlierOrder ? (
+              <div className="mt-4">
+                <label
+                  className="block font-semibold text-slate-800"
+                  htmlFor="order_date"
+                >
+                  Order received date
+                </label>
+                <input
+                  className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100 sm:max-w-xs"
+                  id="order_date"
+                  type="date"
+                  max={today}
+                  value={orderDate}
+                  disabled={isSubmitting}
+                  onChange={(event) => {
+                    setOrderDate(event.target.value);
+                    setPaymentReceivedDate(event.target.value);
+                    setError("");
+                  }}
+                />
+                <p className="mt-2 text-sm text-slate-600">
+                  The receipt will keep this business date. QLMS still records
+                  when the entry was actually created.
+                </p>
+              </div>
+            ) : null}
           </section>
 
           <section
@@ -809,6 +979,8 @@ export default function OrderEntryPage() {
                 {selectedServices.map((serviceLine, index) => {
                   const quantity = getServiceQuantity(serviceLine);
                   const subtotal = getServiceSubtotal(serviceLine);
+                  const discount = getServiceDiscount(serviceLine);
+                  const serviceTotal = getServiceTotal(serviceLine);
 
                   return (
                     <article
@@ -955,17 +1127,105 @@ export default function OrderEntryPage() {
                         }
                       />
 
-                      <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4">
-                        <span className="font-semibold text-slate-600">
-                          Service estimate
-                        </span>
-                        <span className="text-lg font-bold text-slate-900">
-                          {formatKes(subtotal)}
-                        </span>
+                      <div className="mt-4 border-t border-slate-200 pt-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <span className="font-semibold text-slate-600">
+                            Service subtotal
+                          </span>
+                          <span className="text-lg font-bold text-slate-900">
+                            {formatKes(subtotal)}
+                          </span>
+                        </div>
+
+                        <button
+                          className={`mt-3 min-h-10 rounded-lg border px-4 text-sm font-bold ${
+                            serviceLine.discount_enabled
+                              ? "border-amber-500 bg-amber-100 text-amber-950"
+                              : "border-[#005AAB] bg-white text-[#005AAB] hover:bg-blue-50"
+                          }`}
+                          type="button"
+                          aria-pressed={serviceLine.discount_enabled}
+                          disabled={isSubmitting}
+                          onClick={() => {
+                            updateServiceLine(serviceLine.service_id, {
+                              discount_enabled:
+                                !serviceLine.discount_enabled,
+                              discount_amount: "",
+                            });
+                            setError("");
+                          }}
+                        >
+                          {serviceLine.discount_enabled
+                            ? "Remove discount"
+                            : "Add discount"}
+                        </button>
+
+                        {serviceLine.discount_enabled ? (
+                          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                            <label
+                              className="block font-semibold text-slate-800"
+                              htmlFor={`discount-${serviceLine.service_id}`}
+                            >
+                              Discount for this service (KES)
+                            </label>
+                            <input
+                              className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100 sm:max-w-xs"
+                              id={`discount-${serviceLine.service_id}`}
+                              type="number"
+                              min="1"
+                              max={Math.max(subtotal - 0.01, 0)}
+                              step="1"
+                              value={serviceLine.discount_amount}
+                              disabled={isSubmitting}
+                              onChange={(event) => {
+                                updateServiceLine(serviceLine.service_id, {
+                                  discount_amount: event.target.value,
+                                });
+                                setError("");
+                              }}
+                              placeholder="Example: 100"
+                            />
+                            <div className="mt-3 flex flex-wrap justify-between gap-2 text-sm">
+                              <span className="text-amber-900">
+                                Discount: {formatKes(discount)}
+                              </span>
+                              <span className="font-bold text-slate-900">
+                                Final: {formatKes(serviceTotal)}
+                              </span>
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
                     </article>
                   );
                 })}
+
+                {estimatedDiscount > 0 ? (
+                  <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
+                    <label
+                      className="block font-semibold text-slate-900"
+                      htmlFor="discount_reason"
+                    >
+                      Why was this discount given?
+                    </label>
+                    <input
+                      className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100"
+                      id="discount_reason"
+                      type="text"
+                      maxLength="120"
+                      value={discountReason}
+                      disabled={isSubmitting}
+                      onChange={(event) => {
+                        setDiscountReason(event.target.value);
+                        setError("");
+                      }}
+                      placeholder="Example: Regular customer offer"
+                    />
+                    <p className="mt-2 text-sm text-amber-900">
+                      The reason and staff username are kept with the order.
+                    </p>
+                  </div>
+                ) : null}
               </div>
             )}
           </section>
@@ -1143,6 +1403,31 @@ export default function OrderEntryPage() {
                   </p>
                 )}
 
+                <div className="mt-4">
+                  <label
+                    className="block font-semibold text-slate-800"
+                    htmlFor="payment_received_date"
+                  >
+                    Date payment was received
+                  </label>
+                  <input
+                    className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100 sm:max-w-xs"
+                    id="payment_received_date"
+                    type="date"
+                    min={orderDate}
+                    max={today}
+                    value={paymentReceivedDate}
+                    disabled={isSubmitting}
+                    onChange={(event) => {
+                      setPaymentReceivedDate(event.target.value);
+                      setError("");
+                    }}
+                  />
+                  <p className="mt-2 text-sm text-slate-600">
+                    Finance reports use this date for cash and M-PESA received.
+                  </p>
+                </div>
+
                 <label className="mt-5 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-950">
                   <input
                     className="mt-1"
@@ -1200,10 +1485,24 @@ export default function OrderEntryPage() {
                     {serviceLine.service_name}
                   </span>
                   <span className="font-bold text-slate-900">
-                    {formatKes(getServiceSubtotal(serviceLine))}
+                    {formatKes(getServiceTotal(serviceLine))}
                   </span>
                 </div>
               ))}
+              {estimatedDiscount > 0 ? (
+                <div className="space-y-2 border-t border-blue-200 pt-3 text-sm">
+                  <div className="flex justify-between gap-3 text-slate-700">
+                    <span>Catalogue subtotal</span>
+                    <span className="font-semibold">
+                      {formatKes(estimatedSubtotal)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-3 font-semibold text-amber-900">
+                    <span>Discount</span>
+                    <span>-{formatKes(estimatedDiscount)}</span>
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : (
             <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -1215,6 +1514,13 @@ export default function OrderEntryPage() {
             This is a preview only. The backend uses the saved catalogue prices
             to confirm the final amount.
           </p>
+
+          <div className="mt-5 border-t border-blue-200 pt-4 text-sm">
+            <p className="font-semibold text-slate-700">Order date</p>
+            <p className="mt-1 font-bold text-slate-900">
+              {formatDate(orderDate)}
+            </p>
+          </div>
 
           <div className="mt-5 border-t border-blue-200 pt-4 text-sm">
             <p className="font-semibold text-slate-700">Promised ready</p>
@@ -1288,11 +1594,17 @@ export default function OrderEntryPage() {
               without creating another order.
             </p>
           ) : null}
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
             <div>
               <p className="text-sm text-slate-600">Customer</p>
               <p className="mt-1 font-bold text-slate-900">
                 {createdOrder.customerName}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-slate-600">Order date</p>
+              <p className="mt-1 font-bold text-slate-900">
+                {formatDate(createdOrder.order_date)}
               </p>
             </div>
             <div>
@@ -1327,6 +1639,23 @@ export default function OrderEntryPage() {
             </div>
           </div>
 
+          {Number(createdOrder.discount_amount) > 0 ? (
+            <div className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-4">
+              <div className="flex flex-wrap justify-between gap-3">
+                <span className="font-semibold text-slate-700">
+                  Catalogue subtotal: {formatKes(createdOrder.subtotal_before_discount)}
+                </span>
+                <span className="font-bold text-amber-900">
+                  Discount: -{formatKes(createdOrder.discount_amount)}
+                </span>
+              </div>
+              <p className="mt-2 text-sm text-slate-700">
+                Reason: {createdOrder.discount_reason} · Recorded by {" "}
+                {createdOrder.discounted_by_username}
+              </p>
+            </div>
+          ) : null}
+
           <div className="mt-6 space-y-4">
             {createdOrder.service_lines.map((serviceLine) => (
               <article
@@ -1343,9 +1672,21 @@ export default function OrderEntryPage() {
                       {formatKes(serviceLine.unit_price)}
                     </p>
                   </div>
-                  <p className="font-bold text-slate-900">
-                    {formatKes(serviceLine.subtotal)}
-                  </p>
+                  <div className="text-right">
+                    {Number(serviceLine.discount_amount) > 0 ? (
+                      <p className="text-sm text-slate-500 line-through">
+                        {formatKes(serviceLine.subtotal)}
+                      </p>
+                    ) : null}
+                    <p className="font-bold text-slate-900">
+                      {formatKes(serviceLine.line_total)}
+                    </p>
+                    {Number(serviceLine.discount_amount) > 0 ? (
+                      <p className="text-xs font-semibold text-amber-900">
+                        Saved {formatKes(serviceLine.discount_amount)}
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
 
                 {serviceLine.item_check_status === "pending" ? (
@@ -1382,7 +1723,8 @@ export default function OrderEntryPage() {
               {createdOrder.payments.map((payment) => (
                 <p className="mt-2 text-sm text-slate-700" key={payment.id}>
                   {payment.payment_method === "mpesa" ? "M-PESA" : "Cash"} ·{" "}
-                  {formatKes(payment.amount)}
+                  {formatKes(payment.amount)} · Received {" "}
+                  {formatDate(payment.received_date)}
                 </p>
               ))}
             </div>

@@ -1,7 +1,7 @@
 # logic.py
 # Business logic kept separate from main.py so it can be unit-tested directly with pytest.
 
-from datetime import datetime, timezone, timedelta
+from datetime import date, datetime, timezone, timedelta
 from sqlalchemy.orm import Session
 import models
 
@@ -45,8 +45,9 @@ def get_item_check_status(
 
 
 # Generates a unique ticket number in the format QL-YYYYMMDD-###
-def generate_ticket_number(db: Session) -> str:
-    today_str = datetime.now(timezone.utc).strftime("%Y%m%d")
+def generate_ticket_number(db: Session, order_date: date | None = None) -> str:
+    ticket_date = order_date or datetime.now(timezone.utc).date()
+    today_str = ticket_date.strftime("%Y%m%d")
 
     count_today = db.query(models.Order).filter(
         models.Order.ticket_number.like(f"QL-{today_str}-%")

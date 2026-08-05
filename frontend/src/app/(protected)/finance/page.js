@@ -486,10 +486,24 @@ function FinancialSnapshotContent() {
               <p className="mt-3 text-4xl font-bold text-slate-900">
                 {summary.orders_booked}
               </p>
-              <p className="mt-4 text-sm text-slate-600">Order value</p>
+              <p className="mt-4 text-sm text-slate-600">Final order value</p>
               <p className="mt-1 text-xl font-bold text-[#005AAB]">
                 {formatKes(summary.order_value)}
               </p>
+              <dl className="mt-4 grid grid-cols-2 gap-4 border-t border-slate-200 pt-4 text-sm">
+                <div>
+                  <dt className="text-slate-600">Before discounts</dt>
+                  <dd className="mt-1 font-bold text-slate-900">
+                    {formatKes(summary.gross_order_value)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-slate-600">Discounts given</dt>
+                  <dd className="mt-1 font-bold text-amber-900">
+                    {formatKes(summary.discounts_given)}
+                  </dd>
+                </div>
+              </dl>
             </article>
 
             <article className="rounded-2xl border-2 border-[#005AAB] bg-blue-50 p-6 shadow-sm">
@@ -622,8 +636,9 @@ function FinancialSnapshotContent() {
               Top services by order value
             </h2>
             <p className="mt-2 max-w-3xl text-slate-600">
-              Services booked on orders created during this period. These
-              figures are work booked, not payments allocated to each service.
+              Services booked on the selected order dates, after service-line
+              discounts. These figures are work booked, not payments allocated
+              to each service.
             </p>
 
             {summary.top_services?.length > 0 ? (
@@ -728,10 +743,10 @@ function FinancialSnapshotContent() {
           <section className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-700">
             <h2 className="font-bold text-slate-900">How these figures work</h2>
             <p className="mt-2">
-              Order value uses orders created in this period. Payments received
-              uses the date money was recorded, so it can include payment for an
-              older order. Outstanding shows today’s remaining balance on orders
-              booked in this period.
+              Final order value uses order dates and includes discounts.
+              Payments received uses the date the shop actually received the
+              money, so it can include payment for an older order. Outstanding
+              shows today’s remaining balance on orders booked in this period.
             </p>
           </section>
         </>

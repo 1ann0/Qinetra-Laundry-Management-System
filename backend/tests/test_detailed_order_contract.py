@@ -83,6 +83,19 @@ class DetailedOrderSchemaTests(unittest.TestCase):
                 peak_delay_minutes=30,
             )
 
+    def test_discount_requires_a_reason(self):
+        with self.assertRaises(ValidationError):
+            schemas.DetailedOrderCreate(
+                customer_id=4,
+                services=[
+                    {
+                        "service_id": 1,
+                        "quantity": 2,
+                        "discount_amount": 50,
+                    }
+                ],
+            )
+
 
 class ItemCheckRuleTests(unittest.TestCase):
     # Services with no clothing list never create a pending warning.
@@ -222,6 +235,68 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
         self.assertEqual(order.service_lines[1].item_check_status, "completed")
         self.assertEqual(order.service_lines[1].service_name, "Dry Cleaning - Shirt")
         self.assertEqual(order.service_lines[1].fixed_item_type_id, self.shirt.id)
+
+    def test_discount_and_order_date_are_saved_without_changing_catalogue_price(self):
+        order_date = main.get_nairobi_today() - timedelta(days=2)
+        request = schemas.DetailedOrderCreate(
+            customer_id=self.customer.id,
+            order_date=order_date,
+            discount_reason="  Regular customer offer  ",
+            services=[
+                {
+                    "service_id": self.wash_fold.id,
+                    "quantity": 4,
+                    "discount_amount": 100,
+                    "items": [
+                        {"item_type_id": self.shirt.id, "quantity": 4}
+                    ],
+                }
+            ],
+        )
+
+        order = main.create_detailed_order(request, self.db, self.user)
+
+        self.assertEqual(order.order_date, order_date)
+        self.assertTrue(order.ticket_number.startswith(f"QL-{order_date:%Y%m%d}-"))
+        self.assertEqual(float(order.unit_price), 150)
+        self.assertEqual(float(order.subtotal_before_discount), 600)
+        self.assertEqual(float(order.discount_amount), 100)
+        self.assertEqual(float(order.total_price), 500)
+        self.assertEqual(order.discount_reason, "Regular customer offer")
+        self.assertEqual(order.discounted_by_username, self.user.username)
+        self.assertEqual(float(order.service_lines[0].line_total), 500)
+
+    def test_discount_cannot_equal_the_service_subtotal(self):
+        request = schemas.DetailedOrderCreate(
+            customer_id=self.customer.id,
+            discount_reason="Free service",
+            services=[
+                {
+                    "service_id": self.wash_fold.id,
+                    "quantity": 1,
+                    "discount_amount": 150,
+                }
+            ],
+        )
+
+        with self.assertRaises(HTTPException) as invalid_discount:
+            main.create_detailed_order(request, self.db, self.user)
+
+        self.assertEqual(invalid_discount.exception.status_code, 400)
+        self.assertIn("must be less than", invalid_discount.exception.detail)
+
+    def test_future_order_date_is_rejected(self):
+        request = schemas.DetailedOrderCreate(
+            customer_id=self.customer.id,
+            order_date=main.get_nairobi_today() + timedelta(days=1),
+            services=[{"service_id": self.wash_fold.id, "quantity": 1}],
+        )
+
+        with self.assertRaises(HTTPException) as future_order:
+            main.create_detailed_order(request, self.db, self.user)
+
+        self.assertEqual(future_order.exception.status_code, 400)
+        self.assertIn("future", future_order.exception.detail)
 
     # Dry Cleaning-only garments cannot be inserted into a Wash & Fold tally.
     def test_dry_cleaning_item_is_rejected_from_laundry_tally(self):
@@ -476,6 +551,58 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
             )
         self.assertEqual(too_small.exception.status_code, 400)
 
+    def test_payment_received_date_is_saved_and_checked(self):
+        order_date = main.get_nairobi_today() - timedelta(days=2)
+        request = schemas.DetailedOrderCreate(
+            customer_id=self.customer.id,
+            order_date=order_date,
+            services=[{"service_id": self.wash_fold.id, "quantity": 2}],
+        )
+        order = main.create_detailed_order(request, self.db, self.user)
+        received_date = order_date + timedelta(days=1)
+
+        paid_order = main.record_order_payment(
+            order.id,
+            schemas.PaymentCreate(
+                payment_method="cash",
+                amount=100,
+                confirmed=True,
+                received_date=received_date,
+            ),
+            self.db,
+            self.user,
+        )
+
+        self.assertEqual(paid_order.payments[0].received_date, received_date)
+
+        with self.assertRaises(HTTPException) as before_order:
+            main.record_order_payment(
+                order.id,
+                schemas.PaymentCreate(
+                    payment_method="cash",
+                    amount=50,
+                    confirmed=True,
+                    received_date=order_date - timedelta(days=1),
+                ),
+                self.db,
+                self.user,
+            )
+        self.assertEqual(before_order.exception.status_code, 400)
+
+        with self.assertRaises(HTTPException) as future_payment:
+            main.record_order_payment(
+                order.id,
+                schemas.PaymentCreate(
+                    payment_method="mpesa",
+                    amount=50,
+                    confirmed=True,
+                    received_date=main.get_nairobi_today() + timedelta(days=1),
+                ),
+                self.db,
+                self.user,
+            )
+        self.assertEqual(future_payment.exception.status_code, 400)
+
     # Direct API calls cannot skip the normal four-stage workflow.
     def test_order_status_cannot_skip_a_stage(self):
         request = schemas.DetailedOrderCreate(
@@ -543,7 +670,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
         self.assertEqual(summary.unpaid, 1)
         self.assertEqual(summary.outstanding_balance, 400)
         self.assertIn("Wash & Fold (4 kg)", csv_text)
-        self.assertIn(",600.00,200.00,400.00,part_paid,cash,", csv_text)
+        self.assertIn(",600.00,0.00,,,600.00,200.00,400.00,part_paid,cash,", csv_text)
 
 
 if __name__ == "__main__":

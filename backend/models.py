@@ -1,7 +1,7 @@
 # models.py
 # Defines our database tables as Python classes.
 
-from sqlalchemy import Boolean, Column, Integer, String, Numeric, ForeignKey, TIMESTAMP
+from sqlalchemy import Boolean, Column, Date, Integer, String, Numeric, ForeignKey, TIMESTAMP
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from decimal import Decimal
@@ -72,6 +72,9 @@ class Order(Base):
     unit_price = Column(Numeric, nullable=False)
     total_price = Column(Numeric, nullable=False)
     status = Column(String(20), nullable=False, default="received")
+    order_date = Column(Date, nullable=False, server_default=func.current_date())
+    discount_reason = Column(String(120), nullable=True)
+    discounted_by_username = Column(String(50), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     promised_ready_at = Column(TIMESTAMP(timezone=True), nullable=True)
     peak_delay_minutes = Column(Integer, nullable=False, default=0)
@@ -114,6 +117,22 @@ class Order(Base):
             return "part_paid"
         return "paid"
 
+    @property
+    def subtotal_before_discount(self):
+        if self.service_lines:
+            return sum(
+                (Decimal(str(line.subtotal)) for line in self.service_lines),
+                Decimal("0"),
+            )
+        return Decimal(str(self.total_price))
+
+    @property
+    def discount_amount(self):
+        return sum(
+            (Decimal(str(line.discount_amount)) for line in self.service_lines),
+            Decimal("0"),
+        )
+
 
 # A service selected within an order, with its original name and price saved.
 class OrderServiceLine(Base):
@@ -127,6 +146,7 @@ class OrderServiceLine(Base):
     quantity = Column(Numeric(10, 2), nullable=False)
     unit_price = Column(Numeric(10, 2), nullable=False)
     subtotal = Column(Numeric(10, 2), nullable=False)
+    discount_amount = Column(Numeric(10, 2), nullable=False, default=0)
     fixed_item_type_id = Column(
         Integer,
         ForeignKey("clothing_item_types.id", ondelete="SET NULL"),
@@ -142,6 +162,10 @@ class OrderServiceLine(Base):
         cascade="all, delete-orphan",
         order_by="OrderItem.id",
     )
+
+    @property
+    def line_total(self):
+        return Decimal(str(self.subtotal)) - Decimal(str(self.discount_amount))
 
 
 # Clothing counted or identified under one particular order service.
@@ -179,6 +203,7 @@ class Payment(Base):
         nullable=True,
     )
     confirmed_by_username = Column(String(50), nullable=False)
+    received_date = Column(Date, nullable=False, server_default=func.current_date())
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     order = relationship("Order", back_populates="payments")

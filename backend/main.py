@@ -42,6 +42,10 @@ app.add_middleware(
 )
 
 
+def get_nairobi_today() -> date:
+    return datetime.now(NAIROBI_TIMEZONE).date()
+
+
 # Turn a service name into a short internal code used by the API and database.
 def make_service_code(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
@@ -534,7 +538,8 @@ def create_order(
         raise HTTPException(status_code=404, detail="Customer not found")
 
     unit_price, total_price = logic.calculate_price(order.service_type, order.quantity)
-    ticket_number = logic.generate_ticket_number(db)
+    order_date = get_nairobi_today()
+    ticket_number = logic.generate_ticket_number(db, order_date)
 
     new_order = models.Order(
         ticket_number=ticket_number,
@@ -543,6 +548,7 @@ def create_order(
         quantity=order.quantity,
         unit_price=unit_price,
         total_price=total_price,
+        order_date=order_date,
         promised_ready_at=get_promised_ready_at(
             order.promised_ready_at,
             4320 if order.service_type.startswith("dry_cleaning") else 180,
@@ -570,6 +576,13 @@ def create_detailed_order(
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
 
+    order_date = order.order_date or get_nairobi_today()
+    if order_date > get_nairobi_today():
+        raise HTTPException(
+            status_code=400,
+            detail="Order date cannot be in the future",
+        )
+
     requested_service_ids = [line.service_id for line in order.services]
     active_services = db.query(models.Service).filter(
         models.Service.id.in_(requested_service_ids),
@@ -593,6 +606,7 @@ def create_detailed_order(
     )
 
     prepared_lines = []
+    total_discount = Decimal("0")
     total_price = Decimal("0")
 
     for line_input in order.services:
@@ -616,21 +630,33 @@ def create_detailed_order(
             line_input.quantity,
         )
         unit_price = Decimal(str(service.unit_price))
-        subtotal = unit_price * quantity
-        total_price += subtotal
+        subtotal = (unit_price * quantity).quantize(Decimal("0.01"))
+        discount_amount = Decimal(str(line_input.discount_amount)).quantize(
+            Decimal("0.01")
+        )
+        if discount_amount >= subtotal:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Discount for {service.name} must be less than its subtotal",
+            )
+        line_total = subtotal - discount_amount
+        total_discount += discount_amount
+        total_price += line_total
 
         prepared_lines.append({
             "service": service,
             "quantity": quantity,
             "unit_price": unit_price,
             "subtotal": subtotal,
+            "discount_amount": discount_amount,
+            "line_total": line_total,
             "items": saved_items,
             "item_status": item_status,
         })
 
     first_line = prepared_lines[0]
     is_mixed_order = len(prepared_lines) > 1
-    ticket_number = logic.generate_ticket_number(db)
+    ticket_number = logic.generate_ticket_number(db, order_date)
 
     new_order = models.Order(
         ticket_number=ticket_number,
@@ -639,6 +665,11 @@ def create_detailed_order(
         quantity=len(prepared_lines) if is_mixed_order else first_line["quantity"],
         unit_price=total_price if is_mixed_order else first_line["unit_price"],
         total_price=total_price,
+        order_date=order_date,
+        discount_reason=order.discount_reason if total_discount > 0 else None,
+        discounted_by_username=(
+            current_user.username if total_discount > 0 else None
+        ),
         promised_ready_at=promised_ready_at,
         peak_delay_minutes=order.peak_delay_minutes,
     )
@@ -652,6 +683,7 @@ def create_detailed_order(
             quantity=prepared["quantity"],
             unit_price=prepared["unit_price"],
             subtotal=prepared["subtotal"],
+            discount_amount=prepared["discount_amount"],
             fixed_item_type_id=service.default_item_type_id,
             item_recording_mode=service.item_recording_mode,
             item_check_status=prepared["item_status"],
@@ -832,12 +864,25 @@ def record_order_payment(
             detail=f"Payment cannot exceed the remaining balance of KES {order.balance_due}",
         )
 
+    received_date = payment.received_date or get_nairobi_today()
+    if received_date > get_nairobi_today():
+        raise HTTPException(
+            status_code=400,
+            detail="Payment received date cannot be in the future",
+        )
+    if received_date < order.order_date:
+        raise HTTPException(
+            status_code=400,
+            detail="Payment received date cannot be before the order date",
+        )
+
     new_payment = models.Payment(
         order_id=order.id,
         payment_method=payment.payment_method,
         amount=payment_amount,
         confirmed_by_id=current_user.id,
         confirmed_by_username=current_user.username,
+        received_date=received_date,
     )
     db.add(new_payment)
     db.commit()
@@ -936,15 +981,19 @@ def financial_summary(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_owner),
 ):
-    range_start, range_end = get_financial_date_boundaries(start_date, end_date)
+    if end_date < start_date:
+        raise HTTPException(
+            status_code=400,
+            detail="End date cannot be before start date",
+        )
 
     orders = db.query(models.Order).filter(
-        models.Order.created_at >= range_start,
-        models.Order.created_at < range_end,
+        models.Order.order_date >= start_date,
+        models.Order.order_date <= end_date,
     ).all()
     payments = db.query(models.Payment).filter(
-        models.Payment.created_at >= range_start,
-        models.Payment.created_at < range_end,
+        models.Payment.received_date >= start_date,
+        models.Payment.received_date <= end_date,
         models.Payment.payment_method.in_(["cash", "mpesa"]),
     ).all()
 
@@ -977,7 +1026,7 @@ def financial_summary(
                     ),
                     "service_unit": line.service_unit,
                     "quantity": Decimal(str(line.quantity)),
-                    "booked_value": Decimal(str(line.subtotal)),
+                    "booked_value": Decimal(str(line.line_total)),
                     "key": (line.service_id, line.service_unit),
                 })
         else:
@@ -1044,7 +1093,7 @@ def financial_summary(
         else:
             mpesa_received += payment_amount
 
-        payment_date = get_nairobi_payment_date(payment.created_at)
+        payment_date = payment.received_date
         daily_totals[payment_date] += payment_amount
 
         order = payment_orders_by_id[payment.order_id]
@@ -1059,6 +1108,14 @@ def financial_summary(
         start_date=start_date,
         end_date=end_date,
         orders_booked=len(orders),
+        gross_order_value=sum(
+            (order.subtotal_before_discount for order in orders),
+            Decimal("0"),
+        ),
+        discounts_given=sum(
+            (order.discount_amount for order in orders),
+            Decimal("0"),
+        ),
         order_value=sum(
             (Decimal(str(order.total_price)) for order in orders),
             Decimal("0"),
@@ -1124,9 +1181,12 @@ def export_orders_csv(db: Session = Depends(get_db), current_user: models.User =
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow([
-        "Ticket Number", "Customer ID", "Services", "Total Price",
+        "Ticket Number", "Customer ID", "Order Date", "Services",
+        "Subtotal Before Discount", "Discount", "Discount Reason",
+        "Discounted By", "Total Price",
         "Amount Paid", "Balance Due", "Payment Status", "Payment Methods",
-        "Status", "Created At", "Ready At", "Collected At"
+        "Payment Received Dates", "Status", "Recorded At", "Ready At",
+        "Collected At"
     ])
     for order in orders:
         service_summary = (
@@ -1142,11 +1202,20 @@ def export_orders_csv(db: Session = Depends(get_db), current_user: models.User =
             if order.payments
             else "None"
         )
+        payment_received_dates = (
+            ", ".join(str(payment.received_date) for payment in order.payments)
+            if order.payments
+            else "None"
+        )
         writer.writerow([
-            order.ticket_number, order.customer_id, service_summary,
+            order.ticket_number, order.customer_id, order.order_date,
+            service_summary, format_money(order.subtotal_before_discount),
+            format_money(order.discount_amount), order.discount_reason or "",
+            order.discounted_by_username or "",
             format_money(order.total_price), format_money(order.amount_paid),
             format_money(order.balance_due),
-            order.payment_status, payment_methods, order.status,
+            order.payment_status, payment_methods, payment_received_dates,
+            order.status,
             order.created_at, order.ready_at, order.collected_at
         ])
     output.seek(0)
