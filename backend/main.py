@@ -955,6 +955,72 @@ def financial_summary(
     cash_received = Decimal("0")
     mpesa_received = Decimal("0")
     customer_totals = {}
+    service_totals = {}
+
+    # Service lines hold the exact booked quantities and values for mixed orders.
+    # Older orders use their original single-service columns as a safe fallback.
+    service_catalog = db.query(models.Service).all()
+    services_by_id = {service.id: service for service in service_catalog}
+    services_by_code = {service.code: service for service in service_catalog}
+
+    for order in orders:
+        if order.service_lines:
+            booked_services = []
+            for line in order.service_lines:
+                current_service = services_by_id.get(line.service_id)
+                booked_services.append({
+                    "service_id": line.service_id,
+                    "service_name": (
+                        current_service.name
+                        if current_service
+                        else line.service_name
+                    ),
+                    "service_unit": line.service_unit,
+                    "quantity": Decimal(str(line.quantity)),
+                    "booked_value": Decimal(str(line.subtotal)),
+                    "key": (line.service_id, line.service_unit),
+                })
+        else:
+            legacy_service = services_by_code.get(order.service_type)
+            if legacy_service:
+                legacy_name = legacy_service.name
+            elif order.service_type == "wash_fold":
+                legacy_name = "Wash & Fold"
+            else:
+                legacy_name = order.service_type.replace("_", " ").title()
+            legacy_unit = "kg" if order.service_type == "wash_fold" else "item"
+            legacy_key = (
+                legacy_service.id
+                if legacy_service
+                else f"legacy:{order.service_type}",
+                legacy_unit,
+            )
+            booked_services = [
+                {
+                    "service_id": legacy_service.id if legacy_service else None,
+                    "service_name": legacy_name,
+                    "service_unit": legacy_unit,
+                    "quantity": Decimal(str(order.quantity)),
+                    "booked_value": Decimal(str(order.total_price)),
+                    "key": legacy_key,
+                }
+            ]
+
+        for booked_service in booked_services:
+            service_total = service_totals.setdefault(
+                booked_service["key"],
+                {
+                    "service_id": booked_service["service_id"],
+                    "service_name": booked_service["service_name"],
+                    "service_unit": booked_service["service_unit"],
+                    "order_ids": set(),
+                    "quantity_booked": Decimal("0"),
+                    "booked_value": Decimal("0"),
+                },
+            )
+            service_total["order_ids"].add(order.id)
+            service_total["quantity_booked"] += booked_service["quantity"]
+            service_total["booked_value"] += booked_service["booked_value"]
 
     payment_order_ids = {payment.order_id for payment in payments}
     payment_orders = (
@@ -1019,6 +1085,25 @@ def financial_summary(
             for customer_id, amount in sorted(
                 customer_totals.items(),
                 key=lambda item: (-item[1], customers_by_id[item[0]].name.lower()),
+            )
+        ],
+        top_services=[
+            schemas.TopServiceBooking(
+                service_id=service_total["service_id"],
+                service_name=service_total["service_name"],
+                service_unit=service_total["service_unit"],
+                order_count=len(service_total["order_ids"]),
+                quantity_booked=service_total["quantity_booked"],
+                booked_value=service_total["booked_value"],
+            )
+            for service_total in sorted(
+                service_totals.values(),
+                key=lambda item: (
+                    -item["booked_value"],
+                    -len(item["order_ids"]),
+                    item["service_name"].lower(),
+                    item["service_unit"],
+                ),
             )
         ],
     )

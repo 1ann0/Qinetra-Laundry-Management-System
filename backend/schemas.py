@@ -335,6 +335,16 @@ class CustomerRevenue(BaseModel):
     total_received: float
 
 
+# Work booked under one service during the selected period.
+class TopServiceBooking(BaseModel):
+    service_id: Optional[int] = None
+    service_name: str
+    service_unit: str
+    order_count: int
+    quantity_booked: float
+    booked_value: float
+
+
 # Owner-only money snapshot for one inclusive Nairobi calendar date range.
 class FinancialSummary(BaseModel):
     start_date: date
@@ -348,3 +358,4 @@ class FinancialSummary(BaseModel):
     outstanding_balance: float
     daily_received: list[DailyReceivedTotal]
     customer_revenue: list[CustomerRevenue]
+    top_services: list[TopServiceBooking]

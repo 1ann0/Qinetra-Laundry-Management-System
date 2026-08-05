@@ -58,6 +58,20 @@ function formatDate(dateValue) {
   });
 }
 
+function formatQuantity(amount) {
+  return Number(amount).toLocaleString("en-KE", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatServiceUnit(unit, quantity) {
+  if (unit === "item") {
+    return Number(quantity) === 1 ? "item" : "items";
+  }
+  return unit;
+}
+
 function DailyIncomeChart({ dailyReceived }) {
   const [activeIndex, setActiveIndex] = useState(null);
   const chartWidth = 900;
@@ -226,6 +240,64 @@ function DailyIncomeChart({ dailyReceived }) {
   );
 }
 
+function TopServicesChart({ services }) {
+  const visibleServices = services.slice(0, 5);
+  const highestBookedValue = Math.max(
+    ...visibleServices.map((service) => Number(service.booked_value)),
+    1,
+  );
+
+  return (
+    <div className="mt-6 space-y-5">
+      {visibleServices.map((service) => {
+        const barWidth = Math.max(
+          (Number(service.booked_value) / highestBookedValue) * 100,
+          3,
+        );
+
+        return (
+          <article
+            key={`${service.service_id || service.service_name}-${service.service_unit}`}
+          >
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <div>
+                <h3 className="font-bold text-slate-900">
+                  {service.service_name}
+                </h3>
+                <p className="mt-1 text-sm text-slate-600">
+                  {service.order_count}{" "}
+                  {service.order_count === 1 ? "order" : "orders"} ·{" "}
+                  {formatQuantity(service.quantity_booked)}{" "}
+                  {formatServiceUnit(
+                    service.service_unit,
+                    service.quantity_booked,
+                  )}
+                </p>
+              </div>
+              <p className="font-bold text-[#005AAB]">
+                {formatKes(service.booked_value)}
+              </p>
+            </div>
+            <div
+              aria-label={`${service.service_name}: ${formatKes(service.booked_value)} booked`}
+              aria-valuemax={highestBookedValue}
+              aria-valuemin={0}
+              aria-valuenow={Number(service.booked_value)}
+              className="mt-2 h-3 overflow-hidden rounded-full bg-slate-100"
+              role="progressbar"
+            >
+              <div
+                className="h-full rounded-full bg-[#005AAB]"
+                style={{ width: `${barWidth}%` }}
+              />
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
 function FinancialSnapshotContent() {
   const { authenticatedRequest } = useAuth();
   const today = getNairobiToday();
@@ -315,6 +387,21 @@ function FinancialSnapshotContent() {
       (first, second) => second.total_received - first.total_received,
     );
   }, [customerSort, summary]);
+
+  const serviceInsights = useMemo(() => {
+    const services = summary?.top_services || [];
+    const mostSelected = [...services].sort(
+      (first, second) =>
+        second.order_count - first.order_count ||
+        second.booked_value - first.booked_value ||
+        first.service_name.localeCompare(second.service_name),
+    )[0];
+
+    return {
+      topByValue: services[0] || null,
+      mostSelected: mostSelected || null,
+    };
+  }, [summary]);
 
   function applyPreset(preset) {
     const nextStart =
@@ -528,6 +615,53 @@ function FinancialSnapshotContent() {
               exact date and amount.
             </p>
             <DailyIncomeChart dailyReceived={summary.daily_received} />
+          </section>
+
+          <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <h2 className="text-2xl font-bold text-slate-900">
+              Top services by order value
+            </h2>
+            <p className="mt-2 max-w-3xl text-slate-600">
+              Services booked on orders created during this period. These
+              figures are work booked, not payments allocated to each service.
+            </p>
+
+            {summary.top_services?.length > 0 ? (
+              <>
+                <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                  <article className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                    <p className="text-sm font-bold uppercase tracking-wide text-[#005AAB]">
+                      Highest booked value
+                    </p>
+                    <p className="mt-2 text-lg font-bold text-slate-900">
+                      {serviceInsights.topByValue.service_name}
+                    </p>
+                    <p className="mt-1 text-slate-700">
+                      {formatKes(serviceInsights.topByValue.booked_value)}
+                    </p>
+                  </article>
+                  <article className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-sm font-bold uppercase tracking-wide text-slate-600">
+                      Most frequently selected
+                    </p>
+                    <p className="mt-2 text-lg font-bold text-slate-900">
+                      {serviceInsights.mostSelected.service_name}
+                    </p>
+                    <p className="mt-1 text-slate-700">
+                      {serviceInsights.mostSelected.order_count}{" "}
+                      {serviceInsights.mostSelected.order_count === 1
+                        ? "order"
+                        : "orders"}
+                    </p>
+                  </article>
+                </div>
+                <TopServicesChart services={summary.top_services} />
+              </>
+            ) : (
+              <p className="mt-5 rounded-xl bg-slate-50 px-4 py-5 text-slate-600">
+                No service was booked during this period.
+              </p>
+            )}
           </section>
 
           <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">

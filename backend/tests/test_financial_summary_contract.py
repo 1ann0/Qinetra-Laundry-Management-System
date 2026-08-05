@@ -132,6 +132,10 @@ class FinancialSummaryTests(unittest.TestCase):
             [customer.total_received for customer in summary.customer_revenue],
             [300, 200],
         )
+        self.assertEqual(len(summary.top_services), 1)
+        self.assertEqual(summary.top_services[0].service_name, "Wash & Fold")
+        self.assertEqual(summary.top_services[0].order_count, 1)
+        self.assertEqual(summary.top_services[0].booked_value, 600)
 
     # A Nairobi day starts at 21:00 UTC on the previous calendar date.
     def test_nairobi_day_boundaries_are_used(self):
@@ -219,6 +223,84 @@ class FinancialSummaryTests(unittest.TestCase):
         self.assertEqual(len(summary.daily_received), 1)
         self.assertEqual(summary.daily_received[0].amount, 0)
         self.assertEqual(summary.customer_revenue, [])
+        self.assertEqual(summary.top_services, [])
+
+    # Mixed service lines and older single-service orders belong in one ranking.
+    def test_top_services_include_mixed_and_legacy_orders(self):
+        wash_fold = models.Service(
+            code="wash_fold",
+            name="Wash & Fold",
+            unit="kg",
+            unit_price=150,
+            category="general",
+            item_recording_mode="tally",
+        )
+        duvet = models.Service(
+            code="duvet",
+            name="Duvet Cleaning",
+            unit="item",
+            unit_price=800,
+            category="general",
+            item_recording_mode="none",
+        )
+        self.db.add_all([wash_fold, duvet])
+        self.db.commit()
+
+        mixed_order = self.add_order(
+            "QL-20260804-001",
+            1100,
+            datetime(2026, 8, 4, 8, tzinfo=timezone.utc),
+        )
+        mixed_order.service_type = "mixed"
+        mixed_order.quantity = 2
+        mixed_order.service_lines.extend([
+            models.OrderServiceLine(
+                service_id=wash_fold.id,
+                service_name=wash_fold.name,
+                service_unit=wash_fold.unit,
+                quantity=2,
+                unit_price=150,
+                subtotal=300,
+                item_recording_mode="tally",
+                item_check_status="completed",
+            ),
+            models.OrderServiceLine(
+                service_id=duvet.id,
+                service_name=duvet.name,
+                service_unit=duvet.unit,
+                quantity=1,
+                unit_price=800,
+                subtotal=800,
+                item_recording_mode="none",
+                item_check_status="not_required",
+            ),
+        ])
+
+        legacy_order = self.add_order(
+            "QL-20260804-002",
+            450,
+            datetime(2026, 8, 4, 9, tzinfo=timezone.utc),
+        )
+        legacy_order.quantity = 3
+        legacy_order.unit_price = 150
+        self.db.commit()
+
+        summary = main.financial_summary(
+            date(2026, 8, 4),
+            date(2026, 8, 4),
+            self.db,
+            self.owner,
+        )
+
+        self.assertEqual(
+            [service.service_name for service in summary.top_services],
+            ["Duvet Cleaning", "Wash & Fold"],
+        )
+        self.assertEqual(summary.top_services[0].booked_value, 800)
+        self.assertEqual(summary.top_services[0].order_count, 1)
+        self.assertEqual(summary.top_services[1].booked_value, 750)
+        self.assertEqual(summary.top_services[1].quantity_booked, 5)
+        self.assertEqual(summary.top_services[1].order_count, 2)
 
     def test_end_date_before_start_date_is_rejected(self):
         with self.assertRaises(HTTPException) as invalid_range:
