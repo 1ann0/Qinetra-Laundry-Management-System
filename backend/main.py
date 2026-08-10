@@ -254,6 +254,22 @@ def read_root():
     return {"status": "QLMS backend is running"}
 
 
+# Return the same session shape after login or a valid token renewal.
+def build_session_response(user: models.User):
+    token = auth.create_access_token(
+        user_id=user.id,
+        role=user.role,
+        token_version=user.token_version,
+    )
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "role": user.role,
+        "user_id": user.id,
+        "username": user.username,
+    }
+
+
 # Logs a user in: checks username/password, returns a signed JWT with their role
 @app.post("/auth/login", response_model=schemas.Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -267,18 +283,15 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     ):
         raise HTTPException(status_code=401, detail="Incorrect username or password")
 
-    token = auth.create_access_token(
-        user_id=user.id,
-        role=user.role,
-        token_version=user.token_version,
-    )
-    return {
-        "access_token": token,
-        "token_type": "bearer",
-        "role": user.role,
-        "user_id": user.id,
-        "username": user.username,
-    }
+    return build_session_response(user)
+
+
+# Renew a still-valid session while the employee is actively using QLMS.
+@app.post("/auth/refresh", response_model=schemas.Token)
+def refresh_session(
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    return build_session_response(current_user)
 
 
 # Staff accounts are managed by an active owner. The first owner is still

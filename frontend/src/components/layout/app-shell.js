@@ -83,11 +83,11 @@ function NavigationIcon({ name }) {
 export default function AppShell({ children }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { role, expiresAt, reauthenticationRequired, logout } = useAuth();
+  const { role, idleExpiresAt, reauthenticationRequired, logout } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [isMobileNavigation, setIsMobileNavigation] = useState(false);
-  const [warningExpiry, setWarningExpiry] = useState(null);
+  const [warningIdleExpiry, setWarningIdleExpiry] = useState(null);
 
   // Keep the main module highlighted while the user is on one of its related pages.
   const isWorkspacePage = pathname === "/workspace";
@@ -102,7 +102,7 @@ export default function AppShell({ children }) {
     Object.entries(PAGE_TITLES).find(([path]) => pathname.startsWith(path))?.[1] ||
     "QLMS";
   const sessionEndingSoon = Boolean(
-    expiresAt && warningExpiry === expiresAt,
+    idleExpiresAt && warningIdleExpiry === idleExpiresAt,
   );
   const navigationItems = [
     ...(role === "owner"
@@ -143,17 +143,17 @@ export default function AppShell({ children }) {
   }, []);
 
   useEffect(() => {
-    if (!expiresAt) {
+    if (!idleExpiresAt) {
       return undefined;
     }
 
-    const warningDelay = expiresAt - Date.now() - 2 * 60 * 1000;
+    const warningDelay = idleExpiresAt - Date.now() - 2 * 60 * 1000;
     const warningTimer = window.setTimeout(
-      () => setWarningExpiry(expiresAt),
+      () => setWarningIdleExpiry(idleExpiresAt),
       Math.max(warningDelay, 0),
     );
     return () => window.clearTimeout(warningTimer);
-  }, [expiresAt]);
+  }, [idleExpiresAt]);
 
   function toggleSidebar() {
     if (isMobileNavigation) {
@@ -281,7 +281,8 @@ export default function AppShell({ children }) {
             className="m-0 border-b border-amber-300 bg-amber-50 px-4 py-2 text-center text-sm font-semibold text-amber-900"
             role="status"
           >
-            Your session ends in less than 2 minutes. Save your work now.
+            No activity has been detected recently. QLMS will pause in less
+            than 2 minutes unless you continue working.
           </p>
         ) : null}
 

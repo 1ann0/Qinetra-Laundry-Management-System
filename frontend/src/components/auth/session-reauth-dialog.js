@@ -129,7 +129,7 @@ export default function SessionReauthenticationDialog() {
             className="text-2xl font-bold tracking-tight text-slate-900"
             id="reauthentication-heading"
           >
-            Session expired — login required
+            Session paused — login required
           </h2>
           <p
             className="mt-3 text-sm leading-6 text-slate-600"

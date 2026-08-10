@@ -39,6 +39,17 @@ class AccountSafetyRouteTests(unittest.TestCase):
 
         self.assertEqual(protected_routes, set())
 
+    def test_session_refresh_requires_a_current_authenticated_user(self):
+        refresh_route = next(
+            route
+            for route in main.app.routes
+            if route.path == "/auth/refresh" and "POST" in route.methods
+        )
+        dependency_calls = {
+            dependency.call for dependency in refresh_route.dependant.dependencies
+        }
+        self.assertIn(auth.get_current_user, dependency_calls)
+
 
 class AccountSafetyDatabaseTests(unittest.TestCase):
     def setUp(self):
@@ -86,6 +97,21 @@ class AccountSafetyDatabaseTests(unittest.TestCase):
         self.assertEqual(auth.ACCESS_TOKEN_EXPIRE_MINUTES, 30)
         self.assertEqual(payload["exp"] - payload["iat"], 30 * 60)
         self.assertEqual(payload["ver"], self.owner.token_version)
+
+    def test_refresh_returns_a_new_valid_session_for_the_same_account(self):
+        response = main.refresh_session(current_user=self.employee)
+        payload = jwt.decode(
+            response["access_token"],
+            auth.SECRET_KEY,
+            algorithms=[auth.ALGORITHM],
+        )
+
+        self.assertEqual(response["user_id"], self.employee.id)
+        self.assertEqual(response["username"], self.employee.username)
+        self.assertEqual(response["role"], self.employee.role)
+        self.assertEqual(payload["sub"], str(self.employee.id))
+        self.assertEqual(payload["ver"], self.employee.token_version)
+        self.assertEqual(payload["exp"] - payload["iat"], 30 * 60)
 
     def test_current_user_rejects_missing_or_malformed_session_claims(self):
         now = datetime.now(timezone.utc)
