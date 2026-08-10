@@ -65,9 +65,9 @@ const STATUS_TOUR_STEPS = [
   },
   {
     targetId: "status-stages-step",
-    title: "Follow the four colours",
+    title: "Choose an order stage",
     description:
-      "Each bubble is one laundry stage. On a phone, tap a bubble to open that stage.",
+      "Each section labels its step number and order total. Select one to show only orders at that stage.",
   },
   {
     targetId: "status-focus-step",
@@ -79,7 +79,7 @@ const STATUS_TOUR_STEPS = [
     targetId: "status-board-step",
     title: "Move one step at a time",
     description:
-      "Open a card for details, then use its large action button to move the order forward by one stage.",
+      "Read the customer's full name and order details, then use the clear action button to move it forward by one stage.",
   },
 ];
 

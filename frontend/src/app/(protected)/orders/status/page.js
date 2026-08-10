@@ -9,42 +9,22 @@ const ORDER_STAGES = [
   {
     value: "received",
     label: "Received",
-    number: "1",
     help: "Laundry has arrived",
-    columnClass: "border-blue-200 bg-blue-50/70",
-    headingClass: "bg-blue-600 text-white",
-    cardBorderClass: "border-l-blue-600",
-    bubbleClass: "border-blue-300 bg-blue-50 text-blue-900",
   },
   {
     value: "in_progress",
     label: "In Progress",
-    number: "2",
     help: "Being washed or cleaned",
-    columnClass: "border-amber-200 bg-amber-50/70",
-    headingClass: "bg-amber-500 text-slate-950",
-    cardBorderClass: "border-l-amber-500",
-    bubbleClass: "border-amber-300 bg-amber-50 text-amber-950",
   },
   {
     value: "ready",
     label: "Ready for Collection",
-    number: "3",
     help: "Waiting for the customer",
-    columnClass: "border-emerald-200 bg-emerald-50/70",
-    headingClass: "bg-emerald-600 text-white",
-    cardBorderClass: "border-l-emerald-600",
-    bubbleClass: "border-emerald-300 bg-emerald-50 text-emerald-950",
   },
   {
     value: "collected",
     label: "Collected",
-    number: "4",
     help: "Finished and handed over",
-    columnClass: "border-slate-300 bg-slate-100/80",
-    headingClass: "bg-slate-700 text-white",
-    cardBorderClass: "border-l-slate-600",
-    bubbleClass: "border-slate-300 bg-slate-100 text-slate-900",
   },
 ];
 
@@ -137,187 +117,205 @@ function getOrderMoveState(order) {
 function OrderCard({
   order,
   customerName,
-  stage,
-  isExpanded,
   isUpdating,
   isAnyOrderUpdating,
   isDueToday,
   isProductionLate,
   isCollectionOverdue,
-  onToggleDetails,
   onMoveForward,
 }) {
   const moveState = getOrderMoveState(order);
-  const detailsId = `order-details-${order.id}`;
+  const currentStage = ORDER_STAGES.findIndex(
+    (stage) => stage.value === order.status,
+  );
+  const serviceLines = order.service_lines || [];
 
   return (
-    <article
-      className={`rounded-2xl border border-l-4 border-slate-200 bg-white p-4 shadow-sm ${stage.cardBorderClass}`}
-    >
-      <div className="flex items-start justify-between gap-3">
+    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="truncate text-lg font-black text-slate-950">
+          <p className="text-sm font-semibold text-slate-500">Ticket number</p>
+          <h2 className="mt-1 break-words text-2xl font-bold text-slate-900">
+            {order.ticket_number}
+          </h2>
+          <p className="mt-2 break-words text-lg font-semibold text-slate-800">
             {customerName}
           </p>
-          <p className="mt-1 font-mono text-sm font-bold text-[#005AAB]">
-            {order.ticket_number}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {isProductionLate ? (
+            <span className="w-fit rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-900">
+              Production late
+            </span>
+          ) : null}
+          {isDueToday ? (
+            <span className="w-fit rounded-full bg-blue-100 px-4 py-2 text-sm font-bold text-[#005AAB]">
+              Due today
+            </span>
+          ) : null}
+          {isCollectionOverdue ? (
+            <span className="w-fit rounded-full bg-amber-100 px-4 py-2 text-sm font-bold text-amber-900">
+              Collection overdue
+            </span>
+          ) : null}
+          {moveState.hasPendingItemCheck ? (
+            <span className="w-fit rounded-full bg-amber-100 px-4 py-2 text-sm font-bold text-amber-900">
+              Item check pending
+            </span>
+          ) : null}
+          <span
+            className={`w-fit rounded-full px-4 py-2 text-sm font-bold ${
+              order.payment_status === "paid"
+                ? "bg-green-100 text-green-800"
+                : "bg-red-100 text-red-800"
+            }`}
+          >
+            {getPaymentLabel(order.payment_status)}
+          </span>
+          <span className="w-fit rounded-full bg-blue-100 px-4 py-2 text-sm font-bold text-[#005AAB]">
+            {getStatusLabel(order.status)}
+          </span>
+        </div>
+      </div>
+
+      <div className="my-5 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+        <div>
+          <p className="text-sm text-slate-500">Service</p>
+          <p className="mt-1 break-words font-semibold text-slate-900">
+            {getServiceSummary(order)}
           </p>
         </div>
-        <span
-          className={`shrink-0 rounded-full px-3 py-1 text-xs font-black ${
-            order.payment_status === "paid"
-              ? "bg-emerald-100 text-emerald-800"
-              : "bg-red-100 text-red-800"
-          }`}
-        >
-          {getPaymentLabel(order.payment_status)}
-        </span>
+        <div>
+          <p className="text-sm text-slate-500">Quantity</p>
+          <p className="mt-1 font-semibold text-slate-900">
+            {serviceLines.length > 0
+              ? `${serviceLines.length} ${serviceLines.length === 1 ? "service" : "services"}`
+              : `${order.quantity} ${SERVICES_BY_CODE[order.service_type]?.unit || "units"}`}
+          </p>
+        </div>
+        <div>
+          <p className="text-sm text-slate-500">Order value</p>
+          <p className="mt-1 font-semibold text-slate-900">
+            {formatKes(order.total_price)}
+          </p>
+        </div>
+        <div>
+          <p className="text-sm text-slate-500">Balance</p>
+          <p
+            className={`mt-1 font-semibold ${
+              moveState.hasOutstandingBalance ? "text-red-700" : "text-green-700"
+            }`}
+          >
+            {formatKes(order.balance_due)}
+          </p>
+        </div>
+        <div>
+          <p className="text-sm text-slate-500">Promised ready</p>
+          <p className="mt-1 font-semibold text-slate-900">
+            {order.promised_ready_at
+              ? formatDateTime(order.promised_ready_at)
+              : "Older order; not set"}
+          </p>
+        </div>
+        <div>
+          <p className="text-sm text-slate-500">Order date</p>
+          <p className="mt-1 font-semibold text-slate-900">
+            {formatDate(order.order_date)}
+          </p>
+        </div>
       </div>
 
-      <p className="mt-3 line-clamp-2 text-sm font-semibold leading-6 text-slate-700">
-        {getServiceSummary(order)}
-      </p>
+      <div className="mb-5 grid gap-2 sm:grid-cols-4" aria-label="Ticket progress">
+        {ORDER_STAGES.map((stage, index) => {
+          const hasReachedStage = index <= currentStage;
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        {isProductionLate ? (
-          <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-black text-red-900">
-            Production late
-          </span>
-        ) : null}
-        {isDueToday ? (
-          <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-900">
-            Due today
-          </span>
-        ) : null}
-        {isCollectionOverdue ? (
-          <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-950">
-            Collection overdue
-          </span>
-        ) : null}
-        {moveState.hasPendingItemCheck ? (
-          <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-950">
-            Item check pending
-          </span>
-        ) : null}
+          return (
+            <div
+              className={`rounded-lg border px-3 py-2 text-center text-xs font-bold ${
+                hasReachedStage
+                  ? "border-[#005AAB] bg-blue-50 text-[#005AAB]"
+                  : "border-slate-200 bg-slate-50 text-slate-500"
+              }`}
+              key={stage.value}
+              aria-current={stage.value === order.status ? "step" : undefined}
+            >
+              {stage.label}
+            </div>
+          );
+        })}
       </div>
 
-      <div className="mt-4 rounded-xl bg-slate-50 p-3">
-        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-          Promised ready
-        </p>
-        <p
-          className={`mt-1 text-sm font-bold ${
-            isProductionLate ? "text-red-800" : "text-slate-800"
-          }`}
-        >
-          {order.promised_ready_at
-            ? formatDateTime(order.promised_ready_at)
-            : "Older order; no promise saved"}
-        </p>
-      </div>
+      {order.ready_at || order.collected_at ? (
+        <div className="mb-5 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
+          {order.ready_at ? (
+            <p>
+              <span className="font-semibold text-slate-700">Ready since:</span>{" "}
+              {formatDateTime(order.ready_at)}
+            </p>
+          ) : null}
+          {order.collected_at ? (
+            <p>
+              <span className="font-semibold text-slate-700">Collected:</span>{" "}
+              {formatDateTime(order.collected_at)}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
-      <button
-        className="mt-3 flex min-h-10 w-full items-center justify-between rounded-xl border border-slate-200 px-3 text-left text-sm font-bold text-slate-700 hover:border-blue-300 hover:bg-blue-50"
-        type="button"
-        aria-expanded={isExpanded}
-        aria-controls={detailsId}
-        onClick={onToggleDetails}
-      >
-        <span>{isExpanded ? "Hide details" : "Show order details"}</span>
-        <span aria-hidden="true">{isExpanded ? "−" : "+"}</span>
-      </button>
-
-      {isExpanded ? (
-        <div className="mt-4 border-t border-slate-200 pt-4" id={detailsId}>
-          <dl className="grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <dt className="text-slate-500">Order date</dt>
-              <dd className="mt-1 font-bold text-slate-900">
-                {formatDate(order.order_date)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Order value</dt>
-              <dd className="mt-1 font-bold text-slate-900">
-                {formatKes(order.total_price)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Paid</dt>
-              <dd className="mt-1 font-bold text-emerald-800">
-                {formatKes(order.amount_paid)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Balance</dt>
-              <dd
-                className={`mt-1 font-bold ${
-                  moveState.hasOutstandingBalance
-                    ? "text-red-800"
-                    : "text-emerald-800"
-                }`}
+      {moveState.nextStatus ? (
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="mb-2 text-sm font-bold text-slate-700">Next action</p>
+            {moveState.itemCheckBlocksNextStage ? (
+              <p className="text-sm font-semibold text-amber-900">
+                Complete the pending item check before marking this order ready.
+              </p>
+            ) : moveState.paymentBlocksCollection ? (
+              <p className="text-sm font-semibold text-red-800">
+                Record the {formatKes(order.balance_due)} balance before collection.
+              </p>
+            ) : (
+              <p className="text-sm text-slate-600">
+                {getActionLabel(order.status)}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#005AAB] px-5 font-bold text-[#005AAB] no-underline hover:bg-blue-50"
+              href={`/orders/${order.id}`}
+            >
+              {moveState.itemCheckBlocksNextStage
+                ? "Complete item check"
+                : moveState.paymentBlocksCollection
+                  ? "Record payment"
+                  : "View order and receipt"}
+            </Link>
+            {moveState.canMoveForward ? (
+              <button
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#005AAB] px-5 font-bold text-white shadow-sm hover:bg-[#004782] disabled:cursor-wait disabled:opacity-60 sm:w-auto"
+                type="button"
+                disabled={isAnyOrderUpdating}
+                onClick={() => onMoveForward(order)}
               >
-                {formatKes(order.balance_due)}
-              </dd>
-            </div>
-            {order.ready_at ? (
-              <div className="col-span-2">
-                <dt className="text-slate-500">Ready since</dt>
-                <dd className="mt-1 font-bold text-slate-900">
-                  {formatDateTime(order.ready_at)}
-                </dd>
-              </div>
+                {isUpdating ? "Updating…" : getActionLabel(order.status)}
+              </button>
             ) : null}
-            {order.collected_at ? (
-              <div className="col-span-2">
-                <dt className="text-slate-500">Collected</dt>
-                <dd className="mt-1 font-bold text-slate-900">
-                  {formatDateTime(order.collected_at)}
-                </dd>
-              </div>
-            ) : null}
-          </dl>
-
-          {moveState.itemCheckBlocksNextStage ? (
-            <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-950">
-              Complete the clothing check before marking this order ready.
-            </p>
-          ) : null}
-          {moveState.paymentBlocksCollection ? (
-            <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-900">
-              Record the {formatKes(order.balance_due)} balance before collection.
-            </p>
-          ) : null}
-
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="font-semibold text-green-700">
+            Order completed and collected.
+          </p>
           <Link
-            className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-[#005AAB] px-4 text-sm font-bold text-[#005AAB] no-underline hover:bg-blue-50"
+            className="font-bold text-[#005AAB] hover:underline"
             href={`/orders/${order.id}`}
           >
-            {moveState.itemCheckBlocksNextStage
-              ? "Complete item check"
-              : moveState.paymentBlocksCollection
-                ? "Record payment"
-                : "Open receipt and full details"}
+            View order and receipt
           </Link>
         </div>
-      ) : null}
-
-      {moveState.canMoveForward ? (
-        <div className="mt-4">
-          <button
-            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#005AAB] px-4 text-sm font-black text-white shadow-sm hover:bg-[#004782] disabled:cursor-wait disabled:opacity-60"
-            type="button"
-            disabled={isAnyOrderUpdating}
-            onClick={() => onMoveForward(order)}
-          >
-            {isUpdating ? "Updating…" : getActionLabel(order.status)}
-          </button>
-        </div>
-      ) : order.status === "collected" ? (
-        <p className="mt-4 rounded-xl bg-emerald-50 p-3 text-center text-sm font-black text-emerald-800">
-          Order complete
-        </p>
-      ) : null}
+      )}
     </article>
   );
 }
@@ -337,10 +335,8 @@ export default function OrderStatusPage() {
   const [productionLateOrderIds, setProductionLateOrderIds] = useState([]);
 
   const [filter, setFilter] = useState("all");
-  const [mobileStage, setMobileStage] = useState("received");
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [refreshNumber, setRefreshNumber] = useState(0);
 
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
@@ -367,9 +363,6 @@ export default function OrderStatusPage() {
     const filterTimer = window.setTimeout(() => {
       if (supportedFilters.includes(requestedFilter)) {
         setFilter(requestedFilter);
-        if (ORDER_STAGES.some((stage) => stage.value === requestedFilter)) {
-          setMobileStage(requestedFilter);
-        }
       }
     }, 0);
 
@@ -416,11 +409,6 @@ export default function OrderStatusPage() {
         ]);
 
         setOrders(orderResponse);
-        setMobileStage((currentStage) =>
-          orderResponse.some((order) => order.status === currentStage)
-            ? currentStage
-            : orderResponse[0]?.status || currentStage,
-        );
         setOverdueCount(overdueResponse.length);
         setOverdueOrderIds(overdueResponse.map((order) => order.id));
         setOutstandingCount(outstandingResponse.length);
@@ -460,12 +448,6 @@ export default function OrderStatusPage() {
     return true;
   });
 
-  const ordersByStage = Object.fromEntries(
-    ORDER_STAGES.map((stage) => [
-      stage.value,
-      visibleOrders.filter((order) => order.status === stage.value),
-    ]),
-  );
   const searchCountsByStage = Object.fromEntries(
     ORDER_STAGES.map((stage) => [
       stage.value,
@@ -476,41 +458,18 @@ export default function OrderStatusPage() {
   function chooseFilter(nextFilter) {
     setFilter(nextFilter);
     setSuccessMessage("");
-    if (ORDER_STAGES.some((stage) => stage.value === nextFilter)) {
-      setMobileStage(nextFilter);
-      return;
-    }
-
-    const riskIds =
-      nextFilter === "overdue"
-        ? overdueOrderIds
-        : nextFilter === "outstanding"
-          ? outstandingOrderIds
-          : nextFilter === "due_today"
-            ? dueTodayOrderIds
-            : nextFilter === "production_late"
-              ? productionLateOrderIds
-              : [];
-    const firstMatchingOrder = orders.find((order) =>
-      riskIds.includes(order.id),
-    );
-    if (firstMatchingOrder) {
-      setMobileStage(firstMatchingOrder.status);
-    }
   }
 
   function submitSearch(event) {
     event.preventDefault();
     setFilter("all");
     setSearchTerm(searchInput.trim());
-    setExpandedOrderId(null);
     setSuccessMessage("");
   }
 
   function clearSearch() {
     setSearchInput("");
     setSearchTerm("");
-    setExpandedOrderId(null);
   }
 
   async function updateStatus(order) {
@@ -548,9 +507,6 @@ export default function OrderStatusPage() {
           currentOrder.id === updatedOrder.id ? updatedOrder : currentOrder,
         ),
       );
-      if (!ORDER_STAGES.some((stage) => stage.value === filter)) {
-        setMobileStage(nextStatus);
-      }
       setSuccessMessage(
         `${order.ticket_number} moved to ${getStatusLabel(nextStatus)}.`,
       );
@@ -563,26 +519,26 @@ export default function OrderStatusPage() {
   }
 
   return (
-    <section className="mx-auto max-w-[1600px]">
-      <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <section className="mx-auto max-w-6xl">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="mb-2 text-sm font-bold uppercase tracking-widest text-[#005AAB]">
-            Daily production board
+            Status and overdue module
           </p>
-          <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-            Where is each order?
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+            Track laundry orders
           </h1>
-          <p className="mt-3 max-w-3xl leading-7 text-slate-600">
-            Find a customer or ticket, open its card, then move it one clear
-            step forward using the large action button.
+          <p className="mt-3 max-w-2xl leading-7 text-slate-600">
+            Find a customer or ticket, then follow each order through the
+            laundry process one clear step at a time.
           </p>
         </div>
 
         <Link
-          className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl bg-[#005AAB] px-5 font-black text-white no-underline shadow-sm hover:bg-[#004782]"
+          className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#005AAB] px-5 font-bold text-[#005AAB] no-underline hover:bg-blue-50"
           href="/orders"
         >
-          + Create new order
+          Create new order
         </Link>
       </div>
 
@@ -592,7 +548,7 @@ export default function OrderStatusPage() {
         onSubmit={submitSearch}
       >
         <label
-          className="mb-2 block text-base font-black text-slate-900"
+          className="mb-2 block text-base font-bold text-slate-900"
           htmlFor="order-search"
         >
           Find an order
@@ -610,7 +566,7 @@ export default function OrderStatusPage() {
             onChange={(event) => setSearchInput(event.target.value)}
           />
           <button
-            className="min-h-12 rounded-xl bg-[#005AAB] px-6 font-black text-white hover:bg-[#004782]"
+            className="min-h-12 rounded-xl bg-[#005AAB] px-6 font-bold text-white hover:bg-[#004782]"
             type="submit"
           >
             Search orders
@@ -633,36 +589,38 @@ export default function OrderStatusPage() {
       </form>
 
       <section
-        className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4"
+        className="mb-6 grid gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-2 sm:p-4 lg:grid-cols-4"
         id="status-stages-step"
-        aria-label="Choose a stage on smaller screens"
+        aria-label="Filter orders by status stage"
       >
-        {ORDER_STAGES.map((stage) => {
+        {ORDER_STAGES.map((stage, index) => {
           const count = searchCountsByStage[stage.value];
-          const isSelected = mobileStage === stage.value;
+          const isSelected = filter === stage.value;
 
           return (
             <button
-              className={`rounded-2xl border-2 p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${stage.bubbleClass} ${
-                isSelected ? "ring-4 ring-blue-100" : ""
+              className={`rounded-xl border px-4 py-3 text-left transition-colors ${
+                isSelected
+                  ? "border-[#005AAB] bg-blue-50 text-[#005AAB]"
+                  : "border-transparent bg-white text-slate-800 hover:border-blue-200 hover:bg-blue-50/60"
               }`}
               type="button"
               key={stage.value}
               aria-pressed={isSelected}
-              onClick={() => setMobileStage(stage.value)}
+              onClick={() => chooseFilter(stage.value)}
             >
-              <span className="flex items-center justify-between gap-2">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-base font-black shadow-sm">
-                  {stage.number}
+              <span className="flex items-center justify-between gap-3 text-xs font-bold uppercase tracking-wide">
+                <span>
+                  Step {index + 1}
                 </span>
-                <span className="rounded-full bg-white px-3 py-1 text-sm font-black shadow-sm">
-                  {count}
+                <span className="normal-case tracking-normal text-slate-600">
+                  {count} {count === 1 ? "order" : "orders"}
                 </span>
               </span>
-              <span className="mt-3 block text-base font-black sm:text-lg">
+              <span className="mt-2 block text-base font-bold">
                 {stage.label}
               </span>
-              <span className="mt-1 block text-xs font-semibold opacity-80 sm:text-sm">
+              <span className="mt-1 block text-xs text-slate-500">
                 {stage.help}
               </span>
             </button>
@@ -677,7 +635,7 @@ export default function OrderStatusPage() {
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div className="w-full xl:max-w-xs">
             <label
-              className="mb-2 block font-black text-slate-800"
+              className="mb-2 block font-bold text-slate-800"
               htmlFor="status-filter"
             >
               Show me
@@ -703,28 +661,28 @@ export default function OrderStatusPage() {
 
           <div className="grid flex-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
             <button
-              className="min-h-12 rounded-xl border border-blue-300 bg-blue-50 px-3 font-black text-blue-900 hover:bg-blue-100"
+              className="min-h-12 rounded-xl border border-blue-300 bg-blue-50 px-3 font-bold text-blue-900 hover:bg-blue-100"
               type="button"
               onClick={() => chooseFilter("due_today")}
             >
               Due today · {dueTodayCount}
             </button>
             <button
-              className="min-h-12 rounded-xl border border-red-300 bg-red-50 px-3 font-black text-red-900 hover:bg-red-100"
+              className="min-h-12 rounded-xl border border-red-300 bg-red-50 px-3 font-bold text-red-900 hover:bg-red-100"
               type="button"
               onClick={() => chooseFilter("production_late")}
             >
               Production late · {productionLateCount}
             </button>
             <button
-              className="min-h-12 rounded-xl border border-red-300 bg-red-50 px-3 font-black text-red-900 hover:bg-red-100"
+              className="min-h-12 rounded-xl border border-red-300 bg-red-50 px-3 font-bold text-red-900 hover:bg-red-100"
               type="button"
               onClick={() => chooseFilter("outstanding")}
             >
               Money outstanding · {outstandingCount}
             </button>
             <button
-              className="min-h-12 rounded-xl border border-amber-300 bg-amber-50 px-3 font-black text-amber-950 hover:bg-amber-100"
+              className="min-h-12 rounded-xl border border-amber-300 bg-amber-50 px-3 font-bold text-amber-950 hover:bg-amber-100"
               type="button"
               onClick={() => chooseFilter("overdue")}
             >
@@ -754,11 +712,11 @@ export default function OrderStatusPage() {
 
       {isLoadingOrders || isLoadingCustomers ? (
         <p className="rounded-2xl border border-slate-200 bg-white p-10 text-center font-semibold text-slate-600">
-          Loading the production board…
+          Loading orders…
         </p>
       ) : visibleOrders.length === 0 ? (
         <section className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-          <h2 className="text-xl font-black text-slate-950">No orders found</h2>
+          <h2 className="text-xl font-bold text-slate-900">No orders found</h2>
           <p className="mt-2 text-slate-600">
             Try another name, ticket, phone, service or filter.
           </p>
@@ -773,7 +731,7 @@ export default function OrderStatusPage() {
           ) : null}
         </section>
       ) : (
-        <section id="status-board-step" aria-label="Order production board">
+        <section id="status-board-step" aria-label="Laundry orders">
           <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm font-bold text-slate-700">
               Showing {visibleOrders.length} {visibleOrders.length === 1 ? "order" : "orders"}
@@ -783,69 +741,23 @@ export default function OrderStatusPage() {
             </p>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-4">
-            {ORDER_STAGES.map((stage) => {
-              const stageOrders = ordersByStage[stage.value];
-              const isMobileStage = mobileStage === stage.value;
-
-              return (
-                <section
-                  className={`${
-                    isMobileStage ? "block" : "hidden lg:block"
-                  } min-h-64 rounded-2xl border-2 p-3 ${stage.columnClass}`}
-                  id={`status-column-${stage.value}`}
-                  key={stage.value}
-                >
-                  <div className={`rounded-xl p-4 ${stage.headingClass}`}>
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-lg font-black">{stage.label}</p>
-                        <p className="mt-1 text-xs font-semibold opacity-90">
-                          {stage.help}
-                        </p>
-                      </div>
-                      <span className="flex h-10 min-w-10 items-center justify-center rounded-full bg-white px-3 font-black text-slate-900 shadow-sm">
-                        {stageOrders.length}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 space-y-3">
-                    {stageOrders.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-slate-300 bg-white/70 p-6 text-center text-sm font-semibold text-slate-500">
-                        {`No ${stage.label.toLowerCase()} orders in this view`}
-                      </div>
-                    ) : (
-                      stageOrders.map((order) => (
-                        <OrderCard
-                          key={order.id}
-                          order={order}
-                          customerName={
-                            customerNames[order.customer_id] ||
-                            `Customer ${order.customer_id}`
-                          }
-                          stage={stage}
-                          isExpanded={expandedOrderId === order.id}
-                          isUpdating={updatingOrderId === order.id}
-                          isAnyOrderUpdating={updatingOrderId !== null}
-                          isDueToday={dueTodayOrderIds.includes(order.id)}
-                          isProductionLate={productionLateOrderIds.includes(
-                            order.id,
-                          )}
-                          isCollectionOverdue={overdueOrderIds.includes(order.id)}
-                          onToggleDetails={() =>
-                            setExpandedOrderId((currentId) =>
-                              currentId === order.id ? null : order.id,
-                            )
-                          }
-                          onMoveForward={updateStatus}
-                        />
-                      ))
-                    )}
-                  </div>
-                </section>
-              );
-            })}
+          <div className="space-y-5">
+            {visibleOrders.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                customerName={
+                  customerNames[order.customer_id] ||
+                  `Customer ${order.customer_id}`
+                }
+                isUpdating={updatingOrderId === order.id}
+                isAnyOrderUpdating={updatingOrderId !== null}
+                isDueToday={dueTodayOrderIds.includes(order.id)}
+                isProductionLate={productionLateOrderIds.includes(order.id)}
+                isCollectionOverdue={overdueOrderIds.includes(order.id)}
+                onMoveForward={updateStatus}
+              />
+            ))}
           </div>
         </section>
       )}
