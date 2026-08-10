@@ -56,6 +56,33 @@ const STAFF_TOUR_STEPS = [
   },
 ];
 
+const STATUS_TOUR_STEPS = [
+  {
+    targetId: "status-search-step",
+    title: "Find the right order",
+    description:
+      "Search by ticket, customer name, phone number or service instead of reading every card.",
+  },
+  {
+    targetId: "status-stages-step",
+    title: "Follow the four colours",
+    description:
+      "Each bubble is one laundry stage. On a phone, tap a bubble to open that stage.",
+  },
+  {
+    targetId: "status-focus-step",
+    title: "See what needs attention",
+    description:
+      "Use the clear buttons to find work due today, late production, unpaid orders or overdue collections.",
+  },
+  {
+    targetId: "status-board-step",
+    title: "Move one step at a time",
+    description:
+      "Open a card for details, then use its large action button to move the order forward by one stage.",
+  },
+];
+
 // Give staff a short, real guide without adding a tour library to the project.
 export default function PageTour({ pathname }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -64,6 +91,8 @@ export default function PageTour({ pathname }) {
   const steps =
     pathname === "/orders"
       ? ORDER_TOUR_STEPS
+      : pathname === "/orders/status"
+        ? STATUS_TOUR_STEPS
       : pathname === "/staff"
         ? STAFF_TOUR_STEPS
         : [];

@@ -849,10 +849,11 @@ def create_detailed_order(
     return new_order
 
 
-# Lists all orders, optionally filtered by status (received/in_progress/ready/collected)
+# Lists orders with the same search words staff use at the counter.
 @app.get("/orders", response_model=list[schemas.OrderOut])
 def list_orders(
     status: Optional[str] = None,
+    search: Optional[str] = None,
     outstanding: bool = False,
     due_today: bool = False,
     production_late: bool = False,
@@ -860,6 +861,25 @@ def list_orders(
     current_user: models.User = Depends(auth.get_current_user),
 ):
     query = db.query(models.Order)
+
+    search_text = search.strip() if search else ""
+    if search_text:
+        search_pattern = f"%{search_text}%"
+        legacy_service_pattern = f"%{make_service_code(search_text)}%"
+        query = query.join(
+            models.Customer,
+            models.Customer.id == models.Order.customer_id,
+        ).filter(
+            or_(
+                models.Order.ticket_number.ilike(search_pattern),
+                models.Customer.name.ilike(search_pattern),
+                models.Customer.phone.ilike(search_pattern),
+                models.Order.service_type.ilike(legacy_service_pattern),
+                models.Order.service_lines.any(
+                    models.OrderServiceLine.service_name.ilike(search_pattern),
+                ),
+            )
+        )
 
     if status:
         query = query.filter(models.Order.status == status)
