@@ -6,6 +6,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from typing import Optional
 from datetime import date, datetime, timezone, timedelta
 from decimal import Decimal
@@ -256,18 +257,46 @@ def read_root():
 # Logs a user in: checks username/password, returns a signed JWT with their role
 @app.post("/auth/login", response_model=schemas.Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.username == form_data.username).first()
+    username = form_data.username.strip()
+    user = db.query(models.User).filter(models.User.username == username).first()
 
-    if not user or not auth.verify_password(form_data.password, user.password_hash):
+    if (
+        not user
+        or not auth.verify_password(form_data.password, user.password_hash)
+        or not user.is_active
+    ):
         raise HTTPException(status_code=401, detail="Incorrect username or password")
 
-    token = auth.create_access_token(user_id=user.id, role=user.role)
-    return {"access_token": token, "token_type": "bearer", "role": user.role}
+    token = auth.create_access_token(
+        user_id=user.id,
+        role=user.role,
+        token_version=user.token_version,
+    )
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "role": user.role,
+        "user_id": user.id,
+        "username": user.username,
+    }
 
 
-# Creates a new employee/owner account. Owner-only.
+# Staff accounts are managed by an active owner. The first owner is still
+# created privately with create_owner.py, never through a public route.
+@app.get("/users", response_model=list[schemas.UserOut])
+def list_users(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+):
+    return db.query(models.User).order_by(models.User.id.asc()).all()
+
+
 @app.post("/users", response_model=schemas.UserOut)
-def create_user(user: schemas.UserCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.require_owner)):
+def create_user(
+    user: schemas.UserCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+):
     existing = db.query(models.User).filter(models.User.username == user.username).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username already taken")
@@ -278,9 +307,132 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db), current
         role=user.role,
     )
     db.add(new_user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Username already taken")
     db.refresh(new_user)
     return new_user
+
+
+def get_managed_user(user_id: int, db: Session, lock_accounts: bool = False):
+    if lock_accounts:
+        # Staff changes are rare, so locking the short account list keeps two
+        # owners from concurrently removing each other's final-owner access.
+        users = (
+            db.query(models.User)
+            .order_by(models.User.id.asc())
+            .with_for_update()
+            .populate_existing()
+            .all()
+        )
+        user = next((account for account in users if account.id == user_id), None)
+    else:
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+def active_owner_count(db: Session) -> int:
+    return db.query(models.User).filter(
+        models.User.role == "owner",
+        models.User.is_active.is_(True),
+    ).count()
+
+
+def confirm_managing_owner(current_user: models.User):
+    if not current_user.is_active or current_user.role != "owner":
+        raise HTTPException(status_code=403, detail="Owner access required")
+
+
+@app.patch("/users/{user_id}/status", response_model=schemas.UserOut)
+def update_user_status(
+    user_id: int,
+    status_update: schemas.UserStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+):
+    user = get_managed_user(user_id, db, lock_accounts=True)
+    confirm_managing_owner(current_user)
+    if user.is_active == status_update.is_active:
+        return user
+
+    if user.id == current_user.id and not status_update.is_active:
+        raise HTTPException(
+            status_code=400,
+            detail="You cannot deactivate your own account",
+        )
+
+    if (
+        user.role == "owner"
+        and user.is_active
+        and not status_update.is_active
+        and active_owner_count(db) <= 1
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="At least one active owner must remain",
+        )
+
+    user.is_active = status_update.is_active
+    user.token_version += 1
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@app.patch("/users/{user_id}/role", response_model=schemas.UserOut)
+def update_user_role(
+    user_id: int,
+    role_update: schemas.UserRoleUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+):
+    user = get_managed_user(user_id, db, lock_accounts=True)
+    confirm_managing_owner(current_user)
+    if user.role == role_update.role:
+        return user
+
+    if user.id == current_user.id:
+        raise HTTPException(
+            status_code=400,
+            detail="You cannot change your own role",
+        )
+
+    if (
+        user.role == "owner"
+        and user.is_active
+        and role_update.role != "owner"
+        and active_owner_count(db) <= 1
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="At least one active owner must remain",
+        )
+
+    user.role = role_update.role
+    user.token_version += 1
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@app.patch("/users/{user_id}/password", response_model=schemas.UserOut)
+def reset_user_password(
+    user_id: int,
+    password_reset: schemas.UserPasswordReset,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+):
+    user = get_managed_user(user_id, db, lock_accounts=True)
+    confirm_managing_owner(current_user)
+    user.password_hash = auth.hash_password(password_reset.password)
+    user.token_version += 1
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 # Creates a new customer

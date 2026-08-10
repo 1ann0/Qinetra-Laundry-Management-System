@@ -313,18 +313,57 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     role: str
+    user_id: int
+    username: str
 
 # Data required to create a new employee account (owner-only action)
+def validate_account_password(value: str) -> str:
+    if not value.strip():
+        raise ValueError("Password cannot be blank")
+    if len(value.encode("utf-8")) > 72:
+        raise ValueError("Password must be at most 72 bytes")
+    return value
+
+
 class UserCreate(BaseModel):
-    username: str
-    password: str
+    username: str = Field(min_length=3, max_length=50)
+    password: str = Field(min_length=8)
     role: Literal["owner", "employee"]
+
+    @field_validator("username", mode="before")
+    @classmethod
+    def clean_username(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("password")
+    @classmethod
+    def check_password(cls, value: str):
+        return validate_account_password(value)
+
+
+# Account-safety changes are kept as separate requests so each action is clear.
+class UserStatusUpdate(BaseModel):
+    is_active: bool
+
+
+class UserRoleUpdate(BaseModel):
+    role: Literal["owner", "employee"]
+
+
+class UserPasswordReset(BaseModel):
+    password: str = Field(min_length=8)
+
+    @field_validator("password")
+    @classmethod
+    def check_password(cls, value: str):
+        return validate_account_password(value)
 
 # Data returned when listing/confirming a user (never includes the password)
 class UserOut(BaseModel):
     id: int
     username: str
     role: str
+    is_active: bool
     created_at: datetime
 
     class Config:

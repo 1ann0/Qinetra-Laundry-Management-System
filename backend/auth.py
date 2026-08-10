@@ -15,7 +15,7 @@ import models
 load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8  # login session lasts 8 hours
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 # Tells FastAPI where the login route lives, for its auto-generated docs
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -31,10 +31,17 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
 
 
-# Creates a signed token containing the user's id and role
-def create_access_token(user_id: int, role: str) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    payload = {"sub": str(user_id), "role": role, "exp": expire}
+# Creates a signed token containing the user's id, role and current session version.
+def create_access_token(user_id: int, role: str, token_version: int) -> str:
+    issued_at = datetime.now(timezone.utc)
+    expire = issued_at + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    payload = {
+        "sub": str(user_id),
+        "role": role,
+        "ver": token_version,
+        "iat": issued_at,
+        "exp": expire,
+    }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -48,13 +55,24 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("sub")
-        if user_id is None:
+        token_version = payload.get("ver")
+        if (
+            not isinstance(user_id, str)
+            or not user_id.isdigit()
+            or not isinstance(token_version, int)
+            or isinstance(token_version, bool)
+        ):
             raise credentials_error
-    except jwt.PyJWTError:
+        user_id = int(user_id)
+    except (jwt.PyJWTError, TypeError, ValueError):
         raise credentials_error
 
-    user = db.query(models.User).filter(models.User.id == int(user_id)).first()
-    if user is None:
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if (
+        user is None
+        or not user.is_active
+        or user.token_version != token_version
+    ):
         raise credentials_error
     return user
 

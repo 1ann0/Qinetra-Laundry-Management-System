@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import SessionReauthenticationDialog from "@/components/auth/session-reauth-dialog";
 import PageTour from "@/components/layout/page-tour";
 import { useAuth } from "@/context/auth-context";
 
@@ -13,6 +14,7 @@ const PAGE_TITLES = {
   "/customers": "Customers",
   "/orders": "Orders",
   "/dashboard": "Dashboard",
+  "/staff": "Staff",
   "/settings": "Shop setup",
 };
 
@@ -46,6 +48,13 @@ function NavigationIcon({ name }) {
         <path d="m7 15 4-4 3 3 5-6" />
       </>
     ),
+    staff: (
+      <>
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M17 11.5 19 13l3-3.5M19.5 6.5l2.5 1v2.4c0 2.1-1 3.9-2.5 4.6-1.5-.7-2.5-2.5-2.5-4.6V7.5z" />
+      </>
+    ),
     settings: (
       <>
         <circle cx="12" cy="12" r="3" />
@@ -74,10 +83,11 @@ function NavigationIcon({ name }) {
 export default function AppShell({ children }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { role, logout } = useAuth();
+  const { role, expiresAt, reauthenticationRequired, logout } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [isMobileNavigation, setIsMobileNavigation] = useState(false);
+  const [warningExpiry, setWarningExpiry] = useState(null);
 
   // Keep the main module highlighted while the user is on one of its related pages.
   const isWorkspacePage = pathname === "/workspace";
@@ -85,11 +95,15 @@ export default function AppShell({ children }) {
   const isOrdersPage = pathname.startsWith("/orders");
   const isDashboardPage = pathname === "/dashboard";
   const isFinancePage = pathname.startsWith("/finance");
+  const isStaffPage = pathname.startsWith("/staff");
   const isSettingsPage = pathname.startsWith("/settings");
   const homeHref = role === "owner" ? "/finance" : "/workspace";
   const pageTitle =
     Object.entries(PAGE_TITLES).find(([path]) => pathname.startsWith(path))?.[1] ||
     "QLMS";
+  const sessionEndingSoon = Boolean(
+    expiresAt && warningExpiry === expiresAt,
+  );
   const navigationItems = [
     ...(role === "owner"
       ? [{ href: "/finance", label: "Finance", icon: "finance", active: isFinancePage }]
@@ -100,6 +114,7 @@ export default function AppShell({ children }) {
     ...(role === "owner"
       ? [
           { href: "/dashboard", label: "Dashboard", icon: "dashboard", active: isDashboardPage },
+          { href: "/staff", label: "Staff", icon: "staff", active: isStaffPage },
           { href: "/settings/catalog", label: "Shop setup", icon: "settings", active: isSettingsPage },
         ]
       : []),
@@ -126,6 +141,19 @@ export default function AppShell({ children }) {
       mobileNavigationQuery.removeEventListener("change", updateNavigationMode);
     };
   }, []);
+
+  useEffect(() => {
+    if (!expiresAt) {
+      return undefined;
+    }
+
+    const warningDelay = expiresAt - Date.now() - 2 * 60 * 1000;
+    const warningTimer = window.setTimeout(
+      () => setWarningExpiry(expiresAt),
+      Math.max(warningDelay, 0),
+    );
+    return () => window.clearTimeout(warningTimer);
+  }, [expiresAt]);
 
   function toggleSidebar() {
     if (isMobileNavigation) {
@@ -155,6 +183,8 @@ export default function AppShell({ children }) {
     >
       <aside
         className={`app-sidebar ${mobileNavigationOpen ? "sidebar-open" : ""}`}
+        inert={reauthenticationRequired ? true : undefined}
+        aria-hidden={reauthenticationRequired || undefined}
       >
         <Link className="sidebar-brand" href={homeHref} aria-label="QLMS home">
           <Image
@@ -193,7 +223,11 @@ export default function AppShell({ children }) {
         />
       ) : null}
 
-      <div className="app-content">
+      <div
+        className="app-content"
+        inert={reauthenticationRequired ? true : undefined}
+        aria-hidden={reauthenticationRequired || undefined}
+      >
         <header className="app-header">
           <div className="topbar-heading">
             <button
@@ -242,10 +276,20 @@ export default function AppShell({ children }) {
           </div>
         </header>
 
+        {sessionEndingSoon ? (
+          <p
+            className="m-0 border-b border-amber-300 bg-amber-50 px-4 py-2 text-center text-sm font-semibold text-amber-900"
+            role="status"
+          >
+            Your session ends in less than 2 minutes. Save your work now.
+          </p>
+        ) : null}
+
         <main className={`app-main ${isWorkspacePage ? "workspace-main" : ""}`}>
           {children}
         </main>
       </div>
+      {reauthenticationRequired ? <SessionReauthenticationDialog /> : null}
     </div>
   );
 }

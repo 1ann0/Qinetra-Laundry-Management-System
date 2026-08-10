@@ -15,6 +15,8 @@ class User(Base):
     username = Column(String(50), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     role = Column(String(20), nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True, server_default="true")
+    token_version = Column(Integer, nullable=False, default=1, server_default="1")
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
 

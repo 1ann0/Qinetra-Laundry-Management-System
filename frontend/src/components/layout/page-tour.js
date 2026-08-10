@@ -35,12 +35,38 @@ const ORDER_TOUR_STEPS = [
   },
 ];
 
+const STAFF_TOUR_STEPS = [
+  {
+    targetId: "staff-add-step",
+    title: "Create an employee login",
+    description:
+      "Give each employee their own username and employee password instead of sharing the owner's account.",
+  },
+  {
+    targetId: "staff-list-step",
+    title: "Review who has access",
+    description:
+      "Check every QLMS account and its current Active or Inactive status from one list.",
+  },
+  {
+    targetId: "staff-security-step",
+    title: "Turn access off safely",
+    description:
+      "Reset a forgotten password, or deactivate an employee who should no longer use QLMS. Existing sessions stop working too.",
+  },
+];
+
 // Give staff a short, real guide without adding a tour library to the project.
 export default function PageTour({ pathname }) {
   const [isOpen, setIsOpen] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const headingRef = useRef(null);
-  const steps = pathname === "/orders" ? ORDER_TOUR_STEPS : [];
+  const steps =
+    pathname === "/orders"
+      ? ORDER_TOUR_STEPS
+      : pathname === "/staff"
+        ? STAFF_TOUR_STEPS
+        : [];
   const activeStep = steps[stepIndex];
 
   function closeTour() {
