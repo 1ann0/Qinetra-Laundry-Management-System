@@ -849,11 +849,15 @@ def create_detailed_order(
     return new_order
 
 
-# Lists orders with the same search words staff use at the counter.
+# Lists orders using counter search or exact customer/service history filters.
 @app.get("/orders", response_model=list[schemas.OrderOut])
 def list_orders(
     status: Optional[str] = None,
     search: Optional[str] = None,
+    customer_id: Optional[int] = None,
+    service_id: Optional[int] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
     outstanding: bool = False,
     due_today: bool = False,
     production_late: bool = False,
@@ -884,6 +888,36 @@ def list_orders(
     if status:
         query = query.filter(models.Order.status == status)
 
+    if customer_id is not None:
+        query = query.filter(models.Order.customer_id == customer_id)
+
+    if service_id is not None:
+        service = db.query(models.Service).filter(
+            models.Service.id == service_id,
+        ).first()
+        if not service:
+            return []
+
+        # New mixed orders use service lines, while older orders keep a code.
+        query = query.filter(
+            or_(
+                models.Order.service_type == service.code,
+                models.Order.service_lines.any(
+                    models.OrderServiceLine.service_id == service_id,
+                ),
+            )
+        )
+
+    if start_date and end_date and end_date < start_date:
+        raise HTTPException(
+            status_code=400,
+            detail="End date cannot be before start date",
+        )
+    if start_date:
+        query = query.filter(models.Order.order_date >= start_date)
+    if end_date:
+        query = query.filter(models.Order.order_date <= end_date)
+
     now = datetime.now(timezone.utc)
     if due_today:
         local_now = now.astimezone(NAIROBI_TIMEZONE)
@@ -901,8 +935,17 @@ def list_orders(
             models.Order.promised_ready_at < now,
         )
 
+    is_history_filter = any(
+        value is not None
+        for value in (customer_id, service_id, start_date, end_date)
+    )
     if due_today or production_late:
         orders = query.order_by(models.Order.promised_ready_at.asc()).all()
+    elif is_history_filter:
+        orders = query.order_by(
+            models.Order.order_date.desc(),
+            models.Order.created_at.desc(),
+        ).all()
     else:
         orders = query.order_by(models.Order.created_at.desc()).all()
     if outstanding:

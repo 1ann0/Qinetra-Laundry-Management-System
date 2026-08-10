@@ -37,8 +37,24 @@ class OrderSearchContractTests(unittest.TestCase):
             turnaround_minutes=1440,
             is_active=True,
         )
+        self.wash_fold = models.Service(
+            code="wash_fold",
+            name="Wash & Fold",
+            unit="kg",
+            unit_price=150,
+            category="general",
+            item_recording_mode="tally",
+            turnaround_minutes=180,
+            is_active=True,
+        )
         self.db.add_all(
-            [self.employee, self.alice, self.brian, self.dry_cleaning]
+            [
+                self.employee,
+                self.alice,
+                self.brian,
+                self.dry_cleaning,
+                self.wash_fold,
+            ]
         )
         self.db.commit()
 
@@ -84,10 +100,22 @@ class OrderSearchContractTests(unittest.TestCase):
         self.db.close()
         self.engine.dispose()
 
-    def search(self, value=None, status=None):
+    def search(
+        self,
+        value=None,
+        status=None,
+        customer_id=None,
+        service_id=None,
+        start_date=None,
+        end_date=None,
+    ):
         return main.list_orders(
             status=status,
             search=value,
+            customer_id=customer_id,
+            service_id=service_id,
+            start_date=start_date,
+            end_date=end_date,
             outstanding=False,
             due_today=False,
             production_late=False,
@@ -122,6 +150,74 @@ class OrderSearchContractTests(unittest.TestCase):
 
     def test_unknown_search_returns_an_empty_list(self):
         self.assert_order_ids(self.search("not a real ticket"), [])
+
+    def test_customer_history_uses_the_exact_customer_id(self):
+        self.assert_order_ids(
+            self.search(customer_id=self.alice.id),
+            [self.mixed_order.id],
+        )
+        self.assert_order_ids(
+            self.search(customer_id=self.brian.id),
+            [self.legacy_order.id],
+        )
+
+    def test_service_history_includes_mixed_and_legacy_orders(self):
+        self.assert_order_ids(
+            self.search(service_id=self.dry_cleaning.id),
+            [self.mixed_order.id],
+        )
+        self.assert_order_ids(
+            self.search(service_id=self.wash_fold.id),
+            [self.legacy_order.id],
+        )
+
+    def test_business_date_range_is_inclusive(self):
+        self.assert_order_ids(
+            self.search(
+                start_date=date(2026, 8, 9),
+                end_date=date(2026, 8, 10),
+            ),
+            [self.mixed_order.id, self.legacy_order.id],
+        )
+        self.assert_order_ids(
+            self.search(
+                start_date=date(2026, 8, 10),
+                end_date=date(2026, 8, 10),
+            ),
+            [self.mixed_order.id],
+        )
+
+    def test_history_filters_can_be_combined(self):
+        self.assert_order_ids(
+            self.search(
+                status="in_progress",
+                customer_id=self.alice.id,
+                service_id=self.dry_cleaning.id,
+                start_date=date(2026, 8, 10),
+                end_date=date(2026, 8, 10),
+            ),
+            [self.mixed_order.id],
+        )
+        self.assert_order_ids(
+            self.search(
+                customer_id=self.alice.id,
+                service_id=self.wash_fold.id,
+            ),
+            [],
+        )
+
+    def test_reversed_date_range_is_rejected(self):
+        with self.assertRaises(main.HTTPException) as error:
+            self.search(
+                start_date=date(2026, 8, 10),
+                end_date=date(2026, 8, 9),
+            )
+
+        self.assertEqual(error.exception.status_code, 400)
+        self.assertEqual(error.exception.detail, "End date cannot be before start date")
+
+    def test_unknown_service_history_is_empty(self):
+        self.assert_order_ids(self.search(service_id=9999), [])
 
     def test_order_list_route_still_requires_authentication(self):
         order_route = next(
