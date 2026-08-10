@@ -1,7 +1,14 @@
 import unittest
 
+from fastapi import HTTPException
 from pydantic import ValidationError
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
+import auth
+import main
+import models
 import schemas
 
 
@@ -102,6 +109,136 @@ class CatalogSchemaTests(unittest.TestCase):
             item_recording_mode="detailed",
         )
         self.assertEqual(service.default_item_type_id, 4)
+
+
+class CatalogPermissionTests(unittest.TestCase):
+    def setUp(self):
+        self.engine = create_engine(
+            "sqlite://",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        models.Base.metadata.create_all(self.engine)
+        self.db = sessionmaker(bind=self.engine)()
+        self.owner = models.User(
+            username="catalog_owner",
+            password_hash="not-used",
+            role="owner",
+        )
+        self.employee = models.User(
+            username="catalog_employee",
+            password_hash="not-used",
+            role="employee",
+        )
+        self.db.add_all([self.owner, self.employee])
+        self.db.commit()
+
+    def tearDown(self):
+        self.db.close()
+        self.engine.dispose()
+
+    def test_employee_can_add_an_active_laundry_tally_item(self):
+        saved_item = main.create_clothing_item_type(
+            schemas.ClothingItemTypeCreate(
+                name="  School Skirt  ",
+                item_group="laundry",
+            ),
+            db=self.db,
+            current_user=self.employee,
+        )
+
+        self.assertEqual(saved_item.name, "School Skirt")
+        self.assertEqual(saved_item.item_group, "laundry")
+        self.assertTrue(saved_item.is_active)
+
+    def test_employee_cannot_add_dry_cleaning_or_shared_items(self):
+        for item_group in ["dry_cleaning", "both"]:
+            with self.assertRaises(HTTPException) as error:
+                main.create_clothing_item_type(
+                    schemas.ClothingItemTypeCreate(
+                        name=f"Employee {item_group}",
+                        item_group=item_group,
+                    ),
+                    db=self.db,
+                    current_user=self.employee,
+                )
+            self.assertEqual(error.exception.status_code, 403)
+
+    def test_owner_keeps_full_item_group_control(self):
+        saved_item = main.create_clothing_item_type(
+            schemas.ClothingItemTypeCreate(
+                name="Evening Gown",
+                item_group="dry_cleaning",
+            ),
+            db=self.db,
+            current_user=self.owner,
+        )
+        self.assertEqual(saved_item.item_group, "dry_cleaning")
+
+    def test_inactive_duplicate_must_be_restored_by_the_owner(self):
+        existing_item = models.ClothingItemType(
+            name="School Sweater",
+            item_group="laundry",
+            is_active=False,
+        )
+        self.db.add(existing_item)
+        self.db.commit()
+
+        with self.assertRaises(HTTPException) as error:
+            main.create_clothing_item_type(
+                schemas.ClothingItemTypeCreate(name="school sweater"),
+                db=self.db,
+                current_user=self.employee,
+            )
+
+        self.assertEqual(error.exception.status_code, 400)
+        self.assertIn("inactive", error.exception.detail)
+        self.assertEqual(
+            self.db.query(models.ClothingItemType).filter(
+                models.ClothingItemType.name.ilike("school sweater")
+            ).count(),
+            1,
+        )
+
+    def test_active_duplicate_does_not_create_a_second_catalogue_item(self):
+        main.create_clothing_item_type(
+            schemas.ClothingItemTypeCreate(name="Track Suit"),
+            db=self.db,
+            current_user=self.employee,
+        )
+
+        with self.assertRaises(HTTPException) as error:
+            main.create_clothing_item_type(
+                schemas.ClothingItemTypeCreate(name="track suit"),
+                db=self.db,
+                current_user=self.owner,
+            )
+
+        self.assertEqual(error.exception.status_code, 400)
+        self.assertEqual(
+            self.db.query(models.ClothingItemType).filter(
+                models.ClothingItemType.name.ilike("track suit")
+            ).count(),
+            1,
+        )
+
+    def test_create_requires_login_but_updates_remain_owner_only(self):
+        expected_dependencies = {
+            ("POST", "/catalog/item-types"): auth.get_current_user,
+            ("PATCH", "/catalog/item-types/{item_type_id}"): auth.require_owner,
+        }
+
+        for route in main.app.routes:
+            for method in route.methods or set():
+                route_key = (method, route.path)
+                if route_key not in expected_dependencies:
+                    continue
+                dependency_calls = {
+                    dependency.call for dependency in route.dependant.dependencies
+                }
+                self.assertIn(expected_dependencies.pop(route_key), dependency_calls)
+
+        self.assertEqual(expected_dependencies, {})
 
 
 if __name__ == "__main__":

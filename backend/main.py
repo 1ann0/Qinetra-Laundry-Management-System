@@ -625,17 +625,32 @@ def list_clothing_item_types(
     return query.order_by(models.ClothingItemType.name.asc()).all()
 
 
-# Adds a clothing item name to the tally list. Owner-only.
+# Adds a clothing item name. Employees may add Laundry tally choices only;
+# broader catalogue control remains owner-only.
 @app.post("/catalog/item-types", response_model=schemas.ClothingItemTypeOut)
 def create_clothing_item_type(
     item_type: schemas.ClothingItemTypeCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.require_owner),
+    current_user: models.User = Depends(auth.get_current_user),
 ):
+    if current_user.role != "owner" and item_type.item_group != "laundry":
+        raise HTTPException(
+            status_code=403,
+            detail="Employees can add Laundry tally items only",
+        )
+
     existing = db.query(models.ClothingItemType).filter(
         models.ClothingItemType.name.ilike(item_type.name)
     ).first()
     if existing:
+        if not existing.is_active:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "This clothing item exists but is inactive. "
+                    "Ask the owner to restore it in Shop setup"
+                ),
+            )
         raise HTTPException(status_code=400, detail="This clothing item already exists")
 
     new_item_type = models.ClothingItemType(
@@ -643,7 +658,14 @@ def create_clothing_item_type(
         item_group=item_type.item_group,
     )
     db.add(new_item_type)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="This clothing item already exists",
+        )
     db.refresh(new_item_type)
     return new_item_type
 

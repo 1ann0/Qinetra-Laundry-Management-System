@@ -103,7 +103,7 @@ class ServiceOut(BaseModel):
         from_attributes = True
 
 
-# Data required when the owner adds a clothing item name.
+# Data required when an authorised user adds a clothing item name.
 class ClothingItemTypeCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     item_group: Literal["laundry", "dry_cleaning", "both"] = "laundry"

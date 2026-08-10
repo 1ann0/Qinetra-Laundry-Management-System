@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 // Keep the usual Laundry tally items in the order provided by Qinetra.
 const LAUNDRY_TALLY_ORDER = [
   "Shirt",
@@ -54,7 +56,13 @@ export default function ServiceItemEntry({
   fieldPrefix,
   allowedInactiveItemTypeIds = [],
   fixedItemType = null,
+  onAddMissingItem = null,
 }) {
+  const [showMissingItemForm, setShowMissingItemForm] = useState(false);
+  const [missingItemName, setMissingItemName] = useState("");
+  const [missingItemFeedback, setMissingItemFeedback] = useState(null);
+  const [isAddingMissingItem, setIsAddingMissingItem] = useState(false);
+
   // Keep Laundry tally choices separate from Dry Cleaning garment choices.
   // Old receipt items stay visible even if their catalogue setting later changes.
   const allowedInactiveIds = new Set(allowedInactiveItemTypeIds);
@@ -83,6 +91,41 @@ export default function ServiceItemEntry({
         ? [...otherItems, { item_type_id: itemTypeId, quantity: nextQuantity }]
         : otherItems,
     );
+  }
+
+  // Save a new shop-wide Laundry choice, then count it once on this service.
+  async function addMissingTallyItem(event) {
+    event.preventDefault();
+    const cleanedName = missingItemName.trim();
+
+    if (!cleanedName) {
+      setMissingItemFeedback({
+        type: "error",
+        text: "Enter the clothing item name.",
+      });
+      return;
+    }
+
+    setIsAddingMissingItem(true);
+    setMissingItemFeedback(null);
+
+    try {
+      const savedItem = await onAddMissingItem(cleanedName);
+      changeTally(savedItem.id, 1);
+      setMissingItemName("");
+      setShowMissingItemForm(false);
+      setMissingItemFeedback({
+        type: "success",
+        text: `${savedItem.name} was added to the shop tally and counted once.`,
+      });
+    } catch (saveError) {
+      setMissingItemFeedback({
+        type: "error",
+        text: saveError.message || "The clothing item could not be added.",
+      });
+    } finally {
+      setIsAddingMissingItem(false);
+    }
   }
 
   // Add another garment card to a detailed service.
@@ -184,6 +227,89 @@ export default function ServiceItemEntry({
             );
           })}
         </div>
+
+        {onAddMissingItem ? (
+          <div className="mt-4 border-t border-blue-200 pt-4">
+            {showMissingItemForm ? (
+              <form
+                className="rounded-xl border border-blue-200 bg-white p-4"
+                onSubmit={addMissingTallyItem}
+                noValidate
+              >
+                <label
+                  className="block text-sm font-bold text-slate-800"
+                  htmlFor={`${fieldPrefix}-missing-tally-item`}
+                >
+                  Missing clothing item
+                </label>
+                <p className="mt-1 text-sm text-slate-600">
+                  This will become available in every Laundry tally.
+                </p>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <input
+                    className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-300 px-3 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-2 focus:ring-blue-100"
+                    id={`${fieldPrefix}-missing-tally-item`}
+                    maxLength="100"
+                    placeholder="Example: School skirt"
+                    value={missingItemName}
+                    disabled={disabled || isAddingMissingItem}
+                    onChange={(event) => {
+                      setMissingItemName(event.target.value);
+                      setMissingItemFeedback(null);
+                    }}
+                    autoFocus
+                  />
+                  <button
+                    className="min-h-11 rounded-lg bg-[#005AAB] px-4 font-bold text-white hover:bg-[#004782] disabled:cursor-wait disabled:opacity-50"
+                    type="submit"
+                    disabled={disabled || isAddingMissingItem}
+                  >
+                    {isAddingMissingItem ? "Adding…" : "Add and count 1"}
+                  </button>
+                  <button
+                    className="min-h-11 rounded-lg border border-slate-300 px-4 font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                    type="button"
+                    disabled={disabled || isAddingMissingItem}
+                    onClick={() => {
+                      setShowMissingItemForm(false);
+                      setMissingItemName("");
+                      setMissingItemFeedback(null);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <button
+                className="min-h-11 rounded-lg border border-dashed border-[#005AAB] bg-white px-4 text-sm font-bold text-[#005AAB] hover:bg-blue-50 disabled:opacity-50"
+                type="button"
+                disabled={disabled}
+                onClick={() => {
+                  setShowMissingItemForm(true);
+                  setMissingItemFeedback(null);
+                }}
+              >
+                + Add missing clothing item
+              </button>
+            )}
+
+            {missingItemFeedback ? (
+              <p
+                className={`mt-3 rounded-lg border px-3 py-2 text-sm font-semibold ${
+                  missingItemFeedback.type === "success"
+                    ? "border-green-200 bg-green-50 text-green-800"
+                    : "border-red-200 bg-red-50 text-red-800"
+                }`}
+                role={
+                  missingItemFeedback.type === "error" ? "alert" : "status"
+                }
+              >
+                {missingItemFeedback.text}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </section>
     );
   }

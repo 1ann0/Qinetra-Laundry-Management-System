@@ -518,6 +518,22 @@ export default function OrderEntryPage() {
     );
   }
 
+  // Let staff add a missing Laundry choice without leaving the current order.
+  async function addMissingTallyItem(name) {
+    const savedItem = await authenticatedRequest("/catalog/item-types", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, item_group: "laundry" }),
+    });
+
+    setItemTypes((currentItems) =>
+      currentItems.some((item) => item.id === savedItem.id)
+        ? currentItems
+        : [...currentItems, savedItem],
+    );
+    return savedItem;
+  }
+
   // Remove a service that was selected by mistake.
   function removeService(serviceId) {
     const nextServices = selectedServices.filter(
@@ -1122,6 +1138,7 @@ export default function OrderEntryPage() {
                               ) || null
                             : null
                         }
+                        onAddMissingItem={addMissingTallyItem}
                         onItemsChange={(items) =>
                           updateServiceLine(serviceLine.service_id, { items })
                         }

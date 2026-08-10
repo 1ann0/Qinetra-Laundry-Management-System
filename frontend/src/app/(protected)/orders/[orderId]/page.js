@@ -199,6 +199,22 @@ export default function OrderDetailPage() {
     setMessage("");
   }
 
+  // Add a missing Laundry choice while completing a saved order's item check.
+  async function addMissingTallyItem(name) {
+    const savedItem = await authenticatedRequest("/catalog/item-types", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, item_group: "laundry" }),
+    });
+
+    setItemTypes((currentItems) =>
+      currentItems.some((item) => item.id === savedItem.id)
+        ? currentItems
+        : [...currentItems, savedItem],
+    );
+    return savedItem;
+  }
+
   // Send the complete replacement list to FastAPI and update the visible receipt.
   async function saveItems(serviceLine) {
     const validationError = getItemError(serviceLine, draftItems);
@@ -595,6 +611,7 @@ export default function OrderDetailPage() {
                             ) || null
                           : null
                       }
+                      onAddMissingItem={addMissingTallyItem}
                       onItemsChange={setDraftItems}
                     />
                     <div className="mt-4 flex flex-wrap gap-3">
