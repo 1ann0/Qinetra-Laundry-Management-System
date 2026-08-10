@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import OwnerGuard from "@/components/auth/owner-guard";
 import { useAuth } from "@/context/auth-context";
@@ -802,6 +803,12 @@ function ShopSetupContent() {
                     </div>
 
                     <div className="flex flex-wrap gap-3">
+                      <Link
+                        className="font-bold text-[#005AAB] no-underline hover:underline"
+                        href={`/customers/search?serviceId=${service.id}`}
+                      >
+                        Order history
+                      </Link>
                       <button
                         className="font-bold text-[#005AAB] hover:underline disabled:opacity-50"
                         type="button"
