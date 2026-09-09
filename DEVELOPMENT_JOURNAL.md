@@ -3,6 +3,7 @@
 Start here for the development story, proof and short LinkedIn ideas. Drafts stay here until reviewed; nothing is posted automatically.
 
 - Screenshots: [existing evidence folder](docs/diagrams/evidence/).
+- Build priorities: [Qinetra pilot and commercial roadmap](IMPLEMENTATION_ROADMAP.md).
 - Browser checks: [navigation guide](docs/navigation-usability-check.md).
 - Support reference: [error codes and failure review](docs/support-codes.md).
 - Study and demo detail: `LEARNING_NOTES.md` and `PRESENTATION_NOTES.md` in this checkout.
