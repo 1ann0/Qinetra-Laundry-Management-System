@@ -1,0 +1,114 @@
+# QLMS development journal
+
+Start here for the development story, proof and short LinkedIn ideas. Drafts stay here until reviewed; nothing is posted automatically.
+
+- Screenshots: [existing evidence folder](docs/diagrams/evidence/).
+- Browser checks: [navigation guide](docs/navigation-usability-check.md).
+- Support reference: [error codes and failure review](docs/support-codes.md).
+- Study and demo detail: `LEARNING_NOTES.md` and `PRESENTATION_NOTES.md` in this checkout.
+
+## Writing standard
+
+Use a concrete problem as the hook. State two or three changes. End with a lesson or the next test.
+Aim for 50–90 words. Keep only facts that help explain the improvement.
+
+Apply [ASD-STE100 Issue 9](https://www.asd-ste100.org/assets/files/ASD-STE100_ISSUE9.pdf) principles: direct instructions, short sentences, consistent terms and clear actions.
+Keep procedural sentences within 20 words. Treat laundry and product terms as defined terms, not interchangeable synonyms.
+Use the official rules and dictionary for a formal language review. These drafts are not certified as fully STE-compliant.
+
+Use plain first-person language for posts. Avoid claims such as “seamless”, “game-changing”, or “users love it” without evidence.
+Do not invent time savings, customer reactions, uptime figures, revenue or deployment results.
+The hook/change/conclusion structure is our editorial choice, separate from the STE specification.
+
+## Evidence rule: one image, one useful point
+
+Keep an existing image when it already proves the point. Do not create another screenshot just to complete a numbered checklist.
+Add an image only for a distinct behaviour or a meaningful before-and-after comparison. Record what it proves and its limits.
+Keep historical images in place; link to them instead of copying them into another folder.
+Use test data for public examples. Check for names, phone numbers, passwords and tokens before sharing an older image.
+
+| Evidence | Story it supports | Limits and next action |
+| --- | --- | --- |
+| [34 — Employee Home](docs/diagrams/evidence/34-employee-home-navigation.png) | Three daily tasks and a secondary Add customer action | User-supplied image inspected. No customer data visible. Menu is closed; it does not prove sidebar links or task completion. Keep it. |
+| 35 — Stage filter selected (pending) | A control that previously looked like a label now shows a clear action and selected state | Capture one selected stage and its matching test order. This replaces the generic tracking capture brief. |
+| 36 — Connection advice (optional, pending) | Technical errors translated into a staff action and support code | Capture one local simulated connection failure. Do not repeat it on every screen or describe it as a production outage. |
+
+Older captures remain in the evidence folder. They document earlier designs and may contain personal data or outdated wording.
+Review each selected image before a public post; the folder is not a ready-to-publish gallery.
+
+## 9 September 2026 — Make daily work easy to find
+
+**Problem:** Orders opened creation, Customers opened registration, and tracking had no sidebar entry.
+
+**Changes:** Added Home, New order, Track orders and Customers as shared destinations. Kept the owner's Finance landing page.
+Home now offers three main shortcuts and Add customer. Saved order details highlight Track orders.
+
+**Proof:** Commit `094b654`. Lint, production build and isolated API access checks passed. Image 34 shows the new Home.
+Uncoached user testing remains pending. This was a local change, not a deployment.
+
+**Learning:** `/orders` opens creation. `/orders/1` opens the saved record with database ID 1, regardless of its date.
+
+**LinkedIn draft:**
+
+> A menu label can send someone to the wrong task.
+>
+> In QLMS, Orders opened a new order form. Customers opened registration. Tracking needed its own link.
+>
+> I separated New order from Track orders and made Customers open search. I also added three daily shortcuts to Home.
+>
+> The code checks passed. Next, I need someone unfamiliar with QLMS to try these tasks without help.
+
+## 9 September 2026 — Make controls and errors understandable
+
+**Problem:** The stage filters worked, but the user did not recognise them as interactive. Connection errors used developer terms.
+
+**Changes:** Added bordered stage buttons, View orders, a selected-state label and View all orders.
+Added plain error instructions, support codes and a 30-second request deadline. Saves are not automatically repeated.
+Tracking now separates a load failure from an empty result. Corrected Staff text to describe the actual inactivity rule.
+
+**Proof:** Local commit `01a2fa3`. Sixteen request/message tests, frontend lint and the production build passed. Hands-on review remains pending.
+Read-only fixture checks also passed for both roles, owner reports, employee restrictions and wrong-password advice.
+Images 35/36 remain pending. No claim of reduced support calls, faster staff work or prevented outages is supported yet.
+
+**LinkedIn draft:**
+
+> A button can work and still look like a label.
+>
+> That was the problem with the order stages in QLMS. I added visible borders, View orders and a clear selected state.
+>
+> I also replaced technical errors with a next action and a support code. If a save result is uncertain, staff must check the record before trying again.
+>
+> The next check is simple: can someone use this without an explanation?
+
+## Add the next milestone here
+
+- Date and problem: what happened, and who observed it?
+- Changes: two or three concrete decisions.
+- Proof: commit, completed checks and one existing or new image if useful.
+- Limits: what is still local, untested or unproven?
+- Post idea: hook, changes, conclusion; 50–90 words.
+- Publication: draft / reviewed / posted, with the link only after publication.
+
+## Implementation map for the feedback follow-up
+
+All paths below are relative to the project root. Technical detail belongs here, not in the LinkedIn draft.
+
+| Files | Purpose |
+| --- | --- |
+| `frontend/src/app/(protected)/orders/status/page.js` | Visible filter actions, selected labels, keyboard focus and a load-failure retry state |
+| `frontend/src/lib/api.js`, `frontend/src/lib/user-messages.js` | Request deadline, safe error translation, support codes and uncertain-save guidance |
+| `frontend/src/context/auth-context.js` | Plain sign-in and password re-entry messages; existing auth rules retained |
+| `frontend/src/components/auth/auth-guard.js`, `login-form.js`, `session-reauth-dialog.js` | Plain access-check text and safe login feedback |
+| `frontend/src/components/layout/page-tour.js` | Explain the visible stage actions and remove developer terms |
+| `frontend/src/components/orders/service-item-entry.js` | Safe feedback when adding a clothing item |
+| `frontend/src/app/(protected)/customers/page.js`, `customers/search/page.js` | Clear customer warnings, search feedback and safe failures |
+| `frontend/src/app/(protected)/orders/page.js`, `orders/[orderId]/page.js` | Plain order instructions; avoid claiming an uncertain payment definitely failed |
+| `frontend/src/app/(protected)/dashboard/page.js`, `finance/page.js` | Safe report and finance error messages |
+| `frontend/src/app/(protected)/staff/page.js`, `settings/catalog/page.js` | Safe account/catalogue feedback and corrected inactivity explanation |
+| `frontend/tests/api.test.mjs`, `frontend/package.json` | Sixteen focused tests; run `node --test tests/api.test.mjs` inside frontend |
+| `docs/support-codes.md`, `docs/navigation-usability-check.md` | Support reference, failure review and exact student test steps |
+| `DEVELOPMENT_JOURNAL.md` | Central story index and short post drafts |
+| `docs/diagrams/evidence/34-employee-home-navigation.png` | Preserve the user's existing Home evidence |
+| `LEARNING_NOTES.md`, `PRESENTATION_NOTES.md`, `docs/evidence-tracker.md` | Local study/demo notes and accurate evidence status; these stay out of Git |
+
+Ignored helpers in `tmp/` support the local fixture server, read-only smoke checks and repeatable editing. They are not production features.
