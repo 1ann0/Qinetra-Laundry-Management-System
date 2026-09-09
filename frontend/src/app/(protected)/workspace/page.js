@@ -3,75 +3,67 @@
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 
-// List the real tasks available from the workspace instead of development phases.
-const MODULES = [
+// Keep the same everyday actions within reach for both staff roles.
+const SHORTCUTS = [
   {
-    number: "01",
-    title: "Customers",
-    description: "Add a new customer or find an existing record before creating an order.",
+    title: "New order",
+    description: "Record the customer's laundry, price and ready time.",
+    actions: [{ label: "New order", href: "/orders" }],
+  },
+  {
+    title: "Track orders",
+    description: "Find an order, check its progress or move it to the next stage.",
+    actions: [{ label: "Track orders", href: "/orders/status" }],
+  },
+  {
+    title: "Find customer",
+    description: "Search by name or phone and view the customer's past orders.",
     actions: [
-      { label: "Register customer", href: "/customers" },
-      { label: "Search customers", href: "/customers/search" },
+      { label: "Find customer", href: "/customers/search" },
+      { label: "Add customer", href: "/customers", secondary: true },
     ],
   },
   {
-    number: "02",
-    title: "Create order",
-    description: "Choose a customer and service, then let QLMS confirm the price and create the ticket.",
-    actions: [{ label: "Open order entry", href: "/orders" }],
-  },
-  {
-    number: "03",
-    title: "Track orders",
-    description: "View every order, move it to the next stage and check overdue collections.",
-    actions: [{ label: "Open status tracking", href: "/orders/status" }],
-  },
-  {
-    number: "04",
     title: "Owner dashboard",
-    description: "Review order totals and open the page used to download the CSV report.",
-    actions: [{ label: "Open owner dashboard", href: "/dashboard" }],
+    description: "Review order totals, outstanding balances and download order records.",
+    actions: [{ label: "View dashboard", href: "/dashboard" }],
     ownerOnly: true,
   },
   {
-    number: "05",
     title: "Shop setup",
     description: "Manage the services, prices and clothing names used for new orders.",
-    actions: [{ label: "Open shop setup", href: "/settings/catalog" }],
+    actions: [{ label: "Shop setup", href: "/settings/catalog" }],
     ownerOnly: true,
   },
 ];
 
-// Show the central feature list allowed for the signed-in role.
+// Owners keep their extra shortcuts; employees see only daily work.
 export default function WorkspacePage() {
   const { role } = useAuth();
 
-  // Employees see daily operations, while the owner also sees reporting tools.
-  const visibleModules = MODULES.filter((module) => !module.ownerOnly || role === "owner");
+  const visibleShortcuts = SHORTCUTS.filter((shortcut) => !shortcut.ownerOnly || role === "owner");
 
   return (
     <>
       <section className="workspace-heading">
         <p className="eyebrow">Signed in as {role}</p>
-        <h1>QLMS workspace</h1>
-        <p>
-          Everything needed for daily work is in one place; manage customers,
-          create orders and follow each load through to collection.
-        </p>
+        <h1>Home</h1>
+        <p>Choose what you need to do.</p>
       </section>
 
-      <section className="module-grid" aria-label="QLMS features">
-        {visibleModules.map((module) => (
-          <article className="module-card" key={module.number}>
+      <section className="module-grid" aria-label="Daily work shortcuts">
+        {visibleShortcuts.map((shortcut) => (
+          <article className="module-card" key={shortcut.title}>
             <div className="module-card-heading">
-              <span className="module-number">{module.number}</span>
-              <h2>{module.title}</h2>
+              <h2>{shortcut.title}</h2>
             </div>
-            <p>{module.description}</p>
+            <p>{shortcut.description}</p>
             <div className="module-actions">
-              {module.actions.map((action) => (
+              {shortcut.actions.map((action) => (
                 <Link
-                  className="inline-flex items-center gap-2 font-bold text-[#005AAB] no-underline hover:underline"
+                  className={`inline-flex min-h-11 items-center gap-2 no-underline hover:underline ${
+                    action.secondary ? "font-medium text-slate-600" : "font-bold text-[#005AAB]"
+                  }`}
                   href={action.href}
                   key={action.href}
                 >

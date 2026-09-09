@@ -10,9 +10,11 @@ import { useAuth } from "@/context/auth-context";
 
 const PAGE_TITLES = {
   "/finance": "Finance",
-  "/workspace": "Workspace",
-  "/customers": "Customers",
-  "/orders": "Orders",
+  "/workspace": "Home",
+  "/customers": "Add customer",
+  "/customers/search": "Find customer",
+  "/orders": "New order",
+  "/orders/status": "Track orders",
   "/dashboard": "Dashboard",
   "/staff": "Staff",
   "/settings": "Shop setup",
@@ -40,6 +42,14 @@ function NavigationIcon({ name }) {
       <>
         <path d="M6 2h9l5 5v15H6z" />
         <path d="M14 2v6h6M9 13h8M9 17h8" />
+      </>
+    ),
+    tracking: (
+      <>
+        <circle cx="5" cy="5" r="2" />
+        <circle cx="5" cy="12" r="2" />
+        <circle cx="5" cy="19" r="2" />
+        <path d="M5 7v3m0 4v3M11 5h10M11 12h10M11 19h10" />
       </>
     ),
     dashboard: (
@@ -89,18 +99,22 @@ export default function AppShell({ children }) {
   const [isMobileNavigation, setIsMobileNavigation] = useState(false);
   const [warningIdleExpiry, setWarningIdleExpiry] = useState(null);
 
-  // Keep the main module highlighted while the user is on one of its related pages.
+  // Creating an order and following saved orders are separate daily tasks.
   const isWorkspacePage = pathname === "/workspace";
   const isCustomersPage = pathname.startsWith("/customers");
-  const isOrdersPage = pathname.startsWith("/orders");
+  const isNewOrderPage = pathname === "/orders";
+  const isTrackingPage = pathname.startsWith("/orders/");
   const isDashboardPage = pathname === "/dashboard";
   const isFinancePage = pathname.startsWith("/finance");
   const isStaffPage = pathname.startsWith("/staff");
   const isSettingsPage = pathname.startsWith("/settings");
   const homeHref = role === "owner" ? "/finance" : "/workspace";
-  const pageTitle =
-    Object.entries(PAGE_TITLES).find(([path]) => pathname.startsWith(path))?.[1] ||
-    "QLMS";
+  const pageTitle = PAGE_TITLES[pathname] || (
+    isTrackingPage ? "Order details" : isSettingsPage ? "Shop setup" : "QLMS"
+  );
+  const sidebarHidden = reauthenticationRequired || (
+    isMobileNavigation && !mobileNavigationOpen
+  );
   const sessionEndingSoon = Boolean(
     idleExpiresAt && warningIdleExpiry === idleExpiresAt,
   );
@@ -108,9 +122,10 @@ export default function AppShell({ children }) {
     ...(role === "owner"
       ? [{ href: "/finance", label: "Finance", icon: "finance", active: isFinancePage }]
       : []),
-    { href: "/workspace", label: "Workspace", icon: "workspace", active: isWorkspacePage },
-    { href: "/customers", label: "Customers", icon: "customers", active: isCustomersPage },
-    { href: "/orders", label: "Orders", icon: "orders", active: isOrdersPage },
+    { href: "/workspace", label: "Home", icon: "workspace", active: isWorkspacePage },
+    { href: "/orders", label: "New order", icon: "orders", active: isNewOrderPage },
+    { href: "/orders/status", label: "Track orders", icon: "tracking", active: isTrackingPage },
+    { href: "/customers/search", label: "Customers", icon: "customers", active: isCustomersPage },
     ...(role === "owner"
       ? [
           { href: "/dashboard", label: "Dashboard", icon: "dashboard", active: isDashboardPage },
@@ -183,8 +198,8 @@ export default function AppShell({ children }) {
     >
       <aside
         className={`app-sidebar ${mobileNavigationOpen ? "sidebar-open" : ""}`}
-        inert={reauthenticationRequired ? true : undefined}
-        aria-hidden={reauthenticationRequired || undefined}
+        inert={sidebarHidden ? true : undefined}
+        aria-hidden={sidebarHidden || undefined}
       >
         <Link className="sidebar-brand" href={homeHref} aria-label="QLMS home">
           <Image

@@ -253,6 +253,7 @@ a {
   width: var(--sidebar-width);
   flex-direction: column;
   border-right: 1px solid var(--line);
+  overflow-y: auto;
   background: white;
   padding: 18px 14px;
   transition: width 180ms ease, transform 180ms ease;
@@ -298,6 +299,13 @@ a {
 .app-nav a:hover {
   background: var(--soft-blue);
   color: var(--qinetra-navy);
+}
+
+.app-nav a:focus-visible,
+.module-actions a:focus-visible,
+.navigation-toggle:focus-visible {
+  outline: 2px solid var(--qinetra-navy);
+  outline-offset: 3px;
 }
 
 .app-nav a[aria-current="page"],
@@ -577,18 +585,6 @@ a {
   padding: 18px;
 }
 
-.module-number {
-  display: inline-grid;
-  width: 32px;
-  height: 32px;
-  place-items: center;
-  border-radius: 10px;
-  background: var(--soft-blue);
-  color: var(--qinetra-navy);
-  font-size: 0.82rem;
-  font-weight: 800;
-}
-
 .module-card-heading {
   display: flex;
   align-items: center;
@@ -764,10 +760,6 @@ a {
 
   .workspace-main .module-card {
     padding: 12px 14px;
-  }
-
-  .workspace-main .module-card p {
-    display: none;
   }
 
   .workspace-main .module-actions {
