@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserMessage } from "@/lib/user-messages";
+
 import Link from "next/link";
 import { useState } from "react";
 import { useAuth } from "@/context/auth-context";
@@ -61,7 +63,7 @@ export default function CustomerRegistrationPage() {
       if (response.duplicate_warning) {
         setFeedback({
           type: "warning",
-          message: `Customer registered. ${response.duplicate_warning}`,
+          message: "Customer saved. Another customer uses this phone number. Open Customers to check the records before you create an order.",
         });
       } else {
         setFeedback({
@@ -74,7 +76,7 @@ export default function CustomerRegistrationPage() {
     } catch (error) {
       setFeedback({
         type: "error",
-        message: error.message || "Customer registration failed. Try again.",
+        message: getUserMessage(error, "QLMS could not confirm that the customer was saved. Check Customers before you add them again."),
       });
     } finally {
       setIsSubmitting(false);
@@ -94,7 +96,7 @@ export default function CustomerRegistrationPage() {
     <section className="mx-auto max-w-3xl">
       <div className="mb-8">
         <p className="mb-2 text-sm font-bold uppercase tracking-widest text-[#005AAB]">
-          Customer module
+          Customers
         </p>
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
           Register a customer

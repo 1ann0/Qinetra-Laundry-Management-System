@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserMessage } from "@/lib/user-messages";
+
 import { useState } from "react";
 
 // Keep the usual Laundry tally items in the order provided by Qinetra.
@@ -121,7 +123,7 @@ export default function ServiceItemEntry({
     } catch (saveError) {
       setMissingItemFeedback({
         type: "error",
-        text: saveError.message || "The clothing item could not be added.",
+        text: getUserMessage(saveError, "QLMS could not confirm the new clothing item. Check the clothing list before you add it again."),
       });
     } finally {
       setIsAddingMissingItem(false);

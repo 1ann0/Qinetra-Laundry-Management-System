@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserMessage } from "@/lib/user-messages";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
@@ -37,7 +39,7 @@ export default function LoginForm() {
       const signedInRole = await login(username, password);
       router.replace(signedInRole === "owner" ? "/finance" : "/workspace");
     } catch (loginError) {
-      setError(loginError.message || "Login failed. Please try again.");
+      setError(getUserMessage(loginError, "QLMS could not sign you in."));
     } finally {
       setIsSubmitting(false);
     }

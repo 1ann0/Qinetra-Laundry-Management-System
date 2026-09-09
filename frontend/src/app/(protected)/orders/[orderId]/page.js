@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserMessage } from "@/lib/user-messages";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -160,7 +162,7 @@ export default function OrderDetailPage() {
   useEffect(() => {
     async function loadOrderDetails() {
       if (!Number.isInteger(orderId) || orderId <= 0) {
-        setError("This order link is not valid.");
+        setError("This order link is not valid. Open Track orders and find the order again.");
         setIsLoading(false);
         return;
       }
@@ -182,7 +184,7 @@ export default function OrderDetailPage() {
         );
         setItemTypes(itemResponse);
       } catch (loadError) {
-        setError(loadError.message || "The order receipt could not be loaded.");
+        setError(getUserMessage(loadError, "The order receipt could not be loaded."));
       } finally {
         setIsLoading(false);
       }
@@ -269,7 +271,7 @@ export default function OrderDetailPage() {
       setDraftItems([]);
       setMessage(`${serviceLine.service_name} item check saved.`);
     } catch (saveError) {
-      setError(saveError.message || "The clothing records could not be saved.");
+      setError(getUserMessage(saveError, "QLMS could not confirm the clothing changes. Check the order before you save again."));
     } finally {
       setIsSaving(false);
     }
@@ -343,7 +345,7 @@ export default function OrderDetailPage() {
         `${getPaymentMethodLabel(paymentMethod)} payment of ${formatKes(amount)} recorded.`,
       );
     } catch (paymentError) {
-      setError(paymentError.message || "The payment could not be recorded.");
+      setError(getUserMessage(paymentError, "QLMS could not confirm the payment. Check the order before you record the payment again."));
     } finally {
       setIsRecordingPayment(false);
     }

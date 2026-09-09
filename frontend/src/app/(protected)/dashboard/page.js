@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserMessage } from "@/lib/user-messages";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import OwnerGuard from "@/components/auth/owner-guard";
@@ -45,7 +47,7 @@ function DashboardContent() {
         const response = await authenticatedRequest("/dashboard/summary");
         setSummary(response);
       } catch (loadError) {
-        setError(loadError.message || "The dashboard summary could not be loaded.");
+        setError(getUserMessage(loadError, "The dashboard summary could not be loaded."));
       } finally {
         setIsLoading(false);
       }
@@ -65,7 +67,7 @@ function DashboardContent() {
       downloadCsvFile(csvText);
       setDownloadMessage("Order report downloaded as qlms_orders_export.csv.");
     } catch (downloadError) {
-      setError(downloadError.message || "The order report could not be downloaded.");
+      setError(getUserMessage(downloadError, "The order report could not be downloaded."));
     } finally {
       setIsDownloading(false);
     }

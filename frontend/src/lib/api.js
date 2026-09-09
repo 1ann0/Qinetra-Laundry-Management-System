@@ -1,69 +1,79 @@
-export class ApiError extends Error {
-  constructor(message, status = 0) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-  }
-}
+import { ApiError, responseError } from "./user-messages.js";
+export { ApiError } from "./user-messages.js";
+
+const REQUEST_TIMEOUT_MS = 30_000;
 
 function getApiBaseUrl() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
 
   if (!apiUrl) {
     throw new ApiError(
-      "QLMS is missing its API address. Add NEXT_PUBLIC_API_URL to .env.local.",
+      "QLMS is not ready to use. Contact support.", 0, "QLMS-SETUP",
     );
   }
 
   return apiUrl.replace(/\/$/, "");
 }
 
-function getErrorMessage(payload, fallback) {
-  if (typeof payload?.detail === "string") {
-    return payload.detail;
-  }
-
-  if (Array.isArray(payload?.detail)) {
-    return payload.detail.map((item) => item.msg).join(" ");
-  }
-
-  return fallback;
-}
-
 export async function apiRequest(path, options = {}) {
-  const { token, headers, ...fetchOptions } = options;
+  const { token, headers, signal, ...fetchOptions } = options;
   const requestHeaders = new Headers(headers);
 
   if (token) {
     requestHeaders.set("Authorization", `Bearer ${token}`);
   }
 
-  let response;
+  const url = `${getApiBaseUrl()}${path}`;
+  const isSave = !["GET", "HEAD"].includes((fetchOptions.method || "GET").toUpperCase()) && !path.startsWith("/auth/");
+  const recovery = isSave
+    ? "The change may have been saved. Check the record before you try again."
+    : "Try again in a moment.";
+
+  // Stop waiting after 30 seconds. Never repeat a save automatically.
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
+  const abortRequest = () => controller.abort();
+  if (signal?.aborted) controller.abort();
+  signal?.addEventListener("abort", abortRequest, { once: true });
 
   try {
-    response = await fetch(`${getApiBaseUrl()}${path}`, {
+    const response = await fetch(url, {
       ...fetchOptions,
       headers: requestHeaders,
+      signal: controller.signal,
     });
-  } catch {
-    throw new ApiError(
-      "QLMS could not reach the backend. Check that the API is running and try again.",
-    );
+    const contentType = response.headers.get("content-type") || "";
+    let payload;
+    try {
+      payload = contentType.includes("application/json")
+        ? await response.json()
+        : await response.text();
+    } catch (error) {
+      if (controller.signal.aborted) throw error;
+      if (response.ok) {
+        throw new ApiError(`QLMS could not read the reply. ${recovery} Contact support if this continues.`, response.status, "QLMS-RESPONSE");
+      }
+    }
+    if (!response.ok) throw responseError(response.status, payload, path, recovery);
+    const isReport = path.split("?")[0] === "/dashboard/export" && /text\/(csv|plain)/.test(contentType);
+    if (!isReport && (!contentType.includes("application/json") || payload === null || typeof payload !== "object")) {
+      throw new ApiError(`QLMS could not read the reply. ${recovery} Contact support.`, response.status, "QLMS-RESPONSE");
+    }
+    return payload;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    if (timedOut) {
+      throw new ApiError(`QLMS took too long to reply. ${recovery} Contact support if this continues.`, 0, "QLMS-TIMEOUT");
+    }
+    throw new ApiError(`QLMS could not connect. Check your internet connection. ${recovery} Contact support if this continues.`, 0, "QLMS-CONNECTION");
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", abortRequest);
   }
-
-  const contentType = response.headers.get("content-type") || "";
-  const payload = contentType.includes("application/json")
-    ? await response.json()
-    : await response.text();
-
-  if (!response.ok) {
-    throw new ApiError(
-      getErrorMessage(payload, `Request failed with status ${response.status}.`),
-      response.status,
-    );
-  }
-
-  return payload;
 }
 
 export function loginRequest(username, password) {

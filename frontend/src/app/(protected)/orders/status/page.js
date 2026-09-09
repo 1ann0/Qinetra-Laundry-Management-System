@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserMessage } from "@/lib/user-messages";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { SERVICES_BY_CODE } from "@/constants/pricing";
@@ -339,8 +341,8 @@ export default function OrderStatusPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [refreshNumber, setRefreshNumber] = useState(0);
 
-  const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
+  const [ordersLoadFailed, setOrdersLoadFailed] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -370,23 +372,10 @@ export default function OrderStatusPage() {
   }, []);
 
   useEffect(() => {
-    async function loadCustomers() {
-      try {
-        const response = await authenticatedRequest("/customers");
-        setCustomers(response);
-      } catch (loadError) {
-        setError(loadError.message || "Customer names could not be loaded.");
-      } finally {
-        setIsLoadingCustomers(false);
-      }
-    }
-
-    loadCustomers();
-  }, [authenticatedRequest]);
-
-  useEffect(() => {
+    let ignoreResponse = false;
     async function loadOrders() {
       setIsLoadingOrders(true);
+      setOrdersLoadFailed(false);
       setError("");
 
       const searchQuery = searchTerm
@@ -395,12 +384,14 @@ export default function OrderStatusPage() {
 
       try {
         const [
+          customerResponse,
           orderResponse,
           overdueResponse,
           outstandingResponse,
           dueTodayResponse,
           productionLateResponse,
         ] = await Promise.all([
+          authenticatedRequest("/customers"),
           authenticatedRequest(`/orders${searchQuery}`),
           authenticatedRequest("/orders/overdue"),
           authenticatedRequest("/orders?outstanding=true"),
@@ -408,6 +399,8 @@ export default function OrderStatusPage() {
           authenticatedRequest("/orders?production_late=true"),
         ]);
 
+        if (ignoreResponse) return;
+        setCustomers(customerResponse);
         setOrders(orderResponse);
         setOverdueCount(overdueResponse.length);
         setOverdueOrderIds(overdueResponse.map((order) => order.id));
@@ -420,14 +413,17 @@ export default function OrderStatusPage() {
           productionLateResponse.map((order) => order.id),
         );
       } catch (loadError) {
-        setError(loadError.message || "Orders could not be loaded.");
+        if (ignoreResponse) return;
+        setError(getUserMessage(loadError, "Orders could not be loaded."));
+        setOrdersLoadFailed(true);
         setOrders([]);
       } finally {
-        setIsLoadingOrders(false);
+        if (!ignoreResponse) setIsLoadingOrders(false);
       }
     }
 
     loadOrders();
+    return () => { ignoreResponse = true; };
   }, [authenticatedRequest, refreshNumber, searchTerm]);
 
   const customerNames = Object.fromEntries(
@@ -512,7 +508,7 @@ export default function OrderStatusPage() {
       );
       setRefreshNumber((currentNumber) => currentNumber + 1);
     } catch (updateError) {
-      setError(updateError.message || "The order status could not be updated.");
+      setError(getUserMessage(updateError, "QLMS could not confirm the new stage. Check Track orders before you move the order again."));
     } finally {
       setUpdatingOrderId(null);
     }
@@ -523,7 +519,7 @@ export default function OrderStatusPage() {
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="mb-2 text-sm font-bold uppercase tracking-widest text-[#005AAB]">
-            Status and overdue module
+            Laundry progress
           </p>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
             Track laundry orders
@@ -589,24 +585,42 @@ export default function OrderStatusPage() {
       </form>
 
       <section
-        className="mb-6 grid gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-2 sm:p-4 lg:grid-cols-4"
+        className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
         id="status-stages-step"
         aria-label="Filter orders by status stage"
       >
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">View orders by stage</h2>
+            <p className="mt-1 text-sm text-slate-600">Select a stage to see its orders below. This does not change an order.</p>
+          </div>
+          <button
+            className="min-h-11 cursor-pointer rounded-xl border border-[#005AAB] px-4 font-semibold text-[#005AAB] hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#005AAB]"
+            type="button"
+            aria-pressed={filter === "all"}
+            aria-controls="status-results"
+            onClick={() => chooseFilter("all")}
+          >
+            View all orders
+          </button>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {ORDER_STAGES.map((stage, index) => {
           const count = searchCountsByStage[stage.value];
           const isSelected = filter === stage.value;
 
           return (
             <button
-              className={`rounded-xl border px-4 py-3 text-left transition-colors ${
+              className={`cursor-pointer rounded-xl border-2 px-4 py-3 text-left shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#005AAB] disabled:cursor-wait disabled:opacity-60 ${
                 isSelected
                   ? "border-[#005AAB] bg-blue-50 text-[#005AAB]"
-                  : "border-transparent bg-white text-slate-800 hover:border-blue-200 hover:bg-blue-50/60"
+                  : "border-blue-200 bg-white text-slate-800 hover:border-[#005AAB] hover:bg-blue-50"
               }`}
               type="button"
               key={stage.value}
               aria-pressed={isSelected}
+              aria-controls="status-results"
+              disabled={isLoadingOrders || ordersLoadFailed}
               onClick={() => chooseFilter(stage.value)}
             >
               <span className="flex items-center justify-between gap-3 text-xs font-bold uppercase tracking-wide">
@@ -614,7 +628,7 @@ export default function OrderStatusPage() {
                   Step {index + 1}
                 </span>
                 <span className="normal-case tracking-normal text-slate-600">
-                  {count} {count === 1 ? "order" : "orders"}
+                  {isLoadingOrders || ordersLoadFailed ? "—" : `${count} ${count === 1 ? "order" : "orders"}`}
                 </span>
               </span>
               <span className="mt-2 block text-base font-bold">
@@ -623,12 +637,17 @@ export default function OrderStatusPage() {
               <span className="mt-1 block text-xs text-slate-500">
                 {stage.help}
               </span>
+              <span className="mt-3 flex items-center justify-between border-t border-blue-200 pt-3 text-sm font-bold text-[#005AAB]">
+                {isSelected ? "Showing these orders" : "View orders"}
+                <span aria-hidden="true">{isSelected ? "✓" : "→"}</span>
+              </span>
             </button>
           );
         })}
+        </div>
       </section>
 
-      <section
+      {!isLoadingOrders && !ordersLoadFailed ? <section
         className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
         id="status-focus-step"
       >
@@ -690,7 +709,7 @@ export default function OrderStatusPage() {
             </button>
           </div>
         </div>
-      </section>
+      </section> : null}
 
       {error ? (
         <p
@@ -710,10 +729,23 @@ export default function OrderStatusPage() {
         </p>
       ) : null}
 
-      {isLoadingOrders || isLoadingCustomers ? (
+      <div id="status-results" aria-busy={isLoadingOrders}>
+      {isLoadingOrders ? (
         <p className="rounded-2xl border border-slate-200 bg-white p-10 text-center font-semibold text-slate-600">
           Loading orders…
         </p>
+      ) : ordersLoadFailed ? (
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 text-center">
+          <h2 className="text-xl font-bold text-slate-900">Orders are not available yet</h2>
+          <p className="mt-2 text-slate-600">Use the advice above, then try to load the orders again.</p>
+          <button
+            className="mt-4 min-h-11 cursor-pointer rounded-xl bg-[#005AAB] px-5 font-bold text-white hover:bg-[#004782] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#005AAB]"
+            type="button"
+            onClick={() => setRefreshNumber((number) => number + 1)}
+          >
+            Try loading orders again
+          </button>
+        </section>
       ) : visibleOrders.length === 0 ? (
         <section className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
           <h2 className="text-xl font-bold text-slate-900">No orders found</h2>
@@ -733,8 +765,9 @@ export default function OrderStatusPage() {
       ) : (
         <section id="status-board-step" aria-label="Laundry orders">
           <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm font-bold text-slate-700">
+            <p className="text-sm font-bold text-slate-700" role="status">
               Showing {visibleOrders.length} {visibleOrders.length === 1 ? "order" : "orders"}
+              {ORDER_STAGES.some((stage) => stage.value === filter) ? ` · ${getStatusLabel(filter)}` : ""}
             </p>
             <p className="hidden text-sm text-slate-500 lg:block">
               Each action moves an order forward by exactly one stage.
@@ -761,6 +794,7 @@ export default function OrderStatusPage() {
           </div>
         </section>
       )}
+      </div>
 
     </section>
   );

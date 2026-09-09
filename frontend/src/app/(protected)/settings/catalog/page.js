@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserMessage } from "@/lib/user-messages";
+
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import OwnerGuard from "@/components/auth/owner-guard";
@@ -161,7 +163,7 @@ function ShopSetupContent() {
         setItemTypes(sortByName(itemResponse));
       } catch (loadError) {
         setPageError(
-          loadError.message || "The shop catalogue could not be loaded.",
+          getUserMessage(loadError, "The shop catalogue could not be loaded."),
         );
       } finally {
         setIsLoading(false);
@@ -330,7 +332,7 @@ function ShopSetupContent() {
     } catch (saveError) {
       setServiceFormFeedback({
         type: "error",
-        text: saveError.message || "The service could not be saved.",
+        text: getUserMessage(saveError, "QLMS could not confirm the service changes. Check Shop setup before you save again."),
       });
     } finally {
       setBusyAction("");
@@ -373,7 +375,7 @@ function ShopSetupContent() {
         targetId: service.id,
         type: "error",
         text:
-          updateError.message || "The service status could not be changed.",
+          getUserMessage(updateError, "The service status could not be changed."),
       });
     } finally {
       setBusyAction("");
@@ -446,7 +448,7 @@ function ShopSetupContent() {
     } catch (saveError) {
       setItemFormFeedback({
         type: "error",
-        text: saveError.message || "The clothing item could not be saved.",
+        text: getUserMessage(saveError, "QLMS could not confirm the clothing item changes. Check Shop setup before you save again."),
       });
     } finally {
       setBusyAction("");
@@ -487,8 +489,7 @@ function ShopSetupContent() {
         targetId: itemType.id,
         type: "error",
         text:
-          updateError.message ||
-          "The clothing item status could not be changed.",
+          getUserMessage(updateError, "The clothing item status could not be changed."),
       });
     } finally {
       setBusyAction("");

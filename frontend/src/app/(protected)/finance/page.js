@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserMessage } from "@/lib/user-messages";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import OwnerGuard from "@/components/auth/owner-guard";
 import { useAuth } from "@/context/auth-context";
@@ -333,7 +335,7 @@ function FinancialSnapshotContent() {
         setSummary(response);
       } catch (loadError) {
         setError(
-          loadError.message || "The financial summary could not be loaded.",
+          getUserMessage(loadError, "The financial summary could not be loaded."),
         );
       } finally {
         setIsLoading(false);
@@ -354,7 +356,7 @@ function FinancialSnapshotContent() {
       } catch (loadError) {
         if (isCurrentRequest) {
           setError(
-            loadError.message || "The financial summary could not be loaded.",
+            getUserMessage(loadError, "The financial summary could not be loaded."),
           );
         }
       } finally {

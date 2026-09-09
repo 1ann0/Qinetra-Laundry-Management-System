@@ -18,7 +18,7 @@ export default function AuthGuard({ children }) {
     return (
       <main className="centered-page">
         <div className="loading-card" role="status">
-          Checking your session…
+          Checking your sign-in…
         </div>
       </main>
     );

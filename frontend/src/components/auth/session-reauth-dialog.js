@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserMessage } from "@/lib/user-messages";
+
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
@@ -84,7 +86,7 @@ export default function SessionReauthenticationDialog() {
     } catch (loginError) {
       form.reset();
       setError(
-        `${loginError.message || "QLMS could not confirm your password."} If this account was deactivated, ask the owner about your access.`,
+        getUserMessage(loginError, "QLMS could not confirm your password."),
       );
       shouldRefocusPassword = true;
     } finally {
@@ -129,7 +131,7 @@ export default function SessionReauthenticationDialog() {
             className="text-2xl font-bold tracking-tight text-slate-900"
             id="reauthentication-heading"
           >
-            Session paused — login required
+            Enter your password to continue
           </h2>
           <p
             className="mt-3 text-sm leading-6 text-slate-600"

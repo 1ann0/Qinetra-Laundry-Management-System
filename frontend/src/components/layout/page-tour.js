@@ -31,7 +31,7 @@ const ORDER_TOUR_STEPS = [
     targetId: "order-review-step",
     title: "Review and create",
     description:
-      "Check the estimate, ready time and payment choice before creating the final backend-priced ticket.",
+      "Check the price, ready time and payment choice. Then select Create order to save the ticket.",
   },
 ];
 
@@ -52,7 +52,7 @@ const STAFF_TOUR_STEPS = [
     targetId: "staff-security-step",
     title: "Turn access off safely",
     description:
-      "Reset a forgotten password, or deactivate an employee who should no longer use QLMS. Existing sessions stop working too.",
+      "Reset a forgotten password. Turn off accounts for staff who should no longer use QLMS.",
   },
 ];
 
@@ -67,7 +67,7 @@ const STATUS_TOUR_STEPS = [
     targetId: "status-stages-step",
     title: "Choose an order stage",
     description:
-      "Each section labels its step number and order total. Select one to show only orders at that stage.",
+      "Select View orders on a stage to see its orders below. Select View all orders to see all matches.",
   },
   {
     targetId: "status-focus-step",

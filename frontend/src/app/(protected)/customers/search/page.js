@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserMessage } from "@/lib/user-messages";
+
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/auth-context";
@@ -97,7 +99,7 @@ export default function CustomerSearchPage() {
         }
       } catch (loadError) {
         setError(
-          loadError.message || "Customer and service history could not be loaded.",
+          getUserMessage(loadError, "Customer and service history could not be loaded."),
         );
       } finally {
         setIsHistoryLoading(false);
@@ -126,7 +128,7 @@ export default function CustomerSearchPage() {
       setHasSearched(true);
     } catch (searchError) {
       setCustomers([]);
-      setError(searchError.message || "Customer search failed. Try again.");
+      setError(getUserMessage(searchError, "QLMS could not find customers."));
     } finally {
       setIsLoading(false);
     }
@@ -167,7 +169,7 @@ export default function CustomerSearchPage() {
       setHasLoadedHistory(true);
     } catch (loadError) {
       setHistoryOrders([]);
-      setHistoryError(loadError.message || "Order history could not be loaded.");
+      setHistoryError(getUserMessage(loadError, "Order history could not be loaded."));
     } finally {
       setIsHistoryLoading(false);
     }
@@ -249,7 +251,7 @@ export default function CustomerSearchPage() {
     <section className="mx-auto max-w-6xl">
       <div className="mb-8">
         <p className="mb-2 text-sm font-bold uppercase tracking-widest text-[#005AAB]">
-          Customer module
+          Customers
         </p>
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
           Find a customer or past order

@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserMessage } from "@/lib/user-messages";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import OwnerGuard from "@/components/auth/owner-guard";
 import { useAuth } from "@/context/auth-context";
@@ -58,7 +60,7 @@ function StaffManagementContent() {
       const response = await authenticatedRequest("/users");
       setAccounts(sortAccounts(response));
     } catch (error) {
-      setLoadError(error.message || "Staff accounts could not be loaded.");
+      setLoadError(getUserMessage(error, "Staff accounts could not be loaded."));
     } finally {
       setIsLoading(false);
     }
@@ -75,7 +77,7 @@ function StaffManagementContent() {
         }
       } catch (error) {
         if (!ignoreResponse) {
-          setLoadError(error.message || "Staff accounts could not be loaded.");
+          setLoadError(getUserMessage(error, "Staff accounts could not be loaded."));
         }
       } finally {
         if (!ignoreResponse) {
@@ -149,7 +151,7 @@ function StaffManagementContent() {
     } catch (error) {
       setFeedback({
         type: "error",
-        message: error.message || "The employee account could not be created.",
+        message: getUserMessage(error, "QLMS could not confirm the new account. Check Staff before you add it again."),
       });
     } finally {
       setIsCreating(false);
@@ -161,7 +163,7 @@ function StaffManagementContent() {
     const action = nextActiveState ? "reactivate" : "deactivate";
     const explanation = nextActiveState
       ? "They will be able to sign in again with their current password."
-      : "They will no longer be able to sign in, and their current session will stop working.";
+      : "They will no longer be able to sign in or load more shop records.";
 
     if (
       !window.confirm(
@@ -204,7 +206,7 @@ function StaffManagementContent() {
     } catch (error) {
       setFeedback({
         type: "error",
-        message: error.message || `The account could not be ${action}d.`,
+        message: getUserMessage(error, `The account could not be ${action}d.`),
       });
     } finally {
       setBusyAction("");
@@ -239,7 +241,7 @@ function StaffManagementContent() {
 
     if (
       !window.confirm(
-        `Reset ${account.username}'s password?\n\nTheir current QLMS session will stop working. Give the new password only to this employee.`,
+        `Reset ${account.username}'s password?\n\nThey must sign in again with the new password. Give the new password only to this employee.`,
       )
     ) {
       return;
@@ -259,12 +261,12 @@ function StaffManagementContent() {
       setShowResetPasswords(false);
       setFeedback({
         type: "success",
-        message: `${account.username}'s password was reset. Their previous session can no longer access QLMS.`,
+        message: `${account.username}'s password was reset. Give the new password to this employee so they can sign in again.`,
       });
     } catch (error) {
       setFeedback({
         type: "error",
-        message: error.message || "The password could not be reset.",
+        message: getUserMessage(error, "The password could not be reset."),
       });
     } finally {
       setBusyAction("");
@@ -297,12 +299,12 @@ function StaffManagementContent() {
       >
         <div>
           <h2 className="text-lg font-bold text-slate-900">
-            Short, individual sessions protect shop records
+            Separate staff accounts protect shop records
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-700">
-            Every login ends after 30 minutes. QLMS warns the user two minutes
-            before expiry. Deactivating an employee also invalidates their saved
-            session on its next backend request.
+            QLMS pauses after 30 minutes without activity. A warning appears two
+            minutes before the pause. Staff enter their password to continue.
+            An inactive account cannot sign in or load more shop records.
           </p>
         </div>
         <span className="mt-4 inline-flex shrink-0 rounded-full bg-[#005AAB] px-3 py-1.5 text-xs font-bold text-white sm:mt-0">
@@ -539,8 +541,8 @@ function StaffManagementContent() {
                           Reset {account.username}&apos;s password
                         </h4>
                         <p className="mt-1 text-sm leading-5 text-slate-600">
-                          Saving a new password immediately invalidates this
-                          employee&apos;s previous session.
+                          After you save the new password, the employee must
+                          sign in again.
                         </p>
                         <div className="mt-4 grid gap-4 sm:grid-cols-2">
                           <div>

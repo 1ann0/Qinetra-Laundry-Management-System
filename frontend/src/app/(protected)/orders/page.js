@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserMessage } from "@/lib/user-messages";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import ServiceItemEntry, {
@@ -408,7 +410,7 @@ export default function OrderEntryPage() {
           setSelectedCustomerId(requestedCustomerId);
         }
       } catch (loadError) {
-        setError(loadError.message || "Order setup could not be loaded.");
+        setError(getUserMessage(loadError, "Order setup could not be loaded."));
       } finally {
         setIsLoadingSetup(false);
       }
@@ -685,8 +687,7 @@ export default function OrderEntryPage() {
           );
         } catch (paymentRequestError) {
           paymentWarning =
-            paymentRequestError.message ||
-            "The order was created, but its payment was not recorded.";
+            getUserMessage(paymentRequestError, "The order was saved. QLMS could not confirm the payment. Check the order before you record the payment again.");
         }
       }
 
@@ -713,7 +714,7 @@ export default function OrderEntryPage() {
       setPaymentConfirmed(false);
       setReceiptShareError("");
     } catch (orderError) {
-      setError(orderError.message || "The order could not be created.");
+      setError(getUserMessage(orderError, "QLMS could not confirm that the order was saved. Check Track orders before you create it again."));
     } finally {
       setIsSubmitting(false);
     }
@@ -730,7 +731,7 @@ export default function OrderEntryPage() {
         </h1>
         <p className="mt-3 max-w-3xl leading-7 text-slate-600">
           Select the customer, add their services and record the clothing
-          received. FastAPI confirms the final price and ticket number.
+          received. QLMS calculates the final price when you save the order.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3">
           <Link
@@ -1528,8 +1529,8 @@ export default function OrderEntryPage() {
           )}
 
           <p className="mt-5 text-sm leading-6 text-slate-600">
-            This is a preview only. The backend uses the saved catalogue prices
-            to confirm the final amount.
+            This is an estimate. QLMS uses the prices in Shop setup to calculate
+            the final amount when you save.
           </p>
 
           <div className="mt-5 border-t border-blue-200 pt-4 text-sm">
@@ -1565,7 +1566,7 @@ export default function OrderEntryPage() {
             {isSubmitting ? "Creating order…" : "Create order"}
           </button>
           <p className="mt-3 text-center text-xs leading-5 text-slate-600">
-            FastAPI checks the final price and creates the ticket.
+            Check the details above before you create the order.
           </p>
         </aside>
       </form>
@@ -1606,9 +1607,8 @@ export default function OrderEntryPage() {
           </h2>
           {createdOrder.paymentWarning ? (
             <p className="mt-5 rounded-xl border border-amber-400 bg-amber-100 px-4 py-3 font-semibold text-amber-950">
-              The order was created, but its payment was not recorded.{" "}
-              {createdOrder.paymentWarning} Open the receipt to record it
-              without creating another order.
+              {createdOrder.paymentWarning} Open the receipt to check the payment
+              before you record it again. Do not create another order.
             </p>
           ) : null}
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">

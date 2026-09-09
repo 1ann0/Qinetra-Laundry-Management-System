@@ -24,11 +24,11 @@ const TOKEN_RENEWAL_INTERVAL_MS = 5 * 60 * 1000;
 const TOKEN_RENEWAL_CHECK_MS = 15 * 1000;
 const ACTIVITY_SAVE_DELAY_MS = 500;
 const INACTIVITY_SESSION_MESSAGE =
-  "No activity was detected for 30 minutes. Enter your password to continue.";
+  "QLMS paused after 30 minutes without activity. Enter your password to continue.";
 const TOKEN_RENEWAL_MESSAGE =
-  "Your secure session could not be renewed. Enter your password to continue.";
+  "QLMS needs to check your account again. Enter your password to continue.";
 const INACTIVE_SESSION_MESSAGE =
-  "Your session is no longer active. Re-enter your password or ask the owner about your access.";
+  "Enter your password to continue. If you cannot sign in, ask the owner to check your account.";
 
 function getSessionFromLogin(response, lastActivityAt = Date.now()) {
   const expiresAt = getJwtExpiry(response.access_token);
@@ -44,7 +44,7 @@ function getSessionFromLogin(response, lastActivityAt = Date.now()) {
     !hasValidUserId ||
     !hasValidUsername
   ) {
-    throw new ApiError("The backend returned an invalid login session.");
+    throw new ApiError("QLMS could not sign you in. Contact support.", 0, "QLMS-LOGIN-REPLY");
   }
 
   return {
@@ -192,7 +192,7 @@ export function AuthProvider({ children }) {
         nextSession.userId !== currentSession.userId ||
         nextSession.username !== currentSession.username
       ) {
-        throw new ApiError("QLMS could not confirm the same staff account.");
+        throw new ApiError("QLMS could not confirm your account. Log out and sign in again. Contact support if this continues.", 0, "QLMS-ACCOUNT");
       }
 
       activitySinceRenewalRef.current = false;
@@ -402,7 +402,7 @@ export function AuthProvider({ children }) {
       const currentSession = sessionRef.current;
       if (!currentSession?.username) {
         throw new ApiError(
-          "This older session cannot be resumed. Log out and sign in again.",
+          "Log out and sign in again to continue.",
         );
       }
 
@@ -411,7 +411,7 @@ export function AuthProvider({ children }) {
       const nextSession = getSessionFromLogin(response, now);
 
       if (nextSession.userId !== currentSession.userId) {
-        throw new ApiError("QLMS could not confirm the same staff account.");
+        throw new ApiError("QLMS could not confirm your account. Log out and sign in again. Contact support if this continues.", 0, "QLMS-ACCOUNT");
       }
 
       lastActivityAtRef.current = now;
@@ -427,11 +427,11 @@ export function AuthProvider({ children }) {
     async (path, options = {}) => {
       const currentSession = sessionRef.current;
       if (!currentSession?.token) {
-        throw new ApiError("Your session needs to be confirmed again.", 401);
+        throw new ApiError("Enter your password to continue.", 401);
       }
 
       if (checkInactivity()) {
-        throw new ApiError("Your session has been paused after inactivity.", 401);
+        throw new ApiError(INACTIVITY_SESSION_MESSAGE, 401);
       }
 
       if (
@@ -439,7 +439,7 @@ export function AuthProvider({ children }) {
         currentSession.expiresAt <= Date.now()
       ) {
         requireReauthentication(TOKEN_RENEWAL_MESSAGE);
-        throw new ApiError("Your secure session has expired.", 401);
+        throw new ApiError(TOKEN_RENEWAL_MESSAGE, 401);
       }
 
       try {
