@@ -71,7 +71,7 @@ Passing automated checks alone does not close this phase.
 
 **Value:** A busy counter or lost connection must not create duplicate orders or payments.
 
-**10 September status:** Local implementation and recovery evidence are in [the Phase 2 check record](docs/transaction-safety-check.md). PostgreSQL migration/concurrency checks are blocked by a local Docker startup failure. Do not close this phase or deploy until those checks and the student review pass.
+**10 September status:** Local implementation and recovery evidence are in [the Phase 2 check record](docs/transaction-safety-check.md). Docker now runs. The PostgreSQL-backed suite passed 91 tests; one migration test needs a session-fixture correction before its final assertion can run. Do not close this phase or deploy until the full suite and student review pass.
 
 - Replace or protect the count-plus-one ticket calculation. Test two staff creating orders at the same time.
 - Add an idempotency key for each order/payment submission: a repeated request returns the original result instead of saving twice.
@@ -352,4 +352,8 @@ Do not invent these answers. Work that does not depend on them can continue with
 | Support becomes unmanageable | Repeated incidents with no owner or resolution | Set a real support process; fix recurring causes before selling more accounts |
 | More development produces no paying demand | Feature enthusiasm without regular use or commitment | Use the phase 7 value review to choose fix, proceed or stop |
 
-**Next action:** Complete phase 1's hands-on review. Then scope phase 2 around ticket uniqueness and duplicate-save protection.
+**Next product action:** Complete Phase 2's migration-test fixture correction, PostgreSQL rerun and student acceptance. Navigation usability was already reported working.
+
+## Guided cloud-engineering learning track
+
+The student wants to learn Docker and eventually deploy a containerized QLMS to AWS. Use [the Docker learning guide](docs/docker-learning-guide.md), starting with image/container inspection and one disposable database. Then write the API Dockerfile together, add Compose and frontend packaging, and plan an AWS sandbox with an agreed budget. This learning track does not authorize an unattended application conversion, live data migration or cloud deployment. Google OAuth also remains guided.

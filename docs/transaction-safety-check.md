@@ -26,7 +26,7 @@ PostgreSQL transaction locks release when the transaction ends. See [PostgreSQL 
 
 | Check | Result |
 | --- | --- |
-| Backend suite | 86 passed; 6 PostgreSQL cases skipped because no local PostgreSQL URL was available |
+| Backend suite | Latest Docker-backed run: 91 passed, 1 test-setup error, no skips |
 | Frontend request/recovery tests | 32 passed |
 | Frontend lint | Passed, including the final focus improvement |
 | Production build | Passed, including the final focus improvement |
@@ -34,20 +34,20 @@ PostgreSQL transaction locks release when the transaction ends. See [PostgreSQL 
 | Browser: lost order reply | Saved 2 kg at KES 150/kg and a KES 100 deposit; notice appeared and controls were disabled. After refresh, retry returned ticket QL-20260910-001 with one deposit |
 | Browser: lost final payment reply | Saved KES 200, refreshed, saw KES 0 balance and the retained retry action. Retry left exactly two payment rows: KES 100 and KES 200 |
 | Browser: mobile | At 390 × 844 the notice scrolled into view, Retry previous save received focus, both Create order buttons were disabled, and Enter recovered the original ticket |
-| PostgreSQL migration and concurrency | Not run; release blocker |
+| PostgreSQL migration and concurrency | Five concurrency cases passed. Migration SQL ran twice and existing-record assertions passed; final new-order assertion was blocked by a detached test User object. Full gate remains open |
 | Student review | Earlier navigation usability review reported working. This new feature still needs the student's hands-on check |
 
 The simulated failure runs only in ignored `tmp/usability-nav-server.py`, against an in-memory database. It replaces one reply after the save. No real customer or payment was used. Screenshots are test evidence, not proof of a production incident.
 
 ## Run the remaining database checks
 
-Docker Desktop's log reports a startup crash at `Docker/run/dockerInference`: Windows cannot access the socket. This matches [a reported Docker startup fault](https://github.com/docker/desktop-feedback/issues/460). The QLMS tests did not cause a database migration or connect to Supabase.
+The earlier Docker startup fault is resolved. On 10 September, both client and engine reported 29.5.2. The script downloaded `postgres:17`, ran all 92 tests and removed its temporary container. The image remains cached locally.
 
-1. Save your work. Restart Windows when convenient, then open Docker Desktop.
-2. Wait for Docker to show that its engine is running. If it still fails, share the current error; do not use Factory reset for this check.
+1. Before the next builder run, fix the migration test's session setup: after opening its replacement session, load `self.user` from that session using `self.user_id`. Its old User object belongs to the closed session. No application-code correction is established by this error.
+2. This Docker lesson leaves application and test code unchanged. The fixture correction and rerun remain a separate builder step.
 3. In Antigravity's PowerShell terminal, run `./backend/tests/run-postgres-tests.ps1` from the QLMS folder.
 4. The script creates a temporary `postgres:17` container on local port 55432. It runs the suite and removes its own container. It does not use your saved database credentials. The first run may download the image.
-5. Expect all 92 tests to pass with no skips. Any failure keeps this phase open.
+5. The exit gate is all 92 tests passing with no skips. Current result: 91 passed and one `DetachedInstanceError` in the migration test. Do not present the gate as passed.
 
 The PostgreSQL tests cover simultaneous ticket allocation, duplicate order/initial-payment requests, duplicate payment requests, competing partial payments, competing clothing editors, and upgrading existing rows with migration 010 twice. Each test uses its own random schema in a database named `qlms_test`; remote hosts and other database names are rejected.
 

@@ -135,3 +135,20 @@ Ignored helpers in `tmp/` support the local fixture server, read-only smoke chec
 > In the browser test, refreshing and retrying left one deposit and one final payment. PostgreSQL concurrency checks are still pending. That is the next gate before release.
 
 **Learning agreement:** Google OAuth remains a guided phase. Configure it together and explain consent, redirects, identity, role checks and recovery using the real implementation.
+
+## 10 September 2026 — First working Docker database
+
+- Docker client and engine both report 29.5.2. The test runner downloaded `postgres:17` and created a temporary local database container.
+- Latest result: 91 tests passed, one migration-test session error, no skips. Five PostgreSQL concurrency tests passed. The remaining test reused a User object after closing its session; correction and rerun remain open.
+- Cleanup verified: no `qlms-save-test-` container remained. The PostgreSQL image stayed available for reuse.
+- [Docker learning guide](docs/docker-learning-guide.md): commands to run a container, inspect logs, query the database and stop it; later lessons cover the API Dockerfile, Compose and an AWS sandbox.
+- This was an agent-run demonstration. The student's first manual exercise is pending. No Dockerfile, Compose file or AWS deployment was created.
+- Next evidence: one student-captured view of their named lesson container and ready logs. Do not claim QLMS is containerized yet.
+
+**Short post draft:**
+
+> I started learning Docker with a database my project already uses.
+>
+> A PostgreSQL container gave QLMS a separate place to test simultaneous saves. Five concurrency checks passed. One migration test exposed a mistake in its test setup, so the full check is still open.
+>
+> The container was removed after the run; its image remains available. Next, I will practise running it myself before packaging the API.
