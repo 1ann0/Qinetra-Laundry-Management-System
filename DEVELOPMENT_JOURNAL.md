@@ -113,3 +113,25 @@ All paths below are relative to the project root. Technical detail belongs here,
 | `LEARNING_NOTES.md`, `PRESENTATION_NOTES.md`, `docs/evidence-tracker.md` | Local study/demo notes and accurate evidence status; these stay out of Git |
 
 Ignored helpers in `tmp/` support the local fixture server, read-only smoke checks and repeatable editing. They are not production features.
+
+## 10 September 2026 — Recover a save without recording it twice
+
+**Problem:** A save can reach the database even when its reply never reaches the employee.
+
+**Local code:** `3275e35` on `codex/transaction-save-safety`. No push or deployment.
+
+**Changes:** Keep the original save reference through refresh and retry. Save the order and initial payment together. Reject an old clothing edit and protect daily ticket numbering.
+
+**Proof:** 32 frontend tests and 86 backend tests passed. The production build passed. Local browser failure tests recovered a KES 300 order with one KES 100 deposit, then one KES 200 final payment. [Recovery notice, image 37](docs/diagrams/evidence/37-local-save-recovery.png) and [payment history, image 38](docs/diagrams/evidence/38-local-recovered-payment-history.png) show distinct results using fictitious data.
+
+**Limits:** Not deployed. Six PostgreSQL checks remain blocked by a Docker startup failure. Earlier navigation usability passed according to the student; no uncoached timing data was supplied. [Check plan, file map and pre-mortem](docs/transaction-safety-check.md).
+
+**LinkedIn draft — review before posting:**
+
+> Did the save fail, or did the reply get lost?
+>
+> I tested that problem in QLMS with sample laundry orders. Each save now keeps a reference so a retry can recover the same record. The order and its first payment also save together.
+>
+> In the browser test, refreshing and retrying left one deposit and one final payment. PostgreSQL concurrency checks are still pending. That is the next gate before release.
+
+**Learning agreement:** Google OAuth remains a guided phase. Configure it together and explain consent, redirects, identity, role checks and recovery using the real implementation.

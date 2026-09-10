@@ -23,7 +23,7 @@ Live hosting configuration and database contents were not audited for this plann
 | Payments | Staff-confirmed payments, deposits and balances exist. This is manual recording, not Safaricom payment verification. |
 | Tracking | Four stages, search, due/late/unpaid filters and collection checks exist. |
 | Owner controls | Finance, order export, service/clothing lists and staff account controls exist. |
-| Navigation and messages | Local commits `094b654` and `01a2fa3` improve daily navigation, stage controls and errors. Their browser acceptance remains pending. |
+| Navigation and messages | Local commits `094b654` and `01a2fa3` improve daily navigation, stage controls and errors. The student reports the usability review is working; no independent timing data was supplied. |
 | Verification | Last completed phase recorded 16 frontend message tests, lint, build and local API checks passing. Tests were not rerun for this document. |
 | Commercial features | No business/tenant, subscription, allowance, promotion-rule or transport-trip models were found. These remain new work. |
 
@@ -34,8 +34,8 @@ Use this roadmap for prioritisation and the [development journal](DEVELOPMENT_JO
 
 | Phase | Outcome | Priority/status |
 | --- | --- | --- |
-| 1 | Accept the current navigation and feedback changes | Next; local implementation exists |
-| 2 | Protect orders and payments from duplicate or conflicting saves | Required before the real-data pilot |
+| 1 | Accept the current navigation and feedback changes | User reports usability review passed; no uncoached timing data recorded |
+| 2 | Protect orders and payments from duplicate or conflicting saves | In progress; required before the real-data pilot |
 | 3 | Complete customer intake without leaving the order | Required pilot workflow |
 | 4 | Correct mistakes with an owner-controlled history | Required pilot workflow |
 | 5 | Verify the owner's daily figures and useful exports | Required pilot acceptance |
@@ -70,6 +70,8 @@ Passing automated checks alone does not close this phase.
 ## Phase 2 — Make saves and ticket numbers dependable
 
 **Value:** A busy counter or lost connection must not create duplicate orders or payments.
+
+**10 September status:** Local implementation and recovery evidence are in [the Phase 2 check record](docs/transaction-safety-check.md). PostgreSQL migration/concurrency checks are blocked by a local Docker startup failure. Do not close this phase or deploy until those checks and the student review pass.
 
 - Replace or protect the count-plus-one ticket calculation. Test two staff creating orders at the same time.
 - Add an idempotency key for each order/payment submission: a repeated request returns the original result instead of saving twice.
@@ -277,6 +279,8 @@ Free trips and other benefits reduce the amount available to cover washing costs
 For the initial pilot, keep Qinetra on its own production dataset. Build tenant isolation only when preparing shared commercial onboarding.
 
 ## Phase 12 — QLMS subscriptions, trials and Google login
+
+**Guided learning requirement (10 September 2026):** Set up Google OAuth together with the student. Explain each step before it is done. The student should be able to configure the consent screen, client credentials and allowed redirect URLs, and explain identity verification, account linking, role checks and recovery. Do not complete the provider setup unattended. Use the real implementation for a short explanation and test of success, denied access and failed sign-in. This is a later phase, not permission to add OAuth now.
 
 This is your platform charging laundry businesses for QLMS access.
 

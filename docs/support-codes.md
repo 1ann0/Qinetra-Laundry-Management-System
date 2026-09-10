@@ -23,6 +23,8 @@ Staff should report the code, time, page and action. Do not ask for passwords, s
 
 ## Message rules
 
+Phase 2 adds `QLMS-SAVE-STORAGE` when the tab cannot retain/read/clear its original request, and `QLMS-SAVE-PENDING` when an unresolved request blocks a new save. Keep the tab open and establish the saved outcome before clearing anything. For keyed order/payment requests, use Retry previous save. Auth failures retain the key for sign-in recovery. See [transaction recovery](transaction-safety-check.md).
+
 - State the problem in familiar words.
 - Give the next action in a separate sentence.
 - Use a support code for system failures.
