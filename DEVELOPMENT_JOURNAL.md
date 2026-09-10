@@ -177,3 +177,11 @@ Ignored helpers in `tmp/` support the local fixture server, read-only smoke chec
 - The student then recorded the final KES 350 normally. Browser verification found two payment rows, zero balance and no extra order after retry. The student final-payment recovery scenario was skipped; stale clothing-edit acceptance remains open.
 - The previous receipt stayed visible while another order was being prepared. This is a recorded usability concern, not a change made during testing.
 - No redundant screenshot was added. Existing recovery images 37 and 38 show the same types of state; this entry records the separate student session. No live shop record changed.
+
+## 11 September 2026 — Clothing accountability takes priority
+
+- The student could not see the clothing tally in the test copy. Source review found the feature intact: the simplified fixture had set Wash & Fold to No clothing list and contained no garment catalogue.
+- Existing detailed garment records include descriptions, damage and stain notes, and the on-screen receipt displays them. Both WhatsApp receipt drafts omit those details. Laundry tally condition capture, permanent garment tags and outsourced handover records remain gaps.
+- The 25 existing detailed-order tests passed against disposable data. No application or live catalogue change was made during this audit.
+- [Audit, phased implementation plan and pre-mortem](docs/clothing-intake-review.md). Clothing intake and receipt completeness now precede the customer shortcut. The student confirmed outsourced garments are currently identified by descriptions without numbered tags; permanent physical references remain a proposal.
+- No screenshot of missing or unbuilt functionality was added. Capture a representative clothing record and matching receipt when the approved phase is implemented and verified.

@@ -19,7 +19,7 @@ Live hosting configuration and database contents were not audited for this plann
 | Capability | Current evidence and limit |
 | --- | --- |
 | Customers and search | Registration, duplicate-phone warning, customer history and service history exist. Registration still needs a smoother path during order entry. |
-| Orders and clothing | Mixed services, saved prices, item counts, damage/stain details, ready times and discount records exist. |
+| Orders and clothing | Mixed services, item counts and detailed garment condition notes exist. The test fixture hides clothing recording; WhatsApp receipt drafts omit item detail, tally condition capture and outsourced-garment tracking need work. See the clothing review. |
 | Payments | Staff-confirmed payments, deposits and balances exist. This is manual recording, not Safaricom payment verification. |
 | Tracking | Four stages, search, due/late/unpaid filters and collection checks exist. |
 | Owner controls | Finance, order export, service/clothing lists and staff account controls exist. |
@@ -36,7 +36,9 @@ Use this roadmap for prioritisation and the [development journal](DEVELOPMENT_JO
 | --- | --- | --- |
 | 1 | Accept the current navigation and feedback changes | User reports usability review passed; no uncoached timing data recorded |
 | 2 | Protect orders and payments from duplicate or conflicting saves | Automated checks and student order recovery passed; remaining manual scenarios open |
-| 3 | Complete customer intake without leaving the order | Required pilot workflow |
+| 3A | Make clothing intake and customer receipts complete | Required pilot workflow; source audit complete, implementation proposed |
+| 3B | Identify and reconcile outsourced dry-cleaning garments | Required before outsourced pilot work; current method is descriptions without tags |
+| 3C | Complete customer intake without leaving the order | Required pilot workflow; preserve all clothing records |
 | 4 | Correct mistakes with an owner-controlled history | Required pilot workflow |
 | 5 | Verify the owner's daily figures and useful exports | Required pilot acceptance |
 | 6 | Prepare clean production data, recovery and monitoring | Required before real-data cutover |
@@ -87,7 +89,13 @@ Passing automated checks alone does not close this phase.
 **Exit gate:** Duplicate-request, concurrent-save and interrupted-reply tests pass against isolated PostgreSQL.
 SQLite checks alone are insufficient to prove database locking. No unexplained duplicate ticket or payment remains.
 
-## Phase 3 — Finish the intake workflow
+## Phase 3A and 3B — Clothing records before customer-intake expansion
+
+The student confirmed clothing tallies, garment identification, existing damage and serious stains are essential. Prioritise [the clothing intake review and phased plan](docs/clothing-intake-review.md) before the customer shortcut. The existing tally was hidden by the disposable fixture, not removed from the code. The review identifies real receipt, condition-history and outsourcing gaps; it does not claim the live catalogue was checked.
+
+Start with 3A1: expose the existing clothing workflow in representative local data and complete customer receipt drafts. Review it before 3A2 condition exceptions/history. Follow with 3B garment identification and a sent/returned register. Qinetra currently uses descriptions without numbered tags; physical references are a proposal to agree separately. Work one approved increment at a time.
+
+## Phase 3C — Finish the customer intake workflow
 
 **Value:** An employee can serve a new or returning customer without losing an unfinished order.
 
@@ -352,7 +360,7 @@ Do not invent these answers. Work that does not depend on them can continue with
 | Support becomes unmanageable | Repeated incidents with no owner or resolution | Set a real support process; fix recurring causes before selling more accounts |
 | More development produces no paying demand | Feature enthusiasm without regular use or commitment | Use the phase 7 value review to choose fix, proceed or stop |
 
-**Next product action:** Agree whether to continue the remaining manual checks or proceed to Phase 3 customer intake with those checks recorded as open release items. Student order recovery passed; student final-payment recovery was skipped and stale clothing-edit acceptance is pending. The fixture correction and PostgreSQL rerun passed. Navigation usability was already reported working.
+**Next product action:** Review and approve Phase 3A1 existing clothing workflow and complete receipt drafts. The student has prioritised clothing accountability before customer-intake expansion and confirmed outsourced garments currently use descriptions without tags. Student order recovery passed; student final-payment recovery was skipped and stale clothing-edit acceptance remains an open release item. The fixture correction and PostgreSQL rerun passed.
 
 ## Guided cloud-engineering learning track
 
