@@ -35,7 +35,7 @@ Use this roadmap for prioritisation and the [development journal](DEVELOPMENT_JO
 | Phase | Outcome | Priority/status |
 | --- | --- | --- |
 | 1 | Accept the current navigation and feedback changes | User reports usability review passed; no uncoached timing data recorded |
-| 2 | Protect orders and payments from duplicate or conflicting saves | Automated checks passed; student workflow acceptance pending |
+| 2 | Protect orders and payments from duplicate or conflicting saves | Automated checks and student order recovery passed; remaining manual scenarios open |
 | 3 | Complete customer intake without leaving the order | Required pilot workflow |
 | 4 | Correct mistakes with an owner-controlled history | Required pilot workflow |
 | 5 | Verify the owner's daily figures and useful exports | Required pilot acceptance |
@@ -352,7 +352,7 @@ Do not invent these answers. Work that does not depend on them can continue with
 | Support becomes unmanageable | Repeated incidents with no owner or resolution | Set a real support process; fix recurring causes before selling more accounts |
 | More development produces no paying demand | Feature enthusiasm without regular use or commitment | Use the phase 7 value review to choose fix, proceed or stop |
 
-**Next product action:** Complete Phase 2's student acceptance, then approve Phase 3 customer intake. The fixture correction and PostgreSQL rerun passed. Navigation usability was already reported working.
+**Next product action:** Agree whether to continue the remaining manual checks or proceed to Phase 3 customer intake with those checks recorded as open release items. Student order recovery passed; student final-payment recovery was skipped and stale clothing-edit acceptance is pending. The fixture correction and PostgreSQL rerun passed. Navigation usability was already reported working.
 
 ## Guided cloud-engineering learning track
 

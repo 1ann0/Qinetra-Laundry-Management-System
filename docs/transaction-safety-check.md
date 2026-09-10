@@ -35,7 +35,7 @@ PostgreSQL transaction locks release when the transaction ends. See [PostgreSQL 
 | Browser: lost final payment reply | Saved KES 200, refreshed, saw KES 0 balance and the retained retry action. Retry left exactly two payment rows: KES 100 and KES 200 |
 | Browser: mobile | At 390 × 844 the notice scrolled into view, Retry previous save received focus, both Create order buttons were disabled, and Enter recovered the original ticket |
 | PostgreSQL migration and concurrency | All six cases passed: concurrent saves/edits, repeated migration, preserved existing records and the first post-migration ticket |
-| Student review | Earlier navigation usability review reported working. This new feature still needs the student's hands-on check |
+| Student review | 11 September: student recovered order 002 after a lost reply and refresh; one deposit confirmed. Final payment saved normally. Student payment-recovery scenario skipped; stale clothing-edit check pending |
 
 The simulated failure runs only in ignored `tmp/usability-nav-server.py`, against an in-memory database. It replaces one reply after the save. No real customer or payment was used. Screenshots are test evidence, not proof of a production incident.
 
@@ -62,6 +62,15 @@ Use only the disposable local API on port 8100 and the matching frontend on port
 5. With a clothing-tracked test order, open its editor in two tabs. Save the first list. The second tab must ask you to reopen the order instead of overwriting the first list.
 
 Learning checkpoint: explain why keeping the same save reference is safer than generating a new one after a timeout. This is a short optional review, not a quiz required before every change.
+
+### Student session: 11 September
+
+- The first order was saved before the fault was enabled: `QL-20260911-001`, KES 300 total, KES 100 deposit and KES 200 balance.
+- The student then prepared 3 kg Wash & Fold with a KES 100 deposit. After the one-use reply fault, the student saw the recovery notice and confirmed it survived a same-tab refresh. Retry returned `QL-20260911-002`, KES 450 total, one KES 100 deposit and KES 350 balance.
+- The student recorded the final KES 350 before its fault was enabled and asked to move on. Read-only browser verification found exactly two payment rows, KES 100 and KES 350, with KES 0 balance. This verifies normal payment, not the student's final-payment recovery scenario.
+- The complete local order list contains only the original fixture ticket, order 001 and order 002. No extra order appeared after the retry.
+- The fault flag is absent. Student final-payment recovery is skipped; stale clothing-edit acceptance is pending. Earlier automated and agent-run results remain separate. No deployment is authorized by this partial manual review.
+- The previous receipt remained visible while the student filled another order. Record this as a possible source of confusion for a focused usability improvement; no UI change was made during the check.
 
 ## Release and rollback gate
 

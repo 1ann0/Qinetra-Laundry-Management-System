@@ -170,3 +170,10 @@ Ignored helpers in `tmp/` support the local fixture server, read-only smoke chec
 > I checked the running container with `docker ps` and read its logs. The distinction is clearer now: the image packages the software, and the container runs an instance of it.
 >
 > Next, I want to package the QLMS backend before learning to deploy it on AWS.
+
+## 11 September 2026 — Student tests a missing save reply
+
+- In the disposable local copy, the student saved a 3 kg order, saw the recovery notice, refreshed the same tab and recovered ticket 002. The receipt showed KES 450 total, one KES 100 deposit and KES 350 balance.
+- The student then recorded the final KES 350 normally. Browser verification found two payment rows, zero balance and no extra order after retry. The student final-payment recovery scenario was skipped; stale clothing-edit acceptance remains open.
+- The previous receipt stayed visible while another order was being prepared. This is a recorded usability concern, not a change made during testing.
+- No redundant screenshot was added. Existing recovery images 37 and 38 show the same types of state; this entry records the separate student session. No live shop record changed.
