@@ -245,6 +245,8 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
             connection.exec_driver_sql(sql)
             connection.exec_driver_sql(sql)
         self.db = self.Session()
+        # Reload the fixture user after replacing its closed database session.
+        self.user = self.db.get(models.User, self.user_id)
         self.assertEqual(self.db.get(models.Order, order_id).total_price, Decimal("300"))
         self.assertEqual(self.db.get(models.Order, order_id).service_lines[0].item_revision, 0)
         self.assertTrue(self.create().ticket_number.endswith("-002"))
