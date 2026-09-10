@@ -9,6 +9,8 @@ import ServiceItemEntry, {
   createBlankGarment,
 } from "@/components/orders/service-item-entry";
 import { useAuth } from "@/context/auth-context";
+import usePendingSave from "@/components/orders/use-pending-save";
+import PendingSaveNotice from "@/components/orders/pending-save-notice";
 
 // Keep money and dates readable on the receipt.
 function formatKes(amount) {
@@ -143,6 +145,7 @@ export default function OrderDetailPage() {
 
   // Keep one service editor open at a time.
   const [editingLineId, setEditingLineId] = useState(null);
+  const [editingRevision, setEditingRevision] = useState(0);
   const [draftItems, setDraftItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -155,7 +158,8 @@ export default function OrderDetailPage() {
   const [paymentReceivedDate, setPaymentReceivedDate] =
     useState(getNairobiToday);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
-  const [isRecordingPayment, setIsRecordingPayment] = useState(false);
+  const paymentSave = usePendingSave(`/orders/${orderId}/payments`);
+  const isRecordingPayment = paymentSave.isSaving;
   const [shareError, setShareError] = useState("");
 
   // Load the receipt and lookup data without requiring customer information in the URL.
@@ -196,6 +200,7 @@ export default function OrderDetailPage() {
   // Open the selected service with its current saved clothing records.
   function startItemEdit(serviceLine) {
     setEditingLineId(serviceLine.id);
+    setEditingRevision(serviceLine.item_revision);
     setDraftItems(createEditableItems(serviceLine));
     setError("");
     setMessage("");
@@ -257,7 +262,7 @@ export default function OrderDetailPage() {
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ items: requestItems }),
+          body: JSON.stringify({ items: requestItems, expected_revision: editingRevision }),
         },
       );
 
@@ -318,37 +323,37 @@ export default function OrderDetailPage() {
       return;
     }
 
-    setIsRecordingPayment(true);
     setError("");
     setMessage("");
 
     try {
-      const updatedOrder = await authenticatedRequest(
-        `/orders/${order.id}/payments`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+      finishPayment(await paymentSave.save({
             payment_method: paymentMethod,
             amount,
             confirmed: true,
             received_date: paymentReceivedDate,
-          }),
-        },
-      );
+      }));
+    } catch (paymentError) {
+      setError(getUserMessage(paymentError, "QLMS could not confirm the payment. Use Retry previous save."));
+    }
+  }
 
-      setOrder(updatedOrder);
+  async function retryPayment() {
+    setError("");
+    setMessage("");
+    try {
+      finishPayment(await paymentSave.retry());
+    } catch (paymentError) {
+      setError(getUserMessage(paymentError));
+    }
+  }
+
+  function finishPayment(updatedOrder) {
+      setOrder((current) => current?.id === updatedOrder.id ? updatedOrder : current);
       setPaymentAmount(String(updatedOrder.balance_due));
       setPaymentConfirmed(false);
       setPaymentReceivedDate(getNairobiToday());
-      setMessage(
-        `${getPaymentMethodLabel(paymentMethod)} payment of ${formatKes(amount)} recorded.`,
-      );
-    } catch (paymentError) {
-      setError(getUserMessage(paymentError, "QLMS could not confirm the payment. Check the order before you record the payment again."));
-    } finally {
-      setIsRecordingPayment(false);
-    }
+      setMessage("Payment saved. Check the payment history below.");
   }
 
   // Prepare a receipt or ready notice while leaving the final Send action to staff.
@@ -769,12 +774,14 @@ export default function OrderDetailPage() {
           </p>
         )}
 
+        <PendingSaveNotice {...paymentSave} onRetry={retryPayment} />
         {Number(order.balance_due) > 0 && order.status !== "collected" ? (
           <form
             className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-4 sm:p-5"
             onSubmit={recordPayment}
             noValidate
           >
+            <fieldset disabled={isRecordingPayment || Boolean(paymentSave.pending) || !paymentSave.ready}>
             <h3 className="text-lg font-bold text-slate-900">
               Record another payment
             </h3>
@@ -884,6 +891,7 @@ export default function OrderDetailPage() {
             >
               {isRecordingPayment ? "Saving payment…" : "Record payment"}
             </button>
+          </fieldset>
           </form>
         ) : Number(order.balance_due) === 0 ? (
           <p className="mt-5 rounded-xl border border-green-300 bg-green-50 px-4 py-3 font-semibold text-green-800">

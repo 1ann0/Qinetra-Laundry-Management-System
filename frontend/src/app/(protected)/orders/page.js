@@ -8,6 +8,8 @@ import ServiceItemEntry, {
   createBlankGarment,
 } from "@/components/orders/service-item-entry";
 import { useAuth } from "@/context/auth-context";
+import usePendingSave from "@/components/orders/use-pending-save";
+import PendingSaveNotice from "@/components/orders/pending-save-notice";
 
 const SUIT_BAG_CODE = "dry_cleaning_suit_bag";
 const SUIT_BAG_PROMPT_CODES = new Set([
@@ -379,7 +381,8 @@ export default function OrderEntryPage() {
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
 
   // Track form feedback and the final backend-created ticket.
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const orderSave = usePendingSave("/orders/detailed");
+  const isSubmitting = orderSave.isSaving;
   const [error, setError] = useState("");
   const [receiptShareError, setReceiptShareError] = useState("");
   const [createdOrder, setCreatedOrder] = useState(null);
@@ -579,6 +582,12 @@ export default function OrderEntryPage() {
   function buildOrderPayload(customerId) {
     return {
       customer_id: customerId,
+      initial_payment: paymentChoice === "unpaid" ? null : {
+        payment_method: paymentChoice,
+        amount: paymentAmountType === "full" ? null : Number(depositAmount),
+        confirmed: paymentConfirmed,
+        received_date: paymentReceivedDate,
+      },
       order_date: orderDate,
       discount_reason:
         estimatedDiscount > 0 ? cleanOptionalText(discountReason) : null,
@@ -649,53 +658,32 @@ export default function OrderEntryPage() {
       return;
     }
 
-    const customer = customers.find((item) => item.id === customerId);
     setError("");
     setCreatedOrder(null);
-    setIsSubmitting(true);
 
     try {
-      const response = await authenticatedRequest("/orders/detailed", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildOrderPayload(customerId)),
-      });
+      finishCreatedOrder(await orderSave.save(buildOrderPayload(customerId)));
+    } catch (orderError) {
+      setError(getUserMessage(orderError, "QLMS could not confirm the save. Use Retry previous save."));
+    }
+  }
 
-      let finalOrder = response;
-      let paymentWarning = "";
+  async function retryOrder() {
+    setError("");
+    try {
+      finishCreatedOrder(await orderSave.retry());
+    } catch (orderError) {
+      setError(getUserMessage(orderError));
+    }
+  }
 
-      // Record payment only after FastAPI has created and priced the ticket.
-      if (paymentChoice !== "unpaid") {
-        const paymentAmount =
-          paymentAmountType === "full"
-            ? response.balance_due
-            : Number(depositAmount);
-
-        try {
-          finalOrder = await authenticatedRequest(
-            `/orders/${response.id}/payments`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                payment_method: paymentChoice,
-                amount: paymentAmount,
-                confirmed: true,
-                received_date: paymentReceivedDate,
-              }),
-            },
-          );
-        } catch (paymentRequestError) {
-          paymentWarning =
-            getUserMessage(paymentRequestError, "The order was saved. QLMS could not confirm the payment. Check the order before you record the payment again.");
-        }
-      }
-
+  // The order and any initial payment are now saved together.
+  function finishCreatedOrder(finalOrder) {
+      const customer = customers.find((item) => item.id === finalOrder.customer_id);
       setCreatedOrder({
         ...finalOrder,
-        customerName: customer?.name || `Customer ${customerId}`,
+        customerName: customer?.name || `Customer ${finalOrder.customer_id}`,
         customerPhone: customer?.phone || "",
-        paymentWarning,
       });
       setCustomerSearch("");
       setSelectedCustomerId("");
@@ -713,11 +701,6 @@ export default function OrderEntryPage() {
       setPaymentReceivedDate(today);
       setPaymentConfirmed(false);
       setReceiptShareError("");
-    } catch (orderError) {
-      setError(getUserMessage(orderError, "QLMS could not confirm that the order was saved. Check Track orders before you create it again."));
-    } finally {
-      setIsSubmitting(false);
-    }
   }
 
   return (
@@ -753,12 +736,14 @@ export default function OrderEntryPage() {
         </div>
       </div>
 
+      <PendingSaveNotice {...orderSave} onRetry={retryOrder} />
       <form
         id="order-entry-form"
         className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]"
         onSubmit={handleSubmit}
         noValidate
       >
+        <fieldset className="contents" disabled={isSubmitting || Boolean(orderSave.pending) || !orderSave.ready}>
         <div className="space-y-6">
           <section
             className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
@@ -1561,7 +1546,7 @@ export default function OrderEntryPage() {
           <button
             className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[#005AAB] px-6 font-bold text-white hover:bg-[#004782] disabled:cursor-wait disabled:opacity-60"
             type="submit"
-            disabled={isSubmitting || isLoadingSetup}
+            disabled={isSubmitting || isLoadingSetup || Boolean(orderSave.pending) || !orderSave.ready}
           >
             {isSubmitting ? "Creating order…" : "Create order"}
           </button>
@@ -1569,6 +1554,7 @@ export default function OrderEntryPage() {
             Check the details above before you create the order.
           </p>
         </aside>
+        </fieldset>
       </form>
 
       {!createdOrder ? (
@@ -1585,7 +1571,7 @@ export default function OrderEntryPage() {
             className="min-h-11 rounded-xl bg-[#005AAB] px-5 font-bold text-white disabled:cursor-wait disabled:opacity-60"
             type="submit"
             form="order-entry-form"
-            disabled={isSubmitting || isLoadingSetup}
+            disabled={isSubmitting || isLoadingSetup || Boolean(orderSave.pending) || !orderSave.ready}
           >
             {isSubmitting ? "Creating…" : "Create order"}
           </button>
@@ -1605,12 +1591,6 @@ export default function OrderEntryPage() {
           <h2 className="mt-2 text-3xl font-bold text-slate-900">
             Ticket {createdOrder.ticket_number}
           </h2>
-          {createdOrder.paymentWarning ? (
-            <p className="mt-5 rounded-xl border border-amber-400 bg-amber-100 px-4 py-3 font-semibold text-amber-950">
-              {createdOrder.paymentWarning} Open the receipt to check the payment
-              before you record it again. Do not create another order.
-            </p>
-          ) : null}
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
             <div>
               <p className="text-sm text-slate-600">Customer</p>

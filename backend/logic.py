@@ -3,6 +3,10 @@
 
 from datetime import date, datetime, timezone, timedelta
 from sqlalchemy.orm import Session
+from sqlalchemy import case
+from sqlalchemy.dialects.postgresql import insert as postgres_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from decimal import Decimal, ROUND_HALF_UP
 import models
 
 # Rates confirmed for Qinetra Laundry's current service catalogue.
@@ -20,8 +24,12 @@ OVERDUE_THRESHOLD_DAYS = 7
 # Calculates unit price and total price for an order
 def calculate_price(service_type: str, quantity: float):
     unit_price = PRICING[service_type]
-    total_price = unit_price * quantity
+    total_price = money(Decimal(str(unit_price)) * Decimal(str(quantity)))
     return unit_price, total_price
+
+
+def money(value):
+    return Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 # Works out whether a selected service still needs its clothing check.
@@ -46,14 +54,29 @@ def get_item_check_status(
 
 # Generates a unique ticket number in the format QL-YYYYMMDD-###
 def generate_ticket_number(db: Session, order_date: date | None = None) -> str:
-    ticket_date = order_date or datetime.now(timezone.utc).date()
+    ticket_date = order_date or datetime.now(timezone(timedelta(hours=3))).date()
     today_str = ticket_date.strftime("%Y%m%d")
 
-    count_today = db.query(models.Order).filter(
+    existing_tickets = db.query(models.Order.ticket_number).filter(
         models.Order.ticket_number.like(f"QL-{today_str}-%")
-    ).count()
-
-    next_number = count_today + 1
+    ).all()
+    existing_numbers = [
+        int(ticket.rsplit("-", 1)[1]) for (ticket,) in existing_tickets
+        if ticket.rsplit("-", 1)[1].isdigit()
+    ]
+    first_number = max(existing_numbers, default=0) + 1
+    insert = postgres_insert if db.bind.dialect.name == "postgresql" else sqlite_insert
+    counter = models.TicketCounter
+    statement = insert(counter).values(ticket_date=ticket_date, last_number=first_number)
+    # The upsert locks this date's counter across all API workers.
+    statement = statement.on_conflict_do_update(
+        index_elements=[counter.ticket_date],
+        set_={"last_number": case(
+            (counter.last_number < first_number, first_number),
+            else_=counter.last_number + 1,
+        )},
+    ).returning(counter.last_number)
+    next_number = db.execute(statement).scalar_one()
     return f"QL-{today_str}-{next_number:03d}"
 
 

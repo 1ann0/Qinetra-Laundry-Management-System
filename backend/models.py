@@ -82,6 +82,9 @@ class Order(Base):
     peak_delay_minutes = Column(Integer, nullable=False, default=0)
     ready_at = Column(TIMESTAMP(timezone=True), nullable=True)
     collected_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    request_key = Column(String(36), unique=True, nullable=True)
+    request_hash = Column(String(64), nullable=True)
+    created_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Detailed service lines are additive, so older orders can keep their
     # original single-service columns while new mixed orders use these rows.
@@ -156,6 +159,7 @@ class OrderServiceLine(Base):
     )
     item_recording_mode = Column(String(20), nullable=False)
     item_check_status = Column(String(20), nullable=False, default="not_required")
+    item_revision = Column(Integer, nullable=False, default=0, server_default="0")
 
     order = relationship("Order", back_populates="service_lines")
     items = relationship(
@@ -199,6 +203,8 @@ class Payment(Base):
     order_id = Column(Integer, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
     payment_method = Column(String(20), nullable=False)
     amount = Column(Numeric(10, 2), nullable=False)
+    request_key = Column(String(36), unique=True, nullable=True)
+    request_hash = Column(String(64), nullable=True)
     confirmed_by_id = Column(
         Integer,
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -209,3 +215,10 @@ class Payment(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     order = relationship("Order", back_populates="payments")
+
+
+# One counter per business date, locked while a ticket number is allocated.
+class TicketCounter(Base):
+    __tablename__ = "ticket_counters"
+    ticket_date = Column(Date, primary_key=True)
+    last_number = Column(Integer, nullable=False)

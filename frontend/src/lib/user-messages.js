@@ -15,6 +15,9 @@ export function getUserMessage(error, fallback = "QLMS could not complete this a
 }
 
 const INPUT_MESSAGES = {
+  "The clothing details changed on another screen. Open the order again before editing": "Someone changed this clothing list. Open the order again, check the list, then make your changes.",
+  "This save reference was already used for different details": "QLMS found different details for this save. Keep this tab open and contact support before you continue.",
+  "Use at most two decimal places for the quantity": "Enter the quantity with no more than two digits after the decimal point. For example, 2.25 kg.",
   "Username already taken": "This username is in use. Choose another username.",
   "You cannot deactivate your own account": "You cannot turn off your own account. Ask another owner to do this.",
   "You cannot change your own role": "You cannot change your own account role. Ask another owner to do this.",

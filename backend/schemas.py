@@ -4,6 +4,13 @@
 from pydantic import BaseModel, Field, field_validator, model_validator
 from datetime import date, datetime
 from typing import Literal, Optional
+from decimal import Decimal
+
+
+def check_quantity_precision(value):
+    if Decimal(str(value)) * 100 != (Decimal(str(value)) * 100).to_integral_value():
+        raise ValueError("Use at most two decimal places for the quantity")
+    return value
 
 # Data required to create a customer
 class CustomerCreate(BaseModel):
@@ -148,7 +155,7 @@ class ClothingItemTypeOut(BaseModel):
 
 # Data required to create an order
 class OrderCreate(BaseModel):
-    customer_id: int
+    customer_id: int = Field(gt=0)
     service_type: Literal[
         "wash_fold",
         "duvet",
@@ -156,9 +163,11 @@ class OrderCreate(BaseModel):
         "dry_cleaning_trouser",
         "dry_cleaning_suit",
     ]
-    quantity: float
+    quantity: float = Field(gt=0, allow_inf_nan=False)
     promised_ready_at: Optional[datetime] = None
     peak_delay_minutes: Literal[0, 60] = 0
+
+    _quantity_precision = field_validator("quantity")(check_quantity_precision)
 
 
 # One clothing entry under a selected service.
@@ -183,9 +192,24 @@ class OrderItemCreate(BaseModel):
 # One service selected for a mixed order, including any items recorded now.
 class DetailedOrderServiceCreate(BaseModel):
     service_id: int = Field(gt=0)
-    quantity: float = Field(gt=0)
-    discount_amount: float = Field(default=0, ge=0)
+    quantity: float = Field(gt=0, allow_inf_nan=False)
+    discount_amount: float = Field(default=0, ge=0, allow_inf_nan=False)
     items: list[OrderItemCreate] = Field(default_factory=list)
+
+    _quantity_precision = field_validator("quantity")(check_quantity_precision)
+
+
+# The same confirmation/date rules apply to initial and later payments.
+class PaymentCreate(BaseModel):
+    payment_method: Literal["cash", "mpesa"]
+    amount: float = Field(gt=0, allow_inf_nan=False)
+    confirmed: bool
+    received_date: Optional[date] = None
+
+
+class InitialPaymentCreate(PaymentCreate):
+    # Null means the full price calculated by the backend for this new order.
+    amount: Optional[float] = Field(default=None, gt=0, allow_inf_nan=False)
 
 
 # New order format used by the mixed-service employee workflow.
@@ -196,6 +220,7 @@ class DetailedOrderCreate(BaseModel):
     discount_reason: Optional[str] = Field(default=None, max_length=120)
     promised_ready_at: Optional[datetime] = None
     peak_delay_minutes: Literal[0, 60] = 0
+    initial_payment: Optional[InitialPaymentCreate] = None
 
     @model_validator(mode="after")
     def prevent_duplicate_services(self):
@@ -242,6 +267,7 @@ class OrderServiceLineOut(BaseModel):
     fixed_item_type_id: Optional[int]
     item_recording_mode: str
     item_check_status: str
+    item_revision: int
     items: list[OrderItemOut] = Field(default_factory=list)
 
     class Config:
@@ -251,14 +277,7 @@ class OrderServiceLineOut(BaseModel):
 # Replaces the saved items for one order service when staff return later.
 class OrderItemsUpdate(BaseModel):
     items: list[OrderItemCreate] = Field(default_factory=list)
-
-
-# A manually confirmed Cash or M-PESA payment.
-class PaymentCreate(BaseModel):
-    payment_method: Literal["cash", "mpesa"]
-    amount: float = Field(gt=0)
-    confirmed: bool
-    received_date: Optional[date] = None
+    expected_revision: int = Field(default=0, ge=0)
 
 
 # Payment history shown on the receipt.

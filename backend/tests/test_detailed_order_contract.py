@@ -1,3 +1,4 @@
+from uuid import uuid4
 import asyncio
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -226,7 +227,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
             ],
         )
 
-        order = main.create_detailed_order(request, self.db, self.user)
+        order = main.create_detailed_order(request, self.db, self.user, idempotency_key=uuid4())
 
         self.assertEqual(order.service_type, "mixed")
         self.assertEqual(float(order.total_price), 1525)
@@ -254,7 +255,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
             ],
         )
 
-        order = main.create_detailed_order(request, self.db, self.user)
+        order = main.create_detailed_order(request, self.db, self.user, idempotency_key=uuid4())
 
         self.assertEqual(order.order_date, order_date)
         self.assertTrue(order.ticket_number.startswith(f"QL-{order_date:%Y%m%d}-"))
@@ -280,7 +281,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
         )
 
         with self.assertRaises(HTTPException) as invalid_discount:
-            main.create_detailed_order(request, self.db, self.user)
+            main.create_detailed_order(request, self.db, self.user, idempotency_key=uuid4())
 
         self.assertEqual(invalid_discount.exception.status_code, 400)
         self.assertIn("must be less than", invalid_discount.exception.detail)
@@ -293,7 +294,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
         )
 
         with self.assertRaises(HTTPException) as future_order:
-            main.create_detailed_order(request, self.db, self.user)
+            main.create_detailed_order(request, self.db, self.user, idempotency_key=uuid4())
 
         self.assertEqual(future_order.exception.status_code, 400)
         self.assertIn("future", future_order.exception.detail)
@@ -332,7 +333,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
             peak_delay_minutes=60,
         )
 
-        order = main.create_detailed_order(request, self.db, self.user)
+        order = main.create_detailed_order(request, self.db, self.user, idempotency_key=uuid4())
 
         # SQLite drops timezone information, so compare the same UTC values.
         saved_time = order.promised_ready_at.replace(tzinfo=timezone.utc)
@@ -348,7 +349,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
         )
 
         with self.assertRaises(HTTPException) as invalid_time:
-            main.create_detailed_order(request, self.db, self.user)
+            main.create_detailed_order(request, self.db, self.user, idempotency_key=uuid4())
 
         self.assertEqual(invalid_time.exception.status_code, 400)
 
@@ -371,7 +372,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
         )
 
         with self.assertRaises(HTTPException) as wrong_garment:
-            main.create_detailed_order(request, self.db, self.user)
+            main.create_detailed_order(request, self.db, self.user, idempotency_key=uuid4())
 
         self.assertEqual(wrong_garment.exception.status_code, 400)
 
@@ -387,7 +388,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
                 }
             ],
         )
-        order = main.create_detailed_order(request, self.db, self.user)
+        order = main.create_detailed_order(request, self.db, self.user, idempotency_key=uuid4())
         service_line = order.service_lines[0]
 
         self.assertEqual(service_line.item_check_status, "pending")
@@ -438,7 +439,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
                 }
             ],
         )
-        order = main.create_detailed_order(request, self.db, self.user)
+        order = main.create_detailed_order(request, self.db, self.user, idempotency_key=uuid4())
 
         deposit_order = main.record_order_payment(
             order.id,
@@ -448,7 +449,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
                 confirmed=True,
             ),
             self.db,
-            self.user,
+            self.user, idempotency_key=uuid4()
         )
         self.assertEqual(float(deposit_order.amount_paid), 200)
         self.assertEqual(float(deposit_order.balance_due), 400)
@@ -484,7 +485,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
                 confirmed=True,
             ),
             self.db,
-            self.user,
+            self.user, idempotency_key=uuid4()
         )
         self.assertEqual(float(paid_order.balance_due), 0)
         self.assertEqual(paid_order.payment_status, "paid")
@@ -510,7 +511,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
                 }
             ],
         )
-        order = main.create_detailed_order(request, self.db, self.user)
+        order = main.create_detailed_order(request, self.db, self.user, idempotency_key=uuid4())
 
         with self.assertRaises(HTTPException) as unconfirmed:
             main.record_order_payment(
@@ -521,7 +522,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
                     confirmed=False,
                 ),
                 self.db,
-                self.user,
+                self.user, idempotency_key=uuid4()
             )
         self.assertEqual(unconfirmed.exception.status_code, 400)
 
@@ -534,7 +535,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
                     confirmed=True,
                 ),
                 self.db,
-                self.user,
+                self.user, idempotency_key=uuid4()
             )
         self.assertEqual(excess.exception.status_code, 400)
 
@@ -547,7 +548,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
                     confirmed=True,
                 ),
                 self.db,
-                self.user,
+                self.user, idempotency_key=uuid4()
             )
         self.assertEqual(too_small.exception.status_code, 400)
 
@@ -558,7 +559,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
             order_date=order_date,
             services=[{"service_id": self.wash_fold.id, "quantity": 2}],
         )
-        order = main.create_detailed_order(request, self.db, self.user)
+        order = main.create_detailed_order(request, self.db, self.user, idempotency_key=uuid4())
         received_date = order_date + timedelta(days=1)
 
         paid_order = main.record_order_payment(
@@ -570,7 +571,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
                 received_date=received_date,
             ),
             self.db,
-            self.user,
+            self.user, idempotency_key=uuid4()
         )
 
         self.assertEqual(paid_order.payments[0].received_date, received_date)
@@ -585,7 +586,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
                     received_date=order_date - timedelta(days=1),
                 ),
                 self.db,
-                self.user,
+                self.user, idempotency_key=uuid4()
             )
         self.assertEqual(before_order.exception.status_code, 400)
 
@@ -599,7 +600,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
                     received_date=main.get_nairobi_today() + timedelta(days=1),
                 ),
                 self.db,
-                self.user,
+                self.user, idempotency_key=uuid4()
             )
         self.assertEqual(future_payment.exception.status_code, 400)
 
@@ -615,7 +616,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
                 }
             ],
         )
-        order = main.create_detailed_order(request, self.db, self.user)
+        order = main.create_detailed_order(request, self.db, self.user, idempotency_key=uuid4())
 
         with self.assertRaises(HTTPException) as skipped:
             main.update_order_status(
@@ -638,7 +639,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
                 }
             ],
         )
-        order = main.create_detailed_order(request, self.db, self.user)
+        order = main.create_detailed_order(request, self.db, self.user, idempotency_key=uuid4())
         main.record_order_payment(
             order.id,
             schemas.PaymentCreate(
@@ -647,7 +648,7 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
                 confirmed=True,
             ),
             self.db,
-            self.user,
+            self.user, idempotency_key=uuid4()
         )
 
         outstanding_orders = main.list_orders(

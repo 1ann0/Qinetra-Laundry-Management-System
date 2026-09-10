@@ -26,7 +26,9 @@ export async function apiRequest(path, options = {}) {
   const url = `${getApiBaseUrl()}${path}`;
   const isSave = !["GET", "HEAD"].includes((fetchOptions.method || "GET").toUpperCase()) && !path.startsWith("/auth/");
   const recovery = isSave
-    ? "The change may have been saved. Check the record before you try again."
+    ? requestHeaders.has("Idempotency-Key")
+      ? "The change may have been saved. Keep this tab open and select Retry previous save."
+      : "The change may have been saved. Check the record before you try again."
     : "Try again in a moment.";
 
   // Stop waiting after 30 seconds. Never repeat a save automatically.

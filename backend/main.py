@@ -1,13 +1,14 @@
 # main.py
 # Entry point of the FastAPI backend. All API routes live or are wired up here.
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
-from typing import Optional
+from typing import Optional, Annotated
+from uuid import UUID
 from datetime import date, datetime, timezone, timedelta
 from decimal import Decimal
 from fastapi.responses import StreamingResponse
@@ -20,6 +21,7 @@ import models
 import schemas
 import logic
 import auth
+from transaction_safety import request_fingerprint, find_saved_order, commit_once, lock_save_reference
 
 # Kenya uses UTC+3 throughout the year, with no daylight-saving changes.
 NAIROBI_TIMEZONE = timezone(timedelta(hours=3))
@@ -719,7 +721,16 @@ def create_order(
     order: schemas.OrderCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user),
+    *,
+    idempotency_key: Annotated[UUID, Header()],
 ):
+    fingerprint = request_fingerprint("create_order", order)
+    lock_save_reference(db, idempotency_key)
+    saved = find_saved_order(db, models.Order, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+    if order.service_type != "wash_fold" and not order.quantity.is_integer():
+        raise HTTPException(400, "This service requires a whole-number quantity")
     customer = db.query(models.Customer).filter(models.Customer.id == order.customer_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -730,6 +741,9 @@ def create_order(
 
     new_order = models.Order(
         ticket_number=ticket_number,
+        request_key=str(idempotency_key),
+        request_hash=fingerprint,
+        created_by_id=current_user.id,
         customer_id=order.customer_id,
         service_type=order.service_type,
         quantity=order.quantity,
@@ -744,7 +758,9 @@ def create_order(
         peak_delay_minutes=order.peak_delay_minutes,
     )
     db.add(new_order)
-    db.commit()
+    saved = commit_once(db, models.Order, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
     db.refresh(new_order)
     return new_order
 
@@ -756,7 +772,14 @@ def create_detailed_order(
     order: schemas.DetailedOrderCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user),
+    *,
+    idempotency_key: Annotated[UUID, Header()],
 ):
+    fingerprint = request_fingerprint("create_detailed_order", order)
+    lock_save_reference(db, idempotency_key)
+    saved = find_saved_order(db, models.Order, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
     customer = db.query(models.Customer).filter(
         models.Customer.id == order.customer_id
     ).first()
@@ -817,10 +840,8 @@ def create_detailed_order(
             line_input.quantity,
         )
         unit_price = Decimal(str(service.unit_price))
-        subtotal = (unit_price * quantity).quantize(Decimal("0.01"))
-        discount_amount = Decimal(str(line_input.discount_amount)).quantize(
-            Decimal("0.01")
-        )
+        subtotal = logic.money(unit_price * quantity)
+        discount_amount = logic.money(line_input.discount_amount)
         if discount_amount >= subtotal:
             raise HTTPException(
                 status_code=400,
@@ -847,6 +868,9 @@ def create_detailed_order(
 
     new_order = models.Order(
         ticket_number=ticket_number,
+        request_key=str(idempotency_key),
+        request_hash=fingerprint,
+        created_by_id=current_user.id,
         customer_id=order.customer_id,
         service_type="mixed" if is_mixed_order else first_line["service"].code,
         quantity=len(prepared_lines) if is_mixed_order else first_line["quantity"],
@@ -878,8 +902,20 @@ def create_detailed_order(
         )
         new_order.service_lines.append(service_line)
 
+    if order.initial_payment is not None:
+        initial = order.initial_payment
+        payment = schemas.PaymentCreate(
+            payment_method=initial.payment_method,
+            amount=total_price if initial.amount is None else initial.amount,
+            confirmed=initial.confirmed,
+            received_date=initial.received_date,
+        )
+        new_order.payments.append(prepare_payment(new_order, payment, current_user))
+
     db.add(new_order)
-    db.commit()
+    saved = commit_once(db, models.Order, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
     db.refresh(new_order)
     return new_order
 
@@ -1031,6 +1067,7 @@ def replace_order_service_items(
     order = (
         db.query(models.Order)
         .filter(models.Order.id == order_id)
+        .populate_existing()
         .with_for_update()
         .first()
     )
@@ -1050,6 +1087,10 @@ def replace_order_service_items(
     if not service_line:
         raise HTTPException(status_code=404, detail="Order service not found")
 
+    db.refresh(service_line)
+    if item_update.expected_revision != service_line.item_revision:
+        raise HTTPException(409, "The clothing details changed on another screen. Open the order again before editing")
+
     existing_item_type_ids = {item.item_type_id for item in service_line.items}
     check_fixed_service_items(
         item_update.items,
@@ -1066,6 +1107,7 @@ def replace_order_service_items(
     service_line.items.clear()
     service_line.items.extend(saved_items)
     service_line.item_check_status = item_status
+    service_line.item_revision += 1
 
     db.commit()
     db.refresh(service_line)
@@ -1079,16 +1121,44 @@ def record_order_payment(
     payment: schemas.PaymentCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user),
+    *,
+    idempotency_key: Annotated[UUID, Header()],
 ):
+    fingerprint = request_fingerprint(f"payment:{order_id}", payment)
+    lock_save_reference(db, idempotency_key)
+    saved = find_saved_order(db, models.Payment, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
     # Lock this order while checking its balance so two staff cannot overpay it.
     order = (
         db.query(models.Order)
         .filter(models.Order.id == order_id)
+        .populate_existing()
         .with_for_update()
         .first()
     )
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+
+    # A second copy may have waited for the first payment's order lock.
+    saved = find_saved_order(db, models.Payment, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+    db.expire(order, ["payments"])
+    new_payment = prepare_payment(order, payment, current_user)
+    new_payment.order_id = order.id
+    new_payment.request_key = str(idempotency_key)
+    new_payment.request_hash = fingerprint
+    db.add(new_payment)
+    saved = commit_once(db, models.Payment, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+    db.refresh(order)
+    return order
+
+
+def prepare_payment(order, payment, current_user):
+    """Validate a receipt of money without committing it separately from its order."""
 
     if order.status == "collected":
         raise HTTPException(
@@ -1102,7 +1172,7 @@ def record_order_payment(
             detail="Confirm that the shop received the payment before saving it",
         )
 
-    payment_amount = Decimal(str(payment.amount)).quantize(Decimal("0.01"))
+    payment_amount = logic.money(payment.amount)
     if payment_amount <= 0:
         raise HTTPException(
             status_code=400,
@@ -1126,7 +1196,7 @@ def record_order_payment(
             detail="Payment received date cannot be before the order date",
         )
 
-    new_payment = models.Payment(
+    return models.Payment(
         order_id=order.id,
         payment_method=payment.payment_method,
         amount=payment_amount,
@@ -1134,10 +1204,6 @@ def record_order_payment(
         confirmed_by_username=current_user.username,
         received_date=received_date,
     )
-    db.add(new_payment)
-    db.commit()
-    db.refresh(order)
-    return order
 
 
 # Updates an order's status, and stamps ready_at / collected_at when relevant
@@ -1152,6 +1218,7 @@ def update_order_status(
     order = (
         db.query(models.Order)
         .filter(models.Order.id == order_id)
+        .populate_existing()
         .with_for_update()
         .first()
     )
