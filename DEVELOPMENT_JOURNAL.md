@@ -152,3 +152,21 @@ Ignored helpers in `tmp/` support the local fixture server, read-only smoke chec
 > A PostgreSQL container gave QLMS a separate place to test simultaneous saves. Five concurrency checks passed. One migration test exposed a mistake in its test setup, so the full check is still open.
 >
 > The container was removed after the run; its image remains available. Next, I will practise running it myself before packaging the API.
+
+## 11 September 2026 — All PostgreSQL checks pass
+
+- Corrected the migration test by loading its user into the newly opened database session. The application code did not need to change.
+- Full backend suite: 92 passed in 17.458 seconds; no skips. All PostgreSQL concurrency and migration cases passed.
+- The student supplied their own Docker screenshot showing qlms-docker-lesson running postgres:17. The visible logs do not include the readiness line; do not claim more than the screenshot shows.
+- Phase 2 still needs the student's workflow acceptance. Next proposed phase: add customers without leaving an unfinished order and handle likely duplicates before saving.
+- No production migration, deployment, QLMS Dockerfile or AWS resource was created.
+
+**Student Docker evidence:** [Posting copy 39](screenshot/39-docker-lesson-redacted.png) covers the Windows username. The original screenshot remains unchanged. [Editing notes](screenshot/README.md) distinguish the enlarged posting derivative from original terminal evidence. This confirms student practice running a container and inspecting logs; the cropped image does not show final database readiness.
+
+**Short Docker post draft:**
+
+> Today I practised creating a Docker container with PostgreSQL.
+>
+> I checked the running container with `docker ps` and read its logs. The distinction is clearer now: the image packages the software, and the container runs an instance of it.
+>
+> Next, I want to package the QLMS backend before learning to deploy it on AWS.

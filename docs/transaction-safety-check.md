@@ -1,6 +1,6 @@
 # Phase 2: dependable order and payment saves
 
-Updated 10 September 2026. Local implementation; not deployed. PostgreSQL acceptance is still open.
+Updated 11 September 2026. Local implementation; not deployed. Automated PostgreSQL acceptance passed; student hands-on acceptance remains open.
 
 Implementation commit: `3275e35` on `codex/transaction-save-safety`.
 
@@ -26,7 +26,7 @@ PostgreSQL transaction locks release when the transaction ends. See [PostgreSQL 
 
 | Check | Result |
 | --- | --- |
-| Backend suite | Latest Docker-backed run: 91 passed, 1 test-setup error, no skips |
+| Backend suite | 11 September: all 92 passed against the isolated test setup, including PostgreSQL; no skips |
 | Frontend request/recovery tests | 32 passed |
 | Frontend lint | Passed, including the final focus improvement |
 | Production build | Passed, including the final focus improvement |
@@ -34,7 +34,7 @@ PostgreSQL transaction locks release when the transaction ends. See [PostgreSQL 
 | Browser: lost order reply | Saved 2 kg at KES 150/kg and a KES 100 deposit; notice appeared and controls were disabled. After refresh, retry returned ticket QL-20260910-001 with one deposit |
 | Browser: lost final payment reply | Saved KES 200, refreshed, saw KES 0 balance and the retained retry action. Retry left exactly two payment rows: KES 100 and KES 200 |
 | Browser: mobile | At 390 × 844 the notice scrolled into view, Retry previous save received focus, both Create order buttons were disabled, and Enter recovered the original ticket |
-| PostgreSQL migration and concurrency | Five concurrency cases passed. Migration SQL ran twice and existing-record assertions passed; final new-order assertion was blocked by a detached test User object. Full gate remains open |
+| PostgreSQL migration and concurrency | All six cases passed: concurrent saves/edits, repeated migration, preserved existing records and the first post-migration ticket |
 | Student review | Earlier navigation usability review reported working. This new feature still needs the student's hands-on check |
 
 The simulated failure runs only in ignored `tmp/usability-nav-server.py`, against an in-memory database. It replaces one reply after the save. No real customer or payment was used. Screenshots are test evidence, not proof of a production incident.
@@ -43,11 +43,11 @@ The simulated failure runs only in ignored `tmp/usability-nav-server.py`, agains
 
 The earlier Docker startup fault is resolved. On 10 September, both client and engine reported 29.5.2. The script downloaded `postgres:17`, ran all 92 tests and removed its temporary container. The image remains cached locally.
 
-1. Before the next builder run, fix the migration test's session setup: after opening its replacement session, load `self.user` from that session using `self.user_id`. Its old User object belongs to the closed session. No application-code correction is established by this error.
-2. This Docker lesson leaves application and test code unchanged. The fixture correction and rerun remain a separate builder step.
+1. The migration test now loads `self.user` from its replacement session using `self.user_id`. Its previous User object belonged to the closed session. This was a test-fixture correction, not an application change.
+2. The user resumed development on 11 September. The corrected test and full isolated suite passed.
 3. In Antigravity's PowerShell terminal, run `./backend/tests/run-postgres-tests.ps1` from the QLMS folder.
 4. The script creates a temporary `postgres:17` container on local port 55432. It runs the suite and removes its own container. It does not use your saved database credentials. The first run may download the image.
-5. The exit gate is all 92 tests passing with no skips. Current result: 91 passed and one `DetachedInstanceError` in the migration test. Do not present the gate as passed.
+5. The automated exit gate is all 92 tests passing with no skips. Current result: 92 passed in 17.458 seconds. Student workflow acceptance is separate and remains open.
 
 The PostgreSQL tests cover simultaneous ticket allocation, duplicate order/initial-payment requests, duplicate payment requests, competing partial payments, competing clothing editors, and upgrading existing rows with migration 010 twice. Each test uses its own random schema in a database named `qlms_test`; remote hosts and other database names are rejected.
 
@@ -75,10 +75,10 @@ Learning checkpoint: explain why keeping the same save reference is safer than g
 
 | Failure | Protection or next action |
 | --- | --- |
-| Two staff receive the same ticket number | Transactional counter and unique ticket constraint; PostgreSQL race test still required |
-| A retry arrives while the first save is unfinished | Transaction-level lock by save reference precedes business validation; PostgreSQL verification remains open |
+| Two staff receive the same ticket number | Transactional counter and unique ticket constraint; PostgreSQL race test passed |
+| A retry arrives while the first save is unfinished | Transaction-level lock by save reference precedes business validation; concurrent duplicate-request test passed |
 | A payment is counted twice after a timeout | Same reference and request body on explicit retry; browser and SQLite checks passed |
-| Two different payments overpay one order | Order row lock and fresh balance check; PostgreSQL race test still required |
+| Two different payments overpay one order | Order row lock and fresh balance check; PostgreSQL race test passed |
 | A stale clothing list overwrites another employee's work | Revision check rejects the older editor; reopen and review before editing |
 | Staff close the tab or use a different device during uncertainty | Session storage is tab-local. Keep the tab open; otherwise check the saved record with support before entering a new transaction |
 | Browser storage is unavailable or damaged | Block the save and show QLMS-SAVE-STORAGE; do not silently issue another reference |

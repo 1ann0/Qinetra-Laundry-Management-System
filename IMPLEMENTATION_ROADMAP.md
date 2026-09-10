@@ -35,7 +35,7 @@ Use this roadmap for prioritisation and the [development journal](DEVELOPMENT_JO
 | Phase | Outcome | Priority/status |
 | --- | --- | --- |
 | 1 | Accept the current navigation and feedback changes | User reports usability review passed; no uncoached timing data recorded |
-| 2 | Protect orders and payments from duplicate or conflicting saves | In progress; required before the real-data pilot |
+| 2 | Protect orders and payments from duplicate or conflicting saves | Automated checks passed; student workflow acceptance pending |
 | 3 | Complete customer intake without leaving the order | Required pilot workflow |
 | 4 | Correct mistakes with an owner-controlled history | Required pilot workflow |
 | 5 | Verify the owner's daily figures and useful exports | Required pilot acceptance |
@@ -71,7 +71,7 @@ Passing automated checks alone does not close this phase.
 
 **Value:** A busy counter or lost connection must not create duplicate orders or payments.
 
-**10 September status:** Local implementation and recovery evidence are in [the Phase 2 check record](docs/transaction-safety-check.md). Docker now runs. The PostgreSQL-backed suite passed 91 tests; one migration test needs a session-fixture correction before its final assertion can run. Do not close this phase or deploy until the full suite and student review pass.
+**11 September status:** Local implementation and recovery evidence are in [the Phase 2 check record](docs/transaction-safety-check.md). The test-fixture session error is fixed. All 92 backend tests passed, including the six PostgreSQL cases. Student workflow acceptance remains pending; nothing has been deployed.
 
 - Replace or protect the count-plus-one ticket calculation. Test two staff creating orders at the same time.
 - Add an idempotency key for each order/payment submission: a repeated request returns the original result instead of saving twice.
@@ -352,7 +352,7 @@ Do not invent these answers. Work that does not depend on them can continue with
 | Support becomes unmanageable | Repeated incidents with no owner or resolution | Set a real support process; fix recurring causes before selling more accounts |
 | More development produces no paying demand | Feature enthusiasm without regular use or commitment | Use the phase 7 value review to choose fix, proceed or stop |
 
-**Next product action:** Complete Phase 2's migration-test fixture correction, PostgreSQL rerun and student acceptance. Navigation usability was already reported working.
+**Next product action:** Complete Phase 2's student acceptance, then approve Phase 3 customer intake. The fixture correction and PostgreSQL rerun passed. Navigation usability was already reported working.
 
 ## Guided cloud-engineering learning track
 
