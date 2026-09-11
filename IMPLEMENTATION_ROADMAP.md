@@ -3,7 +3,7 @@
 Prepared on 9 September 2026 from this discussion and the current repository.
 This is the working plan for future phases. It does not authorize deployment, purchases or all future features at once.
 
-**11 September pilot priority:** Follow [QINETRA_PILOT_START.md](QINETRA_PILOT_START.md) first. The user approved 3A1 and asked for clean business tables. A protected, empty qinetra_live schema is ready; legacy public-table exposure is now fixed and verified. Owner browser confirmation remains pending. The application is not connected to the new schema yet. Commercial expansion remains deferred. Follow [the maintenance standard](docs/engineering-guidelines.md) for small, readable changes across the codebase.
+**11 September pilot priority:** Follow [QINETRA_PILOT_START.md](QINETRA_PILOT_START.md) first. The user approved 3A1 and asked for clean business tables. A protected, empty qinetra_live schema is ready; legacy public-table exposure is fixed and verified, including the student's owner login/receipt check. The application is not connected to the new schema yet. Commercial expansion remains deferred. Follow [the maintenance standard](docs/engineering-guidelines.md) for small, readable changes across the codebase.
 
 ## The business objective
 
