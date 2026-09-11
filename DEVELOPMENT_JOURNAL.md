@@ -192,3 +192,9 @@ Ignored helpers in `tmp/` support the local fixture server, read-only smoke chec
 - Found existing public tables with RLS disabled and anonymous read/write privileges. This remains a launch blocker. The app has not been connected to the new schema; owner accounts and the confirmed catalogue are not configured there.
 - [Pilot start record and remaining priorities](QINETRA_PILOT_START.md). The approved clothing/receipt change remains pending. No claim of production readiness or live customer onboarding.
 - Future requirements confirmed: Caroline's accounts remain a separate demo; new businesses receive their own authorised memberships/data access; owners can delegate explicit employee permissions. Google sign-in does not itself choose a database or confer ownership. These are recorded requirements, not implemented features.
+
+## 11 September 2026 — Close direct database access
+
+- Enabled row security and removed public browser-role grants from the eight older application tables and their sequences. Preserved backend access and all record counts. Migration: 20260911122502_restrict_legacy_qlms_data_api_access.
+- Each of eight zero-row requests using the public API key was denied. Supabase reports no remaining security ERROR/WARN findings. The deployed login lookup still returns the expected response for a nonexistent user; successful owner login and receipt reading await the student's check.
+- No application rewrite, deployment or new screenshot was needed. [Small-change maintenance standard](docs/engineering-guidelines.md) records the user's code-quality requirement.

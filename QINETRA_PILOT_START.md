@@ -1,6 +1,6 @@
 # Start Qinetra with real business data
 
-Status: 11 September 2026. Database preparation complete; the live application has NOT been switched. The user prioritised getting Qinetra operational and conserving remaining usage.
+Status: 11 September 2026. Fresh database prepared and legacy Data API exposure fixed; the live application has NOT been switched. Owner browser confirmation remains pending. The user prioritised getting Qinetra operational and conserving remaining usage.
 
 ## Completed
 
@@ -11,17 +11,21 @@ Status: 11 September 2026. Database preparation complete; the live application h
 - Preserved existing public data: 11 customers, 17 orders and 10 payments. No customers, orders, credentials or catalogue data were copied. No new paid project, application deployment or credential change was made.
 - The baseline is recorded in Supabase migration history. The compilation helper is local-only at `tmp/prepare-qinetra-live.py`; it reads model metadata without connecting to the shop database.
 
-## Critical finding before real use
+## Legacy database access: fixed, owner browser check pending
 
-The existing public tables have RLS disabled. Direct privilege checks confirmed anon SELECT and INSERT rights on users, customers, orders and payments. The security advisor reports eight exposed public tables. This includes the users table containing password hashes; no credential values were fetched in this review. There is no evidence here establishing whether anyone accessed the data.
+Before the fix, the eight public application tables had RLS disabled and anonymous read/write privileges. This included the users table containing password hashes; no credential values were fetched. There is no evidence here establishing whether anyone accessed the data.
 
-Existing-table permissions have not been changed. First verify the database role used by the deployed FastAPI backend. Then restrict public Data API access and enable appropriate RLS without breaking backend login or saves. Verify with the actual backend account and an unauthorised request. Do not copy this exposure into the new schema or add permissive browser policies to make an error disappear.
+Applied remote migration `20260911122502_restrict_legacy_qlms_data_api_access`. Enabled RLS on the eight public QLMS tables and revoked PUBLIC/anon/authenticated table and related sequence access. Restricted postgres-created future public table/sequence defaults. Preserved postgres and trusted service_role access. No application code, credentials, records or deployment changed.
 
-References: [Supabase Data API security](https://supabase.com/docs/guides/api/securing-your-api), [RLS-disabled advisory](https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public). The nine new-schema no-policy notices are intentional while no application role has been provisioned; the new database is not yet usable by staff.
+Verification: all eight tables have RLS and no anon/authenticated read/write grants. All eight zero-row HTTP requests with the public API key returned 401 / PostgreSQL permission-denied code 42501. The security advisor now has no ERROR or WARN findings; 17 no-policy INFO findings are intentional for backend-only access. Counts remain 3 users, 11 customers, 17 orders and 10 payments.
+
+The confirmed Render workspace is My Workspace (`tea-d9bkeej7uimc73amhpn0`), service qlms-backend (`srv-d9bkpgfavr4c73aukk20`), URL https://qlms-backend-7fum.onrender.com. Render reports deployed commit `5da24e5`. A nonexistent-user login probe before and after the change returned the expected 401, exercising the deployed user lookup without reading a password hash. A new postgres/Supavisor connection appeared after the probe; postgres owns the tables and bypasses RLS. An unauthenticated order request remained blocked. These checks do not substitute for a successful owner's browser login/read; the student must confirm that next.
+
+References: [Supabase Data API security](https://supabase.com/docs/guides/api/securing-your-api), [no-policy advisory](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy). No broad browser policies are needed for this FastAPI access model. The fresh schema is still empty and not yet usable by staff. A restricted runtime database role remains work for the fresh-schema connection phase.
 
 ## Remaining work, in order
 
-1. **Secure access.** Fix the confirmed public-table exposure after verifying the backend role. Provision appropriately restricted backend access to the new schema. Keep database credentials out of frontend code and screenshots.
+1. **Confirm the access fix.** Open the normal deployed QLMS site, sign in using the existing owner account, open Track orders and read an existing receipt. Report success or the exact error text. The automated permission checks passed. Provision appropriately restricted backend access when connecting the new schema; keep credentials out of frontend code and screenshots.
 2. **Finish the approved clothing/receipt change.** Enable representative tally and detailed garment settings for testing, and include saved counts, descriptions, damage and stain notes in both customer receipt drafts. Phase 3A1 was approved but is not implemented. Do not claim laundry condition exceptions or outsourced tracking already exist.
 3. **Configure real operations.** Confirm Qinetra's current prices and clothing list; enable Quick tally for ordinary wash services and Individual garment details for dry cleaning. Create the real owner/staff accounts securely. Do not reuse fixture credentials or import sample customers/payments. Agree how to enter any real outstanding orders without double-counting money.
 4. **Connect and verify the app.** Current backend queries use unqualified table names; creating qinetra_live alone does not route them there. Add explicit schema routing without fallback to public, check raw SQL as well as ORM queries, and validate with the deployed database role. Coordinate backend/frontend versions with the transaction-safety contract. A new owner must be able to log in, register a customer, save a mixed order, read its clothing receipt, record payment and find the same record after refresh. Confirm public data is unchanged.
