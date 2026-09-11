@@ -185,3 +185,10 @@ Ignored helpers in `tmp/` support the local fixture server, read-only smoke chec
 - The 25 existing detailed-order tests passed against disposable data. No application or live catalogue change was made during this audit.
 - [Audit, phased implementation plan and pre-mortem](docs/clothing-intake-review.md). Clothing intake and receipt completeness now precede the customer shortcut. The student confirmed outsourced garments are currently identified by descriptions without numbered tags; permanent physical references remain a proposal.
 - No screenshot of missing or unbuilt functionality was added. Capture a representative clothing record and matching receipt when the approved phase is implemented and verified.
+
+## 11 September 2026 — Prepare clean Qinetra business tables
+
+- Created nine empty tables in a private qinetra_live schema in the existing Supabase project. Verified RLS on all nine, no anonymous/signed-in Data API access and no foreign keys into the old data. Existing customer, order and payment counts stayed unchanged.
+- Found existing public tables with RLS disabled and anonymous read/write privileges. This remains a launch blocker. The app has not been connected to the new schema; owner accounts and the confirmed catalogue are not configured there.
+- [Pilot start record and remaining priorities](QINETRA_PILOT_START.md). The approved clothing/receipt change remains pending. No claim of production readiness or live customer onboarding.
+- Future requirements confirmed: Caroline's accounts remain a separate demo; new businesses receive their own authorised memberships/data access; owners can delegate explicit employee permissions. Google sign-in does not itself choose a database or confer ownership. These are recorded requirements, not implemented features.

@@ -3,6 +3,8 @@
 Prepared on 9 September 2026 from this discussion and the current repository.
 This is the working plan for future phases. It does not authorize deployment, purchases or all future features at once.
 
+**11 September pilot priority:** Follow [QINETRA_PILOT_START.md](QINETRA_PILOT_START.md) first. The user approved 3A1 and asked for clean business tables. A protected, empty qinetra_live schema has been created and verified in Supabase. Existing public-table exposure is a confirmed launch blocker; the application is not connected to the new schema yet. Commercial expansion remains deferred.
+
 ## The business objective
 
 Make Qinetra's daily work dependable: receive the right laundry, quote correctly, find each order, record money and complete handover.
@@ -155,7 +157,7 @@ Screen totals and exported totals must match for the same definitions and dates.
 
 ### 6A. Clean production setup
 
-- Keep the current test project and records intact. Prepare a separate production Supabase project for Qinetra.
+- Keep current demo records intact. An empty protected qinetra_live schema has now been provisioned in the existing project; it has not been connected to the app. A separate production project remains a stronger future environment boundary, subject to account capacity/cost review.
 - Rehearse schema creation from versioned migrations in a fresh test database first.
 - Seed only owner-approved service/clothing templates. Create real owner/staff accounts through a controlled setup process.
 - Do not copy test customers, orders or payments into production.
