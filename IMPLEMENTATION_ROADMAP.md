@@ -1,9 +1,32 @@
 # QLMS: Qinetra pilot and commercial roadmap
 
-Prepared on 9 September 2026 from this discussion and the current repository.
+Prepared on 9 September; execution plan updated on 15 September 2026 after the business, architecture and dashboard review.
 This is the working plan for future phases. It does not authorize deployment, purchases or all future features at once.
 
-**11 September pilot priority:** Follow [QINETRA_PILOT_START.md](QINETRA_PILOT_START.md) first. The user approved 3A1 and asked for clean business tables. A protected, empty qinetra_live schema is ready; legacy public-table exposure is fixed and verified, including the student's owner login/receipt check. The application is not connected to the new schema yet. Commercial expansion remains deferred. Follow [the maintenance standard](docs/engineering-guidelines.md) for small, readable changes across the codebase.
+**Next implementation: approved Phase 3A1, clothing receipts.** This roadmap is the source of truth for delivery order; [QINETRA_PILOT_START.md](QINETRA_PILOT_START.md) records database/release status. A protected, empty qinetra_live schema is ready; legacy public-table exposure is fixed. The application has not been switched to the fresh schema. Follow [the maintenance standard](docs/engineering-guidelines.md); implement and review one small change at a time.
+
+## Confirmed operating decisions and boundaries
+
+- Qinetra handles about 10 orders daily, occasionally 20 on a peak day. Wrong or missing garment records are the primary problem.
+- Staff can use a shared shop screen. Each staff member still needs an individual account for attributable actions.
+- Clothing checks usually happen before washing, after drop-off. Receipts must show when the clothing check is pending; never imply the customer witnessed a later check.
+- Physical separation practices vary. Agree how ticket references follow bags/baskets and how identity survives shared processing. The user accepts simple physical references for outsourced garments, alongside descriptions; agree the actual labelling method with the cleaner.
+- Confirm available care options with the team. Do not offer fragrance/softener choices or make skin-related promises before the process supports them.
+- Retain Next.js, FastAPI, PostgreSQL and the current daily navigation. Split large modules only while making a relevant change. No rewrite, new state library or microservices programme.
+- Treat each milestone below as a reviewed increment, not permission for a combined release. Phase 3A1 already has approval. Later phases require their own bounded implementation review.
+
+## Next change: Phase 3A1 implementation contract
+
+**Outcome:** The customer's receipt draft contains the same saved clothing record as the order screen.
+
+- Update the disposable local catalogue to expose Quick tally and Individual garment details. Preserve existing test orders; do not invent historical clothing records.
+- Add a small pure formatter in `frontend/src/lib/order-receipt.js`, used by the new-order and saved-order pages. Keep phone handling and opening the draft in the UI; no automatic sending.
+- Build the text from the saved response: customer, ticket, order date, services, counted pieces, garment descriptions, damage/stain notes, total, paid, balance, ready time and current status. Keep existing ready-message behaviour.
+- Show pending checks explicitly. Missing historical detail means not recorded, not zero pieces or confirmed absence of damage. Keep the fallback for older single-service orders.
+- Add focused formatter tests for mixed services, saved conditions, pending checks, old orders and ready status. Run the frontend suite, lint and production build.
+- Browser check: create one fictional mixed order, save, refresh and compare both drafts with its saved clothing details. Do not send either draft. Capture one distinct evidence image only after verification.
+
+**Files:** shared formatter/test, both order pages and the ignored local fixture. **API/schema change:** none. **Learning point:** reuse one saved record to keep different receipt views consistent. Stop for review after this increment; no live cutover.
 
 ## The business objective
 
@@ -16,7 +39,7 @@ A larger feature list does not prove demand. Start with one laundry, one locatio
 ## What is already built
 
 Source checked: backend models, routes, auth, pricing logic, migrations, frontend pages and the development journal.
-Live hosting configuration and database contents were not audited for this planning task.
+15 September checks: Render still reports live backend commit `5da24e5`; `/docs` and `/openapi.json` respond. The live order contract does not yet require the local branch's save-reference header. Database queries confirmed nine fresh-schema tables and zero users, customers, orders and payments there. These are targeted checks, not a new complete security or operational audit.
 
 | Capability | Current evidence and limit |
 | --- | --- |
@@ -26,7 +49,9 @@ Live hosting configuration and database contents were not audited for this plann
 | Tracking | Four stages, search, due/late/unpaid filters and collection checks exist. |
 | Owner controls | Finance, order export, service/clothing lists and staff account controls exist. |
 | Navigation and messages | Local commits `094b654` and `01a2fa3` improve daily navigation, stage controls and errors. The student reports the usability review is working; no independent timing data was supplied. |
-| Verification | Last completed phase recorded 16 frontend message tests, lint, build and local API checks passing. Tests were not rerun for this document. |
+| Verification | Prior records show 92 backend and 32 frontend tests passing; student order recovery passed, payment-recovery review was skipped and stale clothing-edit review remains open. No tests were rerun for this planning update. |
+| Customer memory | No preference profile, care-note history or dedicated order/item care instructions exist. Implement Phase 8A after pilot accountability passes. |
+| Platform admin | No separate platform-admin role or dashboard exists. Use hosting tools and monitoring for the pilot; build business administration in Phase 11. |
 | Commercial features | No business/tenant, subscription, allowance, promotion-rule or transport-trip models were found. These remain new work. |
 
 The README describes the original academic scope and is older than several implemented features.
@@ -38,14 +63,16 @@ Use this roadmap for prioritisation and the [development journal](DEVELOPMENT_JO
 | --- | --- | --- |
 | 1 | Accept the current navigation and feedback changes | User reports usability review passed; no uncoached timing data recorded |
 | 2 | Protect orders and payments from duplicate or conflicting saves | Automated checks and student order recovery passed; remaining manual scenarios open |
-| 3A | Make clothing intake and customer receipts complete | Required pilot workflow; source audit complete, implementation proposed |
-| 3B | Identify and reconcile outsourced dry-cleaning garments | Required before outsourced pilot work; current method is descriptions without tags |
+| 3A1 | Complete saved clothing receipt drafts | Approved; next small implementation, no database migration |
+| 3A2 | Complete pre-wash checks, condition exceptions and history | Required pilot workflow; preserve original observations and block processing with incomplete checks/holds |
+| 3B | Identify and reconcile outsourced dry-cleaning garments | Required before outsourced pilot work; simple references accepted, physical method to confirm |
 | 3C | Complete customer intake without leaving the order | Required pilot workflow; preserve all clothing records |
 | 4 | Correct mistakes with an owner-controlled history | Required pilot workflow |
-| 5 | Verify the owner's daily figures and useful exports | Required pilot acceptance |
+| 5 | Provide actionable owner oversight, reliable figures and filtered exports | Required pilot acceptance; use supporting records, not invented metrics |
 | 6 | Prepare clean production data, recovery and monitoring | Required before real-data cutover |
 | 7 | Run and measure the Qinetra pilot | Prove value before wider rollout |
-| 8 | Add offers and reusable customer messages | After the core pilot passes |
+| 8A | Remember customer preferences and surface order instructions | First planned premium-service increment after the core pilot passes |
+| 8B | Add offers and reusable customer messages | After costs and eligibility rules are agreed |
 | 9 | Add Safaricom payment prompts and reconciliation | After merchant access is ready |
 | 10 | Test profitable laundry memberships and trip allowances | After costs and rules are agreed |
 | 11 | Isolate multiple businesses and add platform administration | Mandatory before a second business joins |
@@ -75,7 +102,7 @@ Passing automated checks alone does not close this phase.
 
 **Value:** A busy counter or lost connection must not create duplicate orders or payments.
 
-**11 September status:** Local implementation and recovery evidence are in [the Phase 2 check record](docs/transaction-safety-check.md). The test-fixture session error is fixed. All 92 backend tests passed, including the six PostgreSQL cases. Student workflow acceptance remains pending; nothing has been deployed.
+**11 September status:** Local implementation and recovery evidence are in [the Phase 2 check record](docs/transaction-safety-check.md). All 92 backend tests passed, including the six PostgreSQL cases. Student order recovery passed; payment-recovery review was skipped and stale clothing-edit review remains open. Nothing has been deployed.
 
 - Replace or protect the count-plus-one ticket calculation. Test two staff creating orders at the same time.
 - Add an idempotency key for each order/payment submission: a repeated request returns the original result instead of saving twice.
@@ -95,7 +122,7 @@ SQLite checks alone are insufficient to prove database locking. No unexplained d
 
 The student confirmed clothing tallies, garment identification, existing damage and serious stains are essential. Prioritise [the clothing intake review and phased plan](docs/clothing-intake-review.md) before the customer shortcut. The existing tally was hidden by the disposable fixture, not removed from the code. The review identifies real receipt, condition-history and outsourcing gaps; it does not claim the live catalogue was checked.
 
-Start with 3A1: expose the existing clothing workflow in representative local data and complete customer receipt drafts. Review it before 3A2 condition exceptions/history. Follow with 3B garment identification and a sent/returned register. Qinetra currently uses descriptions without numbered tags; physical references are a proposal to agree separately. Work one approved increment at a time.
+Start with the 3A1 contract above. In 3A2, require an explicit completed check before washing or outsourcing, record author/time and retain corrections. A nonempty partial tally is not proof that the full check is complete. Provide a customer-reply hold for unresolved issues. In 3B, use stable physical references accepted by the user; confirm the safe labelling method with the cleaner. Track physical pieces separately from billed units (for example, a suit jacket and trousers), partial returns, return checks and authorised handover. References must survive edits. Do not mark Ready while required pieces or final checks remain outstanding.
 
 ## Phase 3C — Finish the customer intake workflow
 
@@ -103,6 +130,7 @@ Start with 3A1: expose the existing clothing workflow in representative local da
 
 - Add a small Add customer action inside order entry. Return the saved customer to the open order automatically.
 - Preserve services, clothing details and price choices while adding the customer.
+- Protect an unfinished draft when navigating away; existing uncertain-save recovery only protects a submitted request. Make the saved receipt and starting the next order visually distinct.
 - Normalise supported Kenyan phone formats for search and duplicate checks.
 - Before saving a likely duplicate, show existing customers and a clear choice. Do not silently merge people who share a number.
 - Keep the essential fields first: customer, services, quantities, clothing check, ready time and payment choice.
@@ -141,6 +169,9 @@ The history and reports must explain every change. Employees must not gain owner
 - Show order value, money received, outstanding balances and cash/M-PESA breakdowns with clear dates.
 - Carry phase 4 cancellations and payment adjustments into every relevant total and export.
 - Make due work, late work and uncollected laundry easy to find from the owner view.
+- Keep Finance as the owner's landing page. Add a compact Needs attention area linking to due/late orders, pending checks, customer holds, missing/late outsourced pieces, failed final checks, uncollected orders and unpaid balances as those supporting workflows are implemented.
+- Clearly separate all outstanding debt from remaining balances on orders booked in the selected period. The current Finance and overview scopes differ; preserve correct definitions in labels and exports.
+- Show the last successful update, provide refresh and reload when returning to the screen. Failed refreshes must not become zero activity; retain stale data only with a clear warning.
 - Add filtered CSV exports for an individual customer, service and date range. Include the filters and column meanings.
 - Define “top services”: quantity, number of orders or booked value. Keep the selected measure visible.
 - Add a small daily reconciliation record if the owner cannot close the day reliably with the existing views.
@@ -188,10 +219,10 @@ Backup features depend on the selected service plan; verify them before implemen
 - Monitor both the frontend and API readiness. The existing `/` endpoint only reports that the process is running.
 - Set up UptimeRobot notifications to the agreed contact. Confirm that a controlled test alert is received and that recovery is reported.
 - Document that periodic checks can miss brief failures and do not prove an order can be saved.
+- Use existing hosting dashboards for deployment, errors and technical health during the pilot. A custom platform-admin dashboard is not a launch prerequisite. Retain useful error codes and incident records without exposing customer details in monitoring.
 - Rehearse deployment, rollback and configuration checks before switching Qinetra to the new environment.
 
-UptimeRobot currently permits commercial use of its free plan, with five-minute checks and 50 monitors.
-Use it for basic detection, not an instant-alert guarantee. [Official free-plan guidance](https://help.uptimerobot.com/en/articles/11604710-who-should-use-uptimerobot-s-free-plan)
+Verify UptimeRobot's current free-plan terms, check interval and alert options during setup. Use it for basic detection, not an instant-alert guarantee. [Official free-plan guidance](https://help.uptimerobot.com/en/articles/11604710-who-should-use-uptimerobot-s-free-plan)
 
 **Main areas:** migrations, deployment configuration, health route, environment setup, backup/restore and support instructions.
 
@@ -203,7 +234,8 @@ Obtain approval for the exact cutover before changing live configuration or coll
 **Value:** Replace assumptions with observed shop use.
 
 - Record a small baseline before cutover: intake time, order-search time, daily reconciliation effort and common corrections.
-- Propose two weeks of supported use; extend if there are too few orders to cover the workflow.
+- Plan 10 operating days, including a busy day where possible; extend if there are too few orders to cover the workflow.
+- Track intake time/hesitation, garment discrepancies, missed instructions, rewashes, promised-time performance, outstanding outsourced pieces and daily payment differences. Compare with the starting baseline; do not manufacture improvement percentages.
 - Train staff on intake, tracking, payment confirmation, handover, corrections and outage handling.
 - Deploy the approved release and check the exact deployed version. Use authorised real transactions for production acceptance.
 - Review incidents daily during the first week. Fix blockers before adding features.
@@ -224,7 +256,19 @@ Suggested acceptance targets below are proposals, not measured results. Agree th
 **Exit gate:** Owner accepts the workflow and records. Critical defects are closed. Record actual results and a go/fix/stop decision.
 If the pilot fails, repair the cause. Do not use more features to hide the failure.
 
-## Phase 8 — Offers and reusable customer messages
+## Phase 8A — Customer memory that reaches the worker
+
+- Keep one optional current preference profile per customer. Start with team-confirmed presentation/care options; defer unconfirmed fragrance and softener choices.
+- Surface preferences at customer selection; save the agreed values with the order. A later profile edit must not rewrite an existing order, and an order-only override must not silently change the profile.
+- Keep current customer preferences, whole-order instructions, individual item instructions and internal care notes distinct. Item exceptions must not duplicate tally counts or charges.
+- Show applicable instructions on the shared work screen and during final checking. Conflicting or unsupported requests require clarification, not automatic acceptance.
+- Reuse customer order history. Give care notes author/time; retain only service-relevant information and exclude internal notes from customer receipts.
+- Set view/edit/correction permissions in the bounded phase design using existing roles; require an explicit action for permanent preference changes. Do not introduce Google login as a dependency.
+- Use additive, default-safe API/schema changes. Preserve older customers/orders without preferences, existing save protection and migration compatibility.
+
+**Gate:** Test a new customer with no profile, a returning customer, an order-only override, an explicit permanent change, an item instruction and an attributed note. Refresh and verify that the worker sees the saved order instructions, old orders are unchanged, and unauthorised edits are rejected.
+
+## Phase 8B — Offers and reusable customer messages
 
 - Let the owner create a dated bundle, such as load wash plus duvet for 15% off.
 - Show eligible offers in order entry for employees. Require a clear Apply offer action and show the saving before confirmation.
@@ -338,7 +382,8 @@ An AWS-style platform or infrastructure migration is not a prerequisite for prov
 
 | When | Decision needed |
 | --- | --- |
-| Before pilot scope is fixed | Actual devices, staff count, daily order volume and the owner's three most costly recurring problems |
+| Before shop acceptance | Volume and primary problem are confirmed above; confirm actual shared device, staff accounts and physical identification procedure |
+| Before customer memory | Which presentation/care choices staff and the external cleaner can reliably honour; who may edit permanent preferences |
 | Before corrections | Who may correct each record; cancellation, refund and collected-order rules |
 | Before cutover | Approved service prices, genuine open orders, production account/budget, backup targets and real support contact |
 | Before payment prompts | Merchant arrangements, Daraja access and who resolves payment exceptions |

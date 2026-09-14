@@ -1,6 +1,8 @@
 # Start Qinetra with real business data
 
-Status: 11 September 2026. Fresh database prepared and legacy Data API exposure fixed. The student confirmed owner login and an existing receipt work. The live application has NOT been switched to the fresh schema. The user prioritised getting Qinetra operational and conserving remaining usage.
+Status: 15 September 2026. Fresh database prepared and legacy Data API exposure fixed. The student confirmed owner login and an existing receipt work on 11 September. The live application has NOT been switched to the fresh schema. The user prioritises getting Qinetra operational with small, maintainable changes.
+
+Delivery order and acceptance gates now live in [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md). This file tracks setup/release status. Targeted 15 September checks confirmed the old Render backend version and zero users, customers, orders and payments in the nine-table fresh schema; no new full security audit or test run was performed.
 
 ## Completed
 
@@ -23,7 +25,9 @@ The confirmed Render workspace is My Workspace (`tea-d9bkeej7uimc73amhpn0`), ser
 
 References: [Supabase Data API security](https://supabase.com/docs/guides/api/securing-your-api), [no-policy advisory](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy). No broad browser policies are needed for this FastAPI access model. The fresh schema is still empty and not yet usable by staff. A restricted runtime database role remains work for the fresh-schema connection phase.
 
-## Remaining work, in order
+## Remaining setup and release checklist
+
+Before cutover, complete the roadmap's pilot prerequisites: 3A1 receipts, 3A2 pre-wash checks/history, 3B outsourcing accountability, 3C customer intake, 4 controlled corrections and 5 owner oversight. The checklist below is not permission to skip these workflows.
 
 1. **Access fix complete.** Automated permission checks passed, and the student replied "works" after the owner login/Track orders/receipt check. Provision appropriately restricted backend access when connecting the new schema; keep credentials out of frontend code and screenshots.
 2. **Finish the approved clothing/receipt change.** Enable representative tally and detailed garment settings for testing, and include saved counts, descriptions, damage and stain notes in both customer receipt drafts. Phase 3A1 was approved but is not implemented. Do not claim laundry condition exceptions or outsourced tracking already exist.
@@ -31,7 +35,7 @@ References: [Supabase Data API security](https://supabase.com/docs/guides/api/se
 4. **Connect and verify the app.** Current backend queries use unqualified table names; creating qinetra_live alone does not route them there. Add explicit schema routing without fallback to public, check raw SQL as well as ORM queries, and validate with the deployed database role. Coordinate backend/frontend versions with the transaction-safety contract. A new owner must be able to log in, register a customer, save a mixed order, read its clothing receipt, record payment and find the same record after refresh. Confirm public data is unchanged.
 5. **Prepare recovery and start a controlled pilot.** Verify a backup and restore process, set up the requested UptimeRobot alerts, keep a brief paper fallback and reconcile orders/payments at day end. Start with one trained staff member and review discrepancies daily. No deployment or full manual acceptance is recorded yet.
 
-Keep subscriptions, Google OAuth, microservices and AWS migration out of this launch step. Description-only outsourced identification is the current business practice; permanent references and sent/returned reconciliation remain planned improvements. The new schema separates test and business records within one database; it is not a separate backup, a separate project or multi-business isolation.
+Keep subscriptions, Google OAuth, microservices and AWS migration out of this launch step. Description-only outsourced identification is the current practice; the user accepted simple physical references on 15 September, subject to agreeing the method with the cleaner. Sent/returned reconciliation remains unbuilt. The new schema separates test and business records within one database; it is not a separate backup, a separate project or multi-business isolation.
 
 ## Resume without redoing work
 

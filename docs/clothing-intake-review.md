@@ -6,7 +6,7 @@ Reviewed 11 September 2026. Source audit and existing contract tests only. No ap
 
 Staff must account for what the customer handed over, identify each outsourced garment, record existing damage and serious stains, and show the agreed record on the customer's receipt. This is required for the Qinetra pilot, before subscription or commercial expansion work.
 
-Confirmed practice: Qinetra currently identifies outsourced garments using descriptions without numbered tags. Preserve those descriptions. A short permanent garment reference is a proposed improvement, not an existing process or an agreed tagging change.
+Confirmed practice: Qinetra currently identifies outsourced garments using descriptions without numbered tags. Preserve those descriptions. On 15 September the user accepted simple physical references alongside descriptions; the method must be agreed with the cleaner. Staff usually check clothes before washing after drop-off, and physical separation practices vary. Pending checks must be explicit and completed before processing; later observations must not be presented as witnessed by the customer.
 
 ## What exists and what is missing
 
@@ -77,4 +77,4 @@ Continue the already proposed customer-intake work after the clothing record is 
 | Recording is too slow and staff skip it | Fast tally for ordinary pieces; individual detail for dry cleaning and condition exceptions. Observe use during a busy intake. |
 | Old receipts change after catalogue edits | Keep saved name/price snapshots and do not retroactively invent clothing counts or condition checks. |
 
-Current identification method confirmed: descriptions without numbered tags. Decision pending: whether to adopt physical garment references during the outsourcing subphase. Phase 3A1 implementation is proposed, not started.
+Current identification method: descriptions without numbered tags. Simple physical references were accepted on 15 September; confirm the attachment method before the outsourcing subphase. Phase 3A1 is approved but not started. Follow the current implementation contract and delivery order in IMPLEMENTATION_ROADMAP.md.

@@ -199,3 +199,11 @@ Ignored helpers in `tmp/` support the local fixture server, read-only smoke chec
 - Each of eight zero-row requests using the public API key was denied. Supabase reports no remaining security ERROR/WARN findings. The deployed login lookup still returns the expected response for a nonexistent user; successful owner login and receipt reading await the student's check.
 - No application rewrite, deployment or new screenshot was needed. [Small-change maintenance standard](docs/engineering-guidelines.md) records the user's code-quality requirement.
 - Student subsequently replied "works" after checking the deployed owner login, Track orders and an existing receipt. The security change's manual check is complete; this does not confirm fresh-schema setup or cutover.
+
+## 15 September 2026 — Put garment accountability before expansion
+
+- Reviewed the customer-experience ideas against the source, live backend version and fresh-schema counts. Confirmed about 10 daily orders, checks before washing and a shared work screen; simple outsourced garment references were accepted.
+- Consolidated delivery order and completion checks in [the roadmap](IMPLEMENTATION_ROADMAP.md), including the exact next 3A1 receipt change. Updated the pilot checklist and clothing review to match current decisions.
+- Added owner action lists, clear reporting scopes and refresh behaviour to pilot requirements. Customer memory follows the core pilot; platform administration precedes a second business.
+- Documentation only. No code, database, deployment, new test result or screenshot. Previous tests and manual acceptance remain separately recorded.
+- Optional LinkedIn draft: "What happens when two similar shirts leave the shop? That question helped me prioritise QLMS. I reviewed garment records, receipts and handovers, then planned small changes with a check for each one. The next step is to make the customer receipt match the saved clothing record."
