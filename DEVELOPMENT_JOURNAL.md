@@ -26,6 +26,7 @@ The hook/change/conclusion structure is our editorial choice, separate from the 
 Keep an existing image when it already proves the point. Do not create another screenshot just to complete a numbered checklist.
 Add an image only for a distinct behaviour or a meaningful before-and-after comparison. Record what it proves and its limits.
 Keep historical images in place; link to them instead of copying them into another folder.
+Store genuine QLMS milestone evidence in `docs/diagrams/evidence/`. Use `screenshot/` only for edited public-post copies with documented provenance.
 Use test data for public examples. Check for names, phone numbers, passwords and tokens before sharing an older image.
 
 | Evidence | Story it supports | Limits and next action |
@@ -33,6 +34,7 @@ Use test data for public examples. Check for names, phone numbers, passwords and
 | [34 — Employee Home](docs/diagrams/evidence/34-employee-home-navigation.png) | Three daily tasks and a secondary Add customer action | User-supplied image inspected. No customer data visible. Menu is closed; it does not prove sidebar links or task completion. Keep it. |
 | 35 — Stage filter selected (pending) | A control that previously looked like a label now shows a clear action and selected state | Capture one selected stage and its matching test order. This replaces the generic tracking capture brief. |
 | 36 — Connection advice (optional, pending) | Technical errors translated into a staff action and support code | Capture one local simulated connection failure. Do not repeat it on every screen or describe it as a production outage. |
+| [40 — Clothing record receipt](docs/diagrams/evidence/40-clothing-record-receipt.png) | Saved tally and dry-cleaning condition details on one fictional order | Student-supplied local evidence inspected. It proves the saved screen record; student confirmation establishes that both unsent drafts matched. |
 
 Older captures remain in the evidence folder. They document earlier designs and may contain personal data or outdated wording.
 Review each selected image before a public post; the folder is not a ready-to-publish gallery.
@@ -214,5 +216,5 @@ Ignored helpers in `tmp/` support the local fixture server, read-only smoke chec
 - Updated the disposable local catalogue to demonstrate Quick tally and individual Dry Cleaning details. No application database, backend API, live data or deployment changed.
 - Verification: five focused receipt cases and all 37 frontend tests passed; lint, production build, fixture syntax and local catalogue checks passed. The first sandboxed build could not download the configured Google font; the permitted network rerun passed.
 - Student mixed-order browser acceptance passed. Both drafts matched ticket QL-20260915-001: two shirts, one trouser and a described dry-cleaning shirt with saved tear/stain notes. The student explained that one formatter prevents inconsistent information and standardises confirmation. No WhatsApp message was sent.
-- Browser inspection confirmed the same fictional saved record. The screenshot tool could not place the capture in the repository; save one manual capture as `screenshot/40-clothing-record-receipt.png` rather than adding redundant images.
+- Browser inspection confirmed the same fictional saved record. [Evidence 40](docs/diagrams/evidence/40-clothing-record-receipt.png) was supplied by the student and inspected; it contains no password, token or real customer record.
 - Optional LinkedIn draft: "A receipt is only trustworthy when it matches the saved order. I replaced two separate QLMS message builders with one formatter that includes clothing counts and condition notes. Tests now cover mixed orders, pending checks and older records. The next check is the real staff workflow."
