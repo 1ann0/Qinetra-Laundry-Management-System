@@ -207,3 +207,11 @@ Ignored helpers in `tmp/` support the local fixture server, read-only smoke chec
 - Added owner action lists, clear reporting scopes and refresh behaviour to pilot requirements. Customer memory follows the core pilot; platform administration precedes a second business.
 - Documentation only. No code, database, deployment, new test result or screenshot. Previous tests and manual acceptance remain separately recorded.
 - Optional LinkedIn draft: "What happens when two similar shirts leave the shop? That question helped me prioritise QLMS. I reviewed garment records, receipts and handovers, then planned small changes with a check for each one. The next step is to make the customer receipt match the saved clothing record."
+
+## 15 September 2026 — Build customer drafts from saved clothing records
+
+- Added one shared receipt formatter used after order creation and from saved order details. It includes saved clothing counts, descriptions, existing damage, stain notes and pending checks while preserving older orders without invented information.
+- Updated the disposable local catalogue to demonstrate Quick tally and individual Dry Cleaning details. No application database, backend API, live data or deployment changed.
+- Verification: five focused receipt cases and all 37 frontend tests passed; lint, production build, fixture syntax and local catalogue checks passed. The first sandboxed build could not download the configured Google font; the permitted network rerun passed.
+- Student mixed-order browser acceptance and evidence remain pending. No screenshot was added and no WhatsApp message was sent.
+- Optional LinkedIn draft: "A receipt is only trustworthy when it matches the saved order. I replaced two separate QLMS message builders with one formatter that includes clothing counts and condition notes. Tests now cover mixed orders, pending checks and older records. The next check is the real staff workflow."

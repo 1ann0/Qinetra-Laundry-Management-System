@@ -10,6 +10,7 @@ import ServiceItemEntry, {
 import { useAuth } from "@/context/auth-context";
 import usePendingSave from "@/components/orders/use-pending-save";
 import PendingSaveNotice from "@/components/orders/pending-save-notice";
+import { buildOrderReceiptMessage } from "@/lib/order-receipt";
 
 const SUIT_BAG_CODE = "dry_cleaning_suit_bag";
 const SUIT_BAG_PROMPT_CODES = new Set([
@@ -322,23 +323,7 @@ function shareReceipt(order) {
     return "The customer phone number is not in a valid Kenyan format.";
   }
 
-  const serviceNames = order.service_lines
-    .map((line) => line.service_name)
-    .join(", ");
-  const message = [
-    "Qinetra Laundry receipt",
-    `Customer: ${order.customerName}`,
-    `Ticket: ${order.ticket_number}`,
-    `Order date: ${formatDate(order.order_date)}`,
-    `Services: ${serviceNames}`,
-    `Total: ${formatKes(order.total_price)}`,
-    `Paid: ${formatKes(order.amount_paid)}`,
-    `Balance: ${formatKes(order.balance_due)}`,
-    `Ready by: ${formatDateTime(order.promised_ready_at)}`,
-    "Status: Received",
-    "",
-    "Thank you for choosing Qinetra Laundry.",
-  ].join("\n");
+  const message = buildOrderReceiptMessage(order, order.customerName);
 
   window.open(
     `https://wa.me/${phone}?text=${encodeURIComponent(message)}`,

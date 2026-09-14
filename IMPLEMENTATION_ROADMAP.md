@@ -3,7 +3,7 @@
 Prepared on 9 September; execution plan updated on 15 September 2026 after the business, architecture and dashboard review.
 This is the working plan for future phases. It does not authorize deployment, purchases or all future features at once.
 
-**Next implementation: approved Phase 3A1, clothing receipts.** This roadmap is the source of truth for delivery order; [QINETRA_PILOT_START.md](QINETRA_PILOT_START.md) records database/release status. A protected, empty qinetra_live schema is ready; legacy public-table exposure is fixed. The application has not been switched to the fresh schema. Follow [the maintenance standard](docs/engineering-guidelines.md); implement and review one small change at a time.
+**Current review: Phase 3A1 clothing receipts.** The shared saved-data formatter, receipt tests and representative disposable catalogue are implemented locally. On 15 September, all 37 frontend tests, lint and the production build passed; the student's mixed-order browser check remains. [QINETRA_PILOT_START.md](QINETRA_PILOT_START.md) records database/release status. The application has not been switched to the fresh schema or deployed.
 
 ## Confirmed operating decisions and boundaries
 
@@ -17,7 +17,7 @@ This is the working plan for future phases. It does not authorize deployment, pu
 
 ## Next change: Phase 3A1 implementation contract
 
-**Outcome:** The customer's receipt draft contains the same saved clothing record as the order screen.
+**Outcome:** The customer's receipt draft contains the same saved clothing record as the order screen. Local implementation and automated checks passed on 15 September; manual browser acceptance remains.
 
 - Update the disposable local catalogue to expose Quick tally and Individual garment details. Preserve existing test orders; do not invent historical clothing records.
 - Add a small pure formatter in `frontend/src/lib/order-receipt.js`, used by the new-order and saved-order pages. Keep phone handling and opening the draft in the UI; no automatic sending.
@@ -26,7 +26,7 @@ This is the working plan for future phases. It does not authorize deployment, pu
 - Add focused formatter tests for mixed services, saved conditions, pending checks, old orders and ready status. Run the frontend suite, lint and production build.
 - Browser check: create one fictional mixed order, save, refresh and compare both drafts with its saved clothing details. Do not send either draft. Capture one distinct evidence image only after verification.
 
-**Files:** shared formatter/test, both order pages and the ignored local fixture. **API/schema change:** none. **Learning point:** reuse one saved record to keep different receipt views consistent. Stop for review after this increment; no live cutover.
+**Files:** shared formatter/test, both order pages and the ignored local fixture. **API/schema change:** none. **Learning point:** reuse one saved record to keep different receipt views consistent. Stop for review after the manual check; no live cutover.
 
 ## The business objective
 
@@ -63,7 +63,7 @@ Use this roadmap for prioritisation and the [development journal](DEVELOPMENT_JO
 | --- | --- | --- |
 | 1 | Accept the current navigation and feedback changes | User reports usability review passed; no uncoached timing data recorded |
 | 2 | Protect orders and payments from duplicate or conflicting saves | Automated checks and student order recovery passed; remaining manual scenarios open |
-| 3A1 | Complete saved clothing receipt drafts | Approved; next small implementation, no database migration |
+| 3A1 | Complete saved clothing receipt drafts | Implemented locally; 37 frontend tests, lint and build pass; student mixed-order browser check pending |
 | 3A2 | Complete pre-wash checks, condition exceptions and history | Required pilot workflow; preserve original observations and block processing with incomplete checks/holds |
 | 3B | Identify and reconcile outsourced dry-cleaning garments | Required before outsourced pilot work; simple references accepted, physical method to confirm |
 | 3C | Complete customer intake without leaving the order | Required pilot workflow; preserve all clothing records |
@@ -407,7 +407,7 @@ Do not invent these answers. Work that does not depend on them can continue with
 | Support becomes unmanageable | Repeated incidents with no owner or resolution | Set a real support process; fix recurring causes before selling more accounts |
 | More development produces no paying demand | Feature enthusiasm without regular use or commitment | Use the phase 7 value review to choose fix, proceed or stop |
 
-**Next product action:** Review and approve Phase 3A1 existing clothing workflow and complete receipt drafts. The student has prioritised clothing accountability before customer-intake expansion and confirmed outsourced garments currently use descriptions without tags. Student order recovery passed; student final-payment recovery was skipped and stale clothing-edit acceptance remains an open release item. The fixture correction and PostgreSQL rerun passed.
+**Next product action:** Complete the Phase 3A1 mixed-order browser check and review the unsent customer draft. The student has prioritised clothing accountability before customer-intake expansion. Student order recovery passed; student final-payment recovery was skipped and stale clothing-edit acceptance remains an open release item. Do not start 3A2 until this increment is accepted.
 
 ## Guided cloud-engineering learning track
 

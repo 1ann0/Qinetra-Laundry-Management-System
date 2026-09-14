@@ -11,6 +11,7 @@ import ServiceItemEntry, {
 import { useAuth } from "@/context/auth-context";
 import usePendingSave from "@/components/orders/use-pending-save";
 import PendingSaveNotice from "@/components/orders/pending-save-notice";
+import { buildOrderReceiptMessage } from "@/lib/order-receipt";
 
 // Keep money and dates readable on the receipt.
 function formatKes(amount) {
@@ -367,30 +368,7 @@ export default function OrderDetailPage() {
       return;
     }
 
-    const serviceNames =
-      order.service_lines.length > 0
-        ? order.service_lines.map((line) => line.service_name).join(", ")
-        : order.service_type.replaceAll("_", " ");
-    const heading =
-      order.status === "ready"
-        ? "Your laundry is ready for collection"
-        : "Qinetra Laundry receipt";
-    const text = [
-      heading,
-      `Customer: ${customer?.name || `Customer ${order.customer_id}`}`,
-      `Ticket: ${order.ticket_number}`,
-      `Order date: ${formatDate(order.order_date)}`,
-      `Services: ${serviceNames}`,
-      `Total: ${formatKes(order.total_price)}`,
-      `Paid: ${formatKes(order.amount_paid)}`,
-      `Balance: ${formatKes(order.balance_due)}`,
-      `Ready by: ${formatDateTime(order.promised_ready_at)}`,
-      `Status: ${getStatusLabel(order.status)}`,
-      "",
-      order.status === "ready"
-        ? "Please clear any balance before collection."
-        : "Thank you for choosing Qinetra Laundry.",
-    ].join("\n");
+    const text = buildOrderReceiptMessage(order, customer?.name);
 
     setShareError("");
     window.open(
