@@ -4,6 +4,7 @@ import { getUserMessage } from "@/lib/user-messages";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import CustomerForm from "@/components/customers/customer-form";
 import ServiceItemEntry, {
   createBlankGarment,
 } from "@/components/orders/service-item-entry";
@@ -11,6 +12,14 @@ import { useAuth } from "@/context/auth-context";
 import usePendingSave from "@/components/orders/use-pending-save";
 import PendingSaveNotice from "@/components/orders/pending-save-notice";
 import { buildOrderReceiptMessage } from "@/lib/order-receipt";
+import { formatNairobiDateTime } from "@/lib/format-nairobi";
+import {
+  clearOrderDraft,
+  hasMeaningfulOrderDraft,
+  orderDraftScope,
+  readOrderDraft,
+  saveOrderDraft,
+} from "@/lib/order-draft";
 
 const SUIT_BAG_CODE = "dry_cleaning_suit_bag";
 const SUIT_BAG_PROMPT_CODES = new Set([
@@ -48,14 +57,6 @@ function formatDate(value) {
 }
 
 // Keep completion times readable on the form, receipt and WhatsApp message.
-function formatDateTime(value) {
-  if (!value) return "Not set";
-  return new Intl.DateTimeFormat("en-KE", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
 // Convert a Date into the local format required by a datetime-local input.
 function formatDateTimeInput(date) {
   const pad = (value) => String(value).padStart(2, "0");
@@ -107,6 +108,33 @@ function createServiceLine(service) {
         ? [createBlankGarment(1, service.default_item_type_id || "")]
         : [],
   };
+}
+
+// Refresh catalogue-controlled values while keeping valid unfinished work.
+function restoreDraftServices(savedServices, catalogServices) {
+  return savedServices.flatMap((savedService) => {
+    const currentService = catalogServices.find(
+      (service) => service.id === savedService.service_id,
+    );
+    if (
+      !currentService ||
+      currentService.item_recording_mode !== savedService.item_recording_mode
+    ) {
+      return [];
+    }
+    return [{
+      ...savedService,
+      service_code: currentService.code,
+      service_name: currentService.name,
+      service_unit: currentService.unit,
+      unit_price: Number(currentService.unit_price),
+      category: currentService.category,
+      fixed_item_type_id: currentService.default_item_type_id,
+      item_recording_mode: currentService.item_recording_mode,
+      turnaround_minutes: Number(currentService.turnaround_minutes) || 180,
+      items: Array.isArray(savedService.items) ? savedService.items : [],
+    }];
+  });
 }
 
 // Dry Cleaning is the category, so employees only need the garment wording.
@@ -351,8 +379,9 @@ function shareReceipt(order) {
 }
 
 export default function OrderEntryPage() {
-  const { authenticatedRequest } = useAuth();
+  const { authenticatedRequest, userId } = useAuth();
   const today = getNairobiToday();
+  const draftScope = orderDraftScope(userId);
 
   // Load the three lists needed to create a catalogue-based order.
   const [customers, setCustomers] = useState([]);
@@ -363,6 +392,8 @@ export default function OrderEntryPage() {
   // Store the customer choice and the services added to this ticket.
   const [customerSearch, setCustomerSearch] = useState("");
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [customerFeedback, setCustomerFeedback] = useState("");
   const [serviceCategoryToAdd, setServiceCategoryToAdd] = useState("general");
   const [serviceSearch, setServiceSearch] = useState("");
   const [selectedServices, setSelectedServices] = useState([]);
@@ -388,6 +419,8 @@ export default function OrderEntryPage() {
   const [error, setError] = useState("");
   const [receiptShareError, setReceiptShareError] = useState("");
   const [createdOrder, setCreatedOrder] = useState(null);
+  const [draftReady, setDraftReady] = useState(false);
+  const [draftFeedback, setDraftFeedback] = useState("");
 
   // Load customers and active catalogue choices together.
   useEffect(() => {
@@ -411,9 +444,47 @@ export default function OrderEntryPage() {
         setCatalogServices(serviceResponse);
         setItemTypes(itemResponse);
 
+        let restoredDraft = null;
+        if (userId) {
+          try {
+            restoredDraft = readOrderDraft(window.sessionStorage, draftScope);
+          } catch (draftError) {
+            setDraftFeedback(draftError.message);
+          }
+        }
+
+        if (restoredDraft) {
+          const restoredCustomerExists = customerResponse.some(
+            (customer) => String(customer.id) === restoredDraft.selectedCustomerId,
+          );
+          const restoredServices = restoreDraftServices(
+            restoredDraft.selectedServices,
+            serviceResponse,
+          );
+          setSelectedCustomerId(
+            restoredCustomerExists ? restoredDraft.selectedCustomerId : "",
+          );
+          setSelectedServices(restoredServices);
+          setIsEarlierOrder(Boolean(restoredDraft.isEarlierOrder));
+          setOrderDate(restoredDraft.orderDate || today);
+          setDiscountReason(restoredDraft.discountReason || "");
+          setPromisedReadyAt(restoredDraft.promisedReadyAt || "");
+          setIsPeakTime(Boolean(restoredDraft.isPeakTime));
+          setPaymentChoice(restoredDraft.paymentChoice || "unpaid");
+          setPaymentAmountType(restoredDraft.paymentAmountType || "full");
+          setDepositAmount(restoredDraft.depositAmount || "");
+          setPaymentReceivedDate(restoredDraft.paymentReceivedDate || today);
+          setPaymentConfirmed(Boolean(restoredDraft.paymentConfirmed));
+          setDraftFeedback("Your unfinished order was restored.");
+          if (restoredServices.length !== restoredDraft.selectedServices.length) {
+            setDraftFeedback("Your unfinished order was restored. A service changed in Shop setup, so add that service again.");
+          }
+        }
+
         if (customerExists) {
           setSelectedCustomerId(requestedCustomerId);
         }
+        setDraftReady(true);
       } catch (loadError) {
         setError(getUserMessage(loadError, "Order setup could not be loaded."));
       } finally {
@@ -422,7 +493,75 @@ export default function OrderEntryPage() {
     }
 
     loadOrderSetup();
-  }, [authenticatedRequest]);
+  }, [authenticatedRequest, draftScope, today, userId]);
+
+  const hasUnfinishedOrder = hasMeaningfulOrderDraft({
+    selectedCustomerId,
+    selectedServices,
+    isEarlierOrder,
+    orderDate,
+    discountReason,
+    promisedReadyAt,
+    isPeakTime,
+    paymentChoice,
+    paymentAmountType,
+    depositAmount,
+    paymentReceivedDate,
+    paymentConfirmed,
+  });
+
+  // Keep unfinished counter work through refresh or password re-entry.
+  useEffect(() => {
+    if (!draftReady || createdOrder || !userId) return undefined;
+    const timer = window.setTimeout(() => {
+      try {
+        saveOrderDraft(window.sessionStorage, draftScope, {
+          selectedCustomerId,
+          selectedServices,
+          isEarlierOrder,
+          orderDate,
+          discountReason,
+          promisedReadyAt,
+          isPeakTime,
+          paymentChoice,
+          paymentAmountType,
+          depositAmount,
+          paymentReceivedDate,
+          paymentConfirmed,
+        });
+      } catch (draftError) {
+        setDraftFeedback(draftError.message);
+      }
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [
+    createdOrder,
+    depositAmount,
+    discountReason,
+    draftReady,
+    draftScope,
+    isEarlierOrder,
+    isPeakTime,
+    orderDate,
+    paymentAmountType,
+    paymentChoice,
+    paymentConfirmed,
+    paymentReceivedDate,
+    promisedReadyAt,
+    selectedCustomerId,
+    selectedServices,
+    userId,
+  ]);
+
+  useEffect(() => {
+    if (!hasUnfinishedOrder || createdOrder) return undefined;
+    const warnBeforeLeaving = (event) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnBeforeLeaving);
+    return () => window.removeEventListener("beforeunload", warnBeforeLeaving);
+  }, [createdOrder, hasUnfinishedOrder]);
 
   // Move the returned ticket into view after React adds it to the page.
   useEffect(() => {
@@ -687,6 +826,25 @@ export default function OrderEntryPage() {
     }
   }
 
+  function selectNewCustomer(customer, message) {
+    setCustomers((currentCustomers) => [
+      customer,
+      ...currentCustomers.filter((item) => item.id !== customer.id),
+    ]);
+    setSelectedCustomerId(String(customer.id));
+    setCustomerSearch("");
+    setShowAddCustomer(false);
+    setCustomerFeedback(message);
+    setError("");
+  }
+
+  function startNextOrder() {
+    setCreatedOrder(null);
+    setReceiptShareError("");
+    setDraftFeedback("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   // The order and any initial payment are now saved together.
   function finishCreatedOrder(finalOrder) {
       const customer = customers.find((item) => item.id === finalOrder.customer_id);
@@ -711,6 +869,14 @@ export default function OrderEntryPage() {
       setPaymentReceivedDate(today);
       setPaymentConfirmed(false);
       setReceiptShareError("");
+      setShowAddCustomer(false);
+      setCustomerFeedback("");
+      try {
+        clearOrderDraft(window.sessionStorage, draftScope);
+        setDraftFeedback("");
+      } catch (draftError) {
+        setDraftFeedback(draftError.message);
+      }
   }
 
   return (
@@ -720,7 +886,7 @@ export default function OrderEntryPage() {
           Orders / New order
         </p>
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-          Create a laundry order
+          New order
         </h1>
         <p className="mt-3 max-w-3xl leading-7 text-slate-600">
           Select the customer, add their services and record the clothing
@@ -746,7 +912,44 @@ export default function OrderEntryPage() {
         </div>
       </div>
 
+      {draftFeedback ? (
+        <p
+          className={`mb-5 rounded-xl border px-4 py-3 text-sm ${
+            /could not|contact support/i.test(draftFeedback)
+              ? "border-red-300 bg-red-50 text-red-800"
+              : "border-blue-200 bg-blue-50 text-blue-900"
+          }`}
+          role={/could not|contact support/i.test(draftFeedback) ? "alert" : "status"}
+        >
+          {draftFeedback}
+        </p>
+      ) : null}
+
+      {!createdOrder ? (
+        <>
       <PendingSaveNotice {...orderSave} onRetry={retryOrder} />
+      {showAddCustomer ? (
+        <div className="mb-6">
+          <CustomerForm
+            compact
+            onCancel={() => setShowAddCustomer(false)}
+            onSaved={(customer, warning) =>
+              selectNewCustomer(
+                customer,
+                warning
+                  ? "Separate customer saved and selected."
+                  : `${customer.name} was saved and selected.`,
+              )
+            }
+            onUseExisting={(customer) =>
+              selectNewCustomer(
+                customer,
+                `${customer.name} was selected. No duplicate was created.`,
+              )
+            }
+          />
+        </div>
+      ) : null}
       <form
         id="order-entry-form"
         className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]"
@@ -761,14 +964,27 @@ export default function OrderEntryPage() {
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-bold text-slate-900">1. Customer</h2>
-              <Link
+              <button
                 className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#005AAB] px-4 text-sm font-bold text-[#005AAB] no-underline hover:bg-blue-50"
-                href="/customers"
+                type="button"
+                onClick={() => {
+                  setShowAddCustomer((isOpen) => !isOpen);
+                  setCustomerFeedback("");
+                }}
               >
                 <span aria-hidden="true">+</span>
-                Add customer
-              </Link>
+                {showAddCustomer ? "Close customer form" : "Add customer"}
+              </button>
             </div>
+
+            {customerFeedback ? (
+              <p
+                className="mt-4 rounded-xl border border-green-300 bg-green-50 px-4 py-3 text-sm font-semibold text-green-900"
+                role="status"
+              >
+                {customerFeedback}
+              </p>
+            ) : null}
 
             <label
               className="mt-4 block font-semibold text-slate-800"
@@ -1538,7 +1754,7 @@ export default function OrderEntryPage() {
           <div className="mt-5 border-t border-blue-200 pt-4 text-sm">
             <p className="font-semibold text-slate-700">Promised ready</p>
             <p className="mt-1 font-bold text-slate-900">
-              {formatDateTime(promisedReadyAt)}
+              {formatNairobiDateTime(promisedReadyAt, "Not set")}
             </p>
           </div>
 
@@ -1567,7 +1783,6 @@ export default function OrderEntryPage() {
         </fieldset>
       </form>
 
-      {!createdOrder ? (
         <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-4 border-t border-slate-200 bg-white px-4 py-3 shadow-[0_-8px_25px_rgba(15,23,42,0.12)] lg:hidden">
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
@@ -1586,6 +1801,7 @@ export default function OrderEntryPage() {
             {isSubmitting ? "Creating…" : "Create order"}
           </button>
         </div>
+        </>
       ) : null}
 
       {createdOrder ? (
@@ -1629,7 +1845,7 @@ export default function OrderEntryPage() {
             <div>
               <p className="text-sm text-slate-600">Promised ready</p>
               <p className="mt-1 font-bold text-slate-900">
-                {formatDateTime(createdOrder.promised_ready_at)}
+                {formatNairobiDateTime(createdOrder.promised_ready_at, "Not set")}
               </p>
             </div>
             <div>
@@ -1740,6 +1956,13 @@ export default function OrderEntryPage() {
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <button
               className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#005AAB] px-5 font-bold text-white hover:bg-[#004782]"
+              type="button"
+              onClick={startNextOrder}
+            >
+              Start next order
+            </button>
+            <button
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#005AAB] bg-white px-5 font-bold text-[#005AAB] hover:bg-blue-50"
               type="button"
               onClick={() => setReceiptShareError(shareReceipt(createdOrder))}
             >

@@ -254,7 +254,7 @@ export default function CustomerSearchPage() {
           Customers
         </p>
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-          Find a customer or past order
+          Find customer
         </h1>
         <p className="mt-3 max-w-2xl leading-7 text-slate-600">
           Search customers by name or phone, review everything they brought to
@@ -274,7 +274,7 @@ export default function CustomerSearchPage() {
           >
             <path d="M12 5v14M5 12h14" />
           </svg>
-          Register a new customer
+          Add customer
         </Link>
       </div>
 

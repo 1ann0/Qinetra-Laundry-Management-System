@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { SERVICES_BY_CODE } from "@/constants/pricing";
 import { useAuth } from "@/context/auth-context";
+import { formatNairobiDateTime } from "@/lib/format-nairobi";
 
 const ORDER_STAGES = [
   {
@@ -35,17 +36,6 @@ function formatKes(amount) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   })}`;
-}
-
-function formatDateTime(value) {
-  if (!value) {
-    return "Not recorded";
-  }
-
-  return new Intl.DateTimeFormat("en-KE", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
 }
 
 function formatDate(value) {
@@ -221,7 +211,7 @@ function OrderCard({
           <p className="text-sm text-slate-500">Promised ready</p>
           <p className="mt-1 font-semibold text-slate-900">
             {order.promised_ready_at
-              ? formatDateTime(order.promised_ready_at)
+              ? formatNairobiDateTime(order.promised_ready_at)
               : "Older order; not set"}
           </p>
         </div>
@@ -258,13 +248,13 @@ function OrderCard({
           {order.ready_at ? (
             <p>
               <span className="font-semibold text-slate-700">Ready since:</span>{" "}
-              {formatDateTime(order.ready_at)}
+              {formatNairobiDateTime(order.ready_at)}
             </p>
           ) : null}
           {order.collected_at ? (
             <p>
               <span className="font-semibold text-slate-700">Collected:</span>{" "}
-              {formatDateTime(order.collected_at)}
+              {formatNairobiDateTime(order.collected_at)}
             </p>
           ) : null}
         </div>

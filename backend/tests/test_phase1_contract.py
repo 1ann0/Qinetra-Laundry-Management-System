@@ -40,6 +40,7 @@ class AuthenticationContractTests(unittest.TestCase):
         operational_routes = {
             ("POST", "/customers"),
             ("GET", "/customers"),
+            ("GET", "/customers/phone-match"),
             ("POST", "/orders"),
             ("GET", "/orders"),
             ("GET", "/orders/overdue"),

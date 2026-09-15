@@ -240,6 +240,7 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
         order_id = self.create().id
         self.db.close()
         with self.engine.begin() as connection:
+            connection.execute(text("ALTER TABLE customers DROP COLUMN phone_normalized"))
             connection.execute(text("DROP TABLE order_holds"))
             connection.execute(text("DROP TABLE order_item_check_history"))
             connection.execute(text("DROP TABLE order_item_exceptions"))
@@ -252,6 +253,7 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
         transaction_sql = (migration_directory / "010_transaction_safety.sql").read_text()
         item_history_sql = (migration_directory / "011_add_item_condition_history.sql").read_text()
         hold_sql = (migration_directory / "012_add_customer_reply_holds.sql").read_text()
+        phone_sql = (migration_directory / "013_normalize_customer_phones.sql").read_text()
         with self.engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
             connection.exec_driver_sql(transaction_sql)
             connection.exec_driver_sql(transaction_sql)
@@ -259,6 +261,8 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
             connection.exec_driver_sql(item_history_sql)
             connection.exec_driver_sql(hold_sql)
             connection.exec_driver_sql(hold_sql)
+            connection.exec_driver_sql(phone_sql)
+            connection.exec_driver_sql(phone_sql)
             rls_tables = connection.execute(text("""
                 SELECT relname
                 FROM pg_class
@@ -270,6 +274,7 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
         # Reload the fixture user after replacing its closed database session.
         self.user = self.db.get(models.User, self.user_id)
         self.assertEqual(self.db.get(models.Order, order_id).total_price, Decimal("300"))
+        self.assertEqual(self.db.get(models.Customer, self.customer_id).phone_normalized, "254700000000")
         self.assertEqual(self.db.get(models.Order, order_id).service_lines[0].item_revision, 0)
         self.assertEqual(
             set(rls_tables),

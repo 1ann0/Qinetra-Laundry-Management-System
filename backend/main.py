@@ -21,6 +21,7 @@ import models
 import schemas
 import logic
 import auth
+from customer_phone import normalize_kenyan_phone, phone_search_digits
 from transaction_safety import request_fingerprint, find_saved_order, commit_once, lock_save_reference
 
 # Kenya uses UTC+3 throughout the year, with no daylight-saving changes.
@@ -530,10 +531,21 @@ def create_customer(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user),
 ):
-    # Check for an existing customer with the same phone number, before creating the new one
-    existing = db.query(models.Customer).filter(models.Customer.phone == customer.phone).first()
+    canonical_phone = normalize_kenyan_phone(customer.phone)
+    existing = db.query(models.Customer).filter(
+        models.Customer.phone_normalized == canonical_phone,
+    ).first()
+    if existing and not customer.allow_duplicate:
+        raise HTTPException(
+            status_code=409,
+            detail="This phone number is already saved. Check the matching customer before creating another record.",
+        )
 
-    new_customer = models.Customer(name=customer.name, phone=customer.phone)
+    new_customer = models.Customer(
+        name=customer.name,
+        phone=customer.phone,
+        phone_normalized=canonical_phone,
+    )
     db.add(new_customer)
     db.commit()
     db.refresh(new_customer)
@@ -541,9 +553,25 @@ def create_customer(
     # If a match was found, attach a warning instead of blocking creation
     warning = None
     if existing:
-        warning = f"This phone number is already linked to '{existing.name}' (customer ID {existing.id}). A new record was still created — verify this isn't a duplicate."
+        warning = "A separate customer was created with a phone number already in use."
 
     return schemas.CustomerCreateResponse(customer=new_customer, duplicate_warning=warning)
+
+
+# Find exact phone matches before staff decide whether this is the same person.
+@app.get("/customers/phone-match", response_model=list[schemas.CustomerOut])
+def find_customers_by_phone(
+    phone: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    try:
+        canonical_phone = normalize_kenyan_phone(phone)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return db.query(models.Customer).filter(
+        models.Customer.phone_normalized == canonical_phone,
+    ).order_by(models.Customer.id.desc()).all()
 
 
 # Lists all customers, or searches by name/phone if 'search' is given
@@ -555,11 +583,19 @@ def list_customers(
 ):
     query = db.query(models.Customer)
 
-    if search:
+    search_text = search.strip() if search else ""
+    if search_text:
+        phone_digits = phone_search_digits(search_text)
+        phone_filter = (
+            models.Customer.phone_normalized.ilike(f"%{phone_digits}%")
+            if phone_digits
+            else False
+        )
         query = query.filter(
             or_(
-                models.Customer.name.ilike(f"%{search}%"),
-                models.Customer.phone.ilike(f"%{search}%")
+                models.Customer.name.ilike(f"%{search_text}%"),
+                models.Customer.phone.ilike(f"%{search_text}%"),
+                phone_filter,
             )
         )
 

@@ -43,7 +43,7 @@ Source checked: backend models, routes, auth, pricing logic, migrations, fronten
 
 | Capability | Current evidence and limit |
 | --- | --- |
-| Customers and search | Registration, duplicate-phone warning, customer history and service history exist. Registration still needs a smoother path during order entry. |
+| Customers and search | Customer history and service history exist. Local Phase 3C adds inline registration, phone normalisation, an explicit shared-number choice and unfinished-order recovery; browser acceptance and deployment remain open. |
 | Orders and clothing | Mixed services, item counts and detailed garment condition notes exist. The test fixture hides clothing recording; WhatsApp receipt drafts omit item detail, tally condition capture and outsourced-garment tracking need work. See the clothing review. |
 | Payments | Staff-confirmed payments, deposits and balances exist. This is manual recording, not Safaricom payment verification. |
 | Tracking | Four stages, search, due/late/unpaid filters and collection checks exist. |
@@ -66,7 +66,7 @@ Use this roadmap for prioritisation and the [development journal](DEVELOPMENT_JO
 | 3A1 | Complete saved clothing receipt drafts | Accepted locally; 37 frontend tests, lint and build pass; student confirmed both drafts match the saved mixed order |
 | 3A2 | Complete pre-wash checks, condition exceptions and history | Required pilot workflow; preserve original observations and block processing with incomplete checks/holds |
 | 3B | Identify and reconcile outsourced dry-cleaning garments | Required before outsourced pilot work; simple references accepted, physical method to confirm |
-| 3C | Complete customer intake without leaving the order | Required pilot workflow; preserve all clothing records |
+| 3C | Complete customer intake without leaving the order | Implemented locally; automated checks pass, staff browser acceptance remains open |
 | 4 | Correct mistakes with an owner-controlled history | Required pilot workflow |
 | 5 | Provide actionable owner oversight, reliable figures and filtered exports | Required pilot acceptance; use supporting records, not invented metrics |
 | 6 | Prepare clean production data, recovery and monitoring | Required before real-data cutover |
@@ -143,6 +143,8 @@ Start with the 3A1 contract above. In 3A2, require an explicit completed check b
 
 **Exit gate:** Staff complete representative new-customer and returning-customer orders without abandoning or re-entering the form.
 Test one mixed-service order with a deposit and pending clothing details. The receipt must match the saved record.
+
+**3C progress (15 September 2026):** A shared customer form now checks one canonical Kenyan mobile value, shows exact matches before saving and requires an explicit choice before a shared number creates a separate record. New order opens this form inline and selects the saved or existing customer without clearing services or clothing. Meaningful order drafts are scoped to the signed-in staff account, survive navigation and clear after a confirmed save. The saved receipt replaces the form until Start next order is selected. One disposable browser smoke test passed the match, explicit shared-number, restore and receipt-handoff paths; it also found and fixed a three-hour promised-time display error. Migration `013_normalize_customer_phones.sql`, 105 SQLite tests, 105 PostgreSQL tests, 44 frontend tests, lint and the production build pass. Representative staff acceptance remains open, so the exit gate is not yet claimed.
 
 ## Phase 4 — Handle mistakes without hiding history
 

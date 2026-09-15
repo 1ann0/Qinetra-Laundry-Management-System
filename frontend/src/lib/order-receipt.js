@@ -1,5 +1,7 @@
 // Build customer receipt text from the saved order returned by FastAPI.
 
+import { formatNairobiDateTime } from "./format-nairobi.js";
+
 function formatKes(amount) {
   return `KES ${Number(amount).toLocaleString("en-KE", {
     minimumFractionDigits: 0,
@@ -13,15 +15,6 @@ function formatDate(value) {
     dateStyle: "medium",
     timeZone: "Africa/Nairobi",
   }).format(new Date(`${value}T12:00:00+03:00`));
-}
-
-function formatDateTime(value) {
-  if (!value) return "Not recorded";
-  return new Intl.DateTimeFormat("en-KE", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Africa/Nairobi",
-  }).format(new Date(value));
 }
 
 function getStatusLabel(status) {
@@ -103,7 +96,7 @@ export function buildOrderReceiptMessage(order, customerName) {
     `Total: ${formatKes(order.total_price)}`,
     `Paid: ${formatKes(order.amount_paid)}`,
     `Balance: ${formatKes(order.balance_due)}`,
-    `Ready by: ${formatDateTime(order.promised_ready_at)}`,
+    `Ready by: ${formatNairobiDateTime(order.promised_ready_at)}`,
     `Status: ${getStatusLabel(order.status)}`,
     "",
     readyNotice

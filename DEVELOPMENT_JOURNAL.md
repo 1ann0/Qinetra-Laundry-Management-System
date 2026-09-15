@@ -236,3 +236,13 @@ Ignored helpers in `tmp/` support the local fixture server, read-only smoke chec
 - Added migration `012_add_customer_reply_holds.sql` with indexed ownership fields, one active hold per order, row-level security and no browser-role grants.
 - Verification: 30 focused clothing/hold tests, 37 frontend tests, lint and the production build passed. The later disposable PostgreSQL 17 run passed all 102 current backend tests with no skips, including repeated migrations 010–012 and concurrency cases.
 - No live database, deployment, external message or evidence screenshot changed.
+
+## 15 September 2026 — Keep customer intake in one workflow
+
+- Replaced separate registration logic with one customer form shared by Add customer and New order. The inline path selects the saved or matched customer without clearing services, clothing details or payment choices.
+- Added one normalised Kenyan mobile column and migration 013. Staff still see the familiar local number. Likely duplicates are shown before saving, and shared family numbers require an explicit separate-record choice.
+- Added staff-scoped unfinished-order drafts and a leave-page warning. After a confirmed save, the receipt replaces the form and Start next order opens a clean entry screen.
+- Verification: 8 focused phone tests; 105 SQLite tests with 6 expected skips; 105 PostgreSQL 17 tests with no skips; 44 frontend tests; full lint and production build passed. Nothing was deployed and no live database changed.
+- A disposable browser smoke test passed exact matching, the explicit shared-number choice, draft restoration and the receipt handoff. It exposed a three-hour promised-time display error; the shared Nairobi formatter fixed New order, tracking, order details and receipt messages.
+- Evidence: none added. The later browser review may justify one fictional image that shows the inline match choice while entered order details remain visible; save it only in `docs/diagrams/evidence/`.
+- Optional LinkedIn draft: "Customer registration should not make a busy employee restart an order. I moved it into the QLMS order flow, added consistent Kenyan phone matching and protected unfinished work through refresh. The result is fewer repeated entries and a clearer handoff from form to receipt."

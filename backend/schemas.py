@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from datetime import date, datetime
 from typing import Any, Literal, Optional
 from decimal import Decimal
+from customer_phone import display_kenyan_phone
 
 
 def check_quantity_precision(value):
@@ -14,8 +15,22 @@ def check_quantity_precision(value):
 
 # Data required to create a customer
 class CustomerCreate(BaseModel):
-    name: str
+    name: str = Field(min_length=2, max_length=100)
     phone: str
+    allow_duplicate: bool = False
+
+    @field_validator("name")
+    @classmethod
+    def clean_customer_name(cls, value: str):
+        cleaned = " ".join(value.split())
+        if len(cleaned) < 2:
+            raise ValueError("Enter the customer's name")
+        return cleaned
+
+    @field_validator("phone")
+    @classmethod
+    def clean_customer_phone(cls, value: str):
+        return display_kenyan_phone(value)
 
 # Data returned after creating/fetching a customer
 class CustomerOut(BaseModel):

@@ -122,6 +122,8 @@ test("business rules keep a specific action that staff can take", () => {
     [400, "Payment cannot exceed the remaining balance of KES 300.00", /Check the balance/],
     [400, "Record the remaining payment of KES 300 before collection", /record the remaining payment/],
     [400, "Complete the pending clothing check before this order is ready", /complete its clothing check/],
+    [400, "Enter a Kenyan mobile number such as 0712 345 678", /Enter a Kenyan mobile number/],
+    [409, "This phone number is already saved. Check the matching customer before creating another record.", /Choose the matching customer/],
     [404, "Order not found", /Find it again in Track orders/],
     [403, "Owner access required", /Ask the owner/],
   ];

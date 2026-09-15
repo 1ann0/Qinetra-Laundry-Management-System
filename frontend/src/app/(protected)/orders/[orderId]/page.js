@@ -13,6 +13,7 @@ import { useAuth } from "@/context/auth-context";
 import usePendingSave from "@/components/orders/use-pending-save";
 import PendingSaveNotice from "@/components/orders/pending-save-notice";
 import { buildOrderReceiptMessage } from "@/lib/order-receipt";
+import { formatNairobiDateTime } from "@/lib/format-nairobi";
 
 // Keep money and dates readable on the receipt.
 function formatKes(amount) {
@@ -20,14 +21,6 @@ function formatKes(amount) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   })}`;
-}
-
-function formatDateTime(value) {
-  if (!value) return "Not recorded";
-  return new Intl.DateTimeFormat("en-KE", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
 }
 
 function getNairobiToday() {
@@ -595,7 +588,7 @@ export default function OrderDetailPage() {
             {activeHold.reason}
           </h2>
           <p className="mt-2 text-sm text-slate-700">
-            Added by {activeHold.created_by_username} · {formatDateTime(activeHold.created_at)}
+            Added by {activeHold.created_by_username} · {formatNairobiDateTime(activeHold.created_at)}
           </p>
           <p className="mt-2 text-sm font-semibold text-amber-950">
             Do not move this order forward until the customer answers.
@@ -670,7 +663,7 @@ export default function OrderDetailPage() {
                 <p className="font-bold text-slate-900">Question: {hold.reason}</p>
                 <p className="mt-1">Reply: {hold.resolution_note}</p>
                 <p className="mt-1 text-xs text-slate-600">
-                  Closed by {hold.resolved_by_username} · {formatDateTime(hold.resolved_at)}
+                  Closed by {hold.resolved_by_username} · {formatNairobiDateTime(hold.resolved_at)}
                 </p>
               </li>
             ))}
@@ -708,14 +701,14 @@ export default function OrderDetailPage() {
             <p className="text-sm text-slate-500">Promised ready</p>
             <p className="mt-1 font-bold text-slate-900">
               {order.promised_ready_at
-                ? formatDateTime(order.promised_ready_at)
+                ? formatNairobiDateTime(order.promised_ready_at)
                 : "Older order; not set"}
             </p>
           </div>
           <div>
             <p className="text-sm text-slate-500">Recorded in QLMS</p>
             <p className="mt-1 font-bold text-slate-900">
-              {formatDateTime(order.created_at)}
+              {formatNairobiDateTime(order.created_at)}
             </p>
           </div>
         </div>
@@ -901,7 +894,7 @@ export default function OrderDetailPage() {
                     {serviceLine.item_checked_by_username ? (
                       <p className="mt-3 text-xs text-slate-600">
                         Last checked by {serviceLine.item_checked_by_username} ·{" "}
-                        {formatDateTime(serviceLine.item_checked_at)}
+                        {formatNairobiDateTime(serviceLine.item_checked_at)}
                       </p>
                     ) : null}
 
@@ -917,7 +910,7 @@ export default function OrderDetailPage() {
                                 Version {entry.revision + 1} · {entry.changed_by_username}
                               </p>
                               <p className="text-xs text-slate-600">
-                                {formatDateTime(entry.created_at)}
+                                {formatNairobiDateTime(entry.created_at)}
                               </p>
                               <p className="mt-1">
                                 {(entry.item_snapshot || [])
@@ -1029,7 +1022,7 @@ export default function OrderDetailPage() {
                       {formatDate(payment.received_date)}
                     </td>
                     <td className="px-3 py-3 text-slate-700">
-                      {formatDateTime(payment.created_at)}
+                      {formatNairobiDateTime(payment.created_at)}
                     </td>
                   </tr>
                 ))}

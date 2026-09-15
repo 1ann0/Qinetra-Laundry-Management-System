@@ -57,6 +57,10 @@ const INPUT_MESSAGES = {
   "Complete the pending clothing check before this order is ready": "Open the order and complete its clothing check before you mark it ready.",
   "Password cannot be blank": "Enter a password.",
   "Password must be at most 72 bytes": "This password is too long. Use a shorter password.",
+  "Enter the customer's phone number": "Enter the customer's phone number.",
+  "Use numbers, spaces or dashes only": "Enter the phone number using numbers, spaces or dashes only.",
+  "Enter a Kenyan mobile number such as 0712 345 678": "Enter a Kenyan mobile number such as 0712 345 678.",
+  "This phone number is already saved. Check the matching customer before creating another record.": "This phone number is already saved. Choose the matching customer, or create a separate record if people share the number.",
   "The linked garment was not found": "This clothing item is not available. Choose it again from the service list.",
   "A clothing item was not found": "A clothing item is not available. Ask the owner to check Shop setup.",
 };
