@@ -361,6 +361,45 @@ class PaymentOut(BaseModel):
         from_attributes = True
 
 
+# A staff-recorded pause while Qinetra waits for the customer to answer.
+class OrderHoldCreate(BaseModel):
+    reason: str = Field(min_length=1, max_length=300)
+
+    @field_validator("reason")
+    @classmethod
+    def clean_reason(cls, value: str):
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Enter what needs the customer's reply")
+        return cleaned
+
+
+class OrderHoldResolve(BaseModel):
+    resolution_note: str = Field(min_length=1, max_length=300)
+
+    @field_validator("resolution_note")
+    @classmethod
+    def clean_resolution_note(cls, value: str):
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Enter what the customer confirmed")
+        return cleaned
+
+
+class OrderHoldOut(BaseModel):
+    id: int
+    hold_type: str
+    reason: str
+    created_by_username: str
+    created_at: datetime
+    resolved_by_username: Optional[str]
+    resolution_note: Optional[str]
+    resolved_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
 # Data required to update an order's status
 class OrderStatusUpdate(BaseModel):
     status: Literal["received", "in_progress", "ready", "collected"]
@@ -390,6 +429,7 @@ class OrderOut(BaseModel):
     balance_due: float
     payment_status: str
     payments: list[PaymentOut] = Field(default_factory=list)
+    holds: list[OrderHoldOut] = Field(default_factory=list)
 
     class Config:
         from_attributes = True

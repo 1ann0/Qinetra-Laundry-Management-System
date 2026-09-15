@@ -96,22 +96,28 @@ function getOrderMoveState(order) {
   const hasPendingItemCheck = (order.service_lines || []).some(
     (line) => line.item_check_status === "pending",
   );
+  const activeHold = (order.holds || []).find((hold) => !hold.resolved_at);
   const hasOutstandingBalance = Number(order.balance_due) > 0;
   const nextStatus = getNextStatus(order.status);
   const itemCheckBlocksNextStage =
-    order.status === "in_progress" && hasPendingItemCheck;
+    ["received", "in_progress"].includes(order.status) && hasPendingItemCheck;
+  const holdBlocksNextStage =
+    ["received", "in_progress"].includes(order.status) && Boolean(activeHold);
   const paymentBlocksCollection =
     order.status === "ready" && hasOutstandingBalance;
 
   return {
     hasPendingItemCheck,
     hasOutstandingBalance,
+    activeHold,
     nextStatus,
     itemCheckBlocksNextStage,
+    holdBlocksNextStage,
     paymentBlocksCollection,
     canMoveForward:
       Boolean(nextStatus) &&
       !itemCheckBlocksNextStage &&
+      !holdBlocksNextStage &&
       !paymentBlocksCollection,
   };
 }
@@ -270,8 +276,17 @@ function OrderCard({
             <p className="mb-2 text-sm font-bold text-slate-700">Next action</p>
             {moveState.itemCheckBlocksNextStage ? (
               <p className="text-sm font-semibold text-amber-900">
-                Complete the pending item check before marking this order ready.
+                Complete the clothing check before washing starts.
               </p>
+            ) : moveState.holdBlocksNextStage ? (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
+                <p className="text-sm font-bold text-amber-950">
+                  Waiting for customer reply
+                </p>
+                <p className="mt-1 text-sm text-amber-900">
+                  {moveState.activeHold.reason}
+                </p>
+              </div>
             ) : moveState.paymentBlocksCollection ? (
               <p className="text-sm font-semibold text-red-800">
                 Record the {formatKes(order.balance_due)} balance before collection.
@@ -289,6 +304,8 @@ function OrderCard({
             >
               {moveState.itemCheckBlocksNextStage
                 ? "Complete item check"
+                : moveState.holdBlocksNextStage
+                  ? "Record customer reply"
                 : moveState.paymentBlocksCollection
                   ? "Record payment"
                   : "View order and receipt"}

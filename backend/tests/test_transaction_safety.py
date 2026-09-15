@@ -240,6 +240,7 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
         order_id = self.create().id
         self.db.close()
         with self.engine.begin() as connection:
+            connection.execute(text("DROP TABLE order_holds"))
             connection.execute(text("DROP TABLE order_item_check_history"))
             connection.execute(text("DROP TABLE order_item_exceptions"))
             connection.execute(text("ALTER TABLE order_service_lines DROP COLUMN item_checked_by_id, DROP COLUMN item_checked_by_username, DROP COLUMN item_checked_at"))
@@ -250,22 +251,28 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
         migration_directory = Path(__file__).parents[1] / "migrations"
         transaction_sql = (migration_directory / "010_transaction_safety.sql").read_text()
         item_history_sql = (migration_directory / "011_add_item_condition_history.sql").read_text()
+        hold_sql = (migration_directory / "012_add_customer_reply_holds.sql").read_text()
         with self.engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
             connection.exec_driver_sql(transaction_sql)
             connection.exec_driver_sql(transaction_sql)
             connection.exec_driver_sql(item_history_sql)
             connection.exec_driver_sql(item_history_sql)
+            connection.exec_driver_sql(hold_sql)
+            connection.exec_driver_sql(hold_sql)
             rls_tables = connection.execute(text("""
                 SELECT relname
                 FROM pg_class
                 WHERE relnamespace = current_schema()::regnamespace
                   AND relrowsecurity
-                  AND relname IN ('order_item_exceptions', 'order_item_check_history')
+                  AND relname IN ('order_item_exceptions', 'order_item_check_history', 'order_holds')
             """)).scalars().all()
         self.db = self.Session()
         # Reload the fixture user after replacing its closed database session.
         self.user = self.db.get(models.User, self.user_id)
         self.assertEqual(self.db.get(models.Order, order_id).total_price, Decimal("300"))
         self.assertEqual(self.db.get(models.Order, order_id).service_lines[0].item_revision, 0)
-        self.assertEqual(set(rls_tables), {"order_item_exceptions", "order_item_check_history"})
+        self.assertEqual(
+            set(rls_tables),
+            {"order_item_exceptions", "order_item_check_history", "order_holds"},
+        )
         self.assertTrue(self.create().ticket_number.endswith("-002"))

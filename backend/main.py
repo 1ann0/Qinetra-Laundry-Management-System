@@ -1241,6 +1241,93 @@ def replace_order_service_items(
     return service_line
 
 
+# Pause an order while staff wait for the customer to answer a clothing question.
+@app.post("/orders/{order_id}/holds", response_model=schemas.OrderOut)
+def place_customer_reply_hold(
+    order_id: int,
+    hold_input: schemas.OrderHoldCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    order = (
+        db.query(models.Order)
+        .filter(models.Order.id == order_id)
+        .populate_existing()
+        .with_for_update()
+        .first()
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.status in {"ready", "collected"}:
+        raise HTTPException(
+            status_code=400,
+            detail="A customer reply hold cannot be added after the order is ready",
+        )
+
+    active_hold = db.query(models.OrderHold).filter(
+        models.OrderHold.order_id == order_id,
+        models.OrderHold.resolved_at.is_(None),
+    ).first()
+    if active_hold:
+        raise HTTPException(
+            status_code=400,
+            detail="This order is already waiting for a customer reply",
+        )
+
+    db.add(models.OrderHold(
+        order_id=order.id,
+        reason=hold_input.reason,
+        created_by_id=current_user.id,
+        created_by_username=current_user.username,
+    ))
+    db.commit()
+    db.expire(order, ["holds"])
+    return order
+
+
+# Close the hold only after recording what the customer confirmed.
+@app.patch(
+    "/orders/{order_id}/holds/{hold_id}/resolve",
+    response_model=schemas.OrderOut,
+)
+def resolve_customer_reply_hold(
+    order_id: int,
+    hold_id: int,
+    resolution: schemas.OrderHoldResolve,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    order = (
+        db.query(models.Order)
+        .filter(models.Order.id == order_id)
+        .populate_existing()
+        .with_for_update()
+        .first()
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    hold = db.query(models.OrderHold).filter(
+        models.OrderHold.id == hold_id,
+        models.OrderHold.order_id == order_id,
+    ).first()
+    if not hold:
+        raise HTTPException(status_code=404, detail="Customer reply hold not found")
+    if hold.resolved_at is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="This hold was already closed. Open the order again.",
+        )
+
+    hold.resolved_by_id = current_user.id
+    hold.resolved_by_username = current_user.username
+    hold.resolution_note = resolution.resolution_note
+    hold.resolved_at = datetime.now(timezone.utc)
+    db.commit()
+    db.expire(order, ["holds"])
+    return order
+
+
 # Records a confirmed Cash or M-PESA payment without overwriting earlier payments.
 @app.post("/orders/{order_id}/payments", response_model=schemas.OrderOut)
 def record_order_payment(
@@ -1372,6 +1459,16 @@ def update_order_status(
             raise HTTPException(
                 status_code=400,
                 detail="Complete the clothing check before washing starts",
+            )
+
+        active_hold = db.query(models.OrderHold).filter(
+            models.OrderHold.order_id == order_id,
+            models.OrderHold.resolved_at.is_(None),
+        ).first()
+        if active_hold:
+            raise HTTPException(
+                status_code=400,
+                detail="Record the customer's reply and close the hold before moving this order",
             )
 
     if status_update.status == "collected" and order.balance_due > 0:

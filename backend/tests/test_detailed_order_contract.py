@@ -137,6 +137,8 @@ class DetailedOrderRouteTests(unittest.TestCase):
             ("POST", "/orders/detailed"),
             ("GET", "/orders/{order_id}"),
             ("PUT", "/orders/{order_id}/services/{service_line_id}/items"),
+            ("POST", "/orders/{order_id}/holds"),
+            ("PATCH", "/orders/{order_id}/holds/{hold_id}/resolve"),
             ("POST", "/orders/{order_id}/payments"),
         }
 
@@ -544,6 +546,70 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
             saved_line.item_history[1].change_reason,
             "One shirt belonged to another customer",
         )
+
+    # An unanswered clothing question blocks work until the reply is recorded.
+    def test_customer_reply_hold_blocks_and_keeps_resolution(self):
+        order = main.create_detailed_order(
+            schemas.DetailedOrderCreate(
+                customer_id=self.customer.id,
+                services=[{
+                    "service_id": self.wash_fold.id,
+                    "quantity": 2,
+                    "items": [{"item_type_id": self.shirt.id, "quantity": 2}],
+                }],
+            ),
+            self.db,
+            self.user,
+            idempotency_key=uuid4(),
+        )
+
+        held_order = main.place_customer_reply_hold(
+            order.id,
+            schemas.OrderHoldCreate(
+                reason="Confirm whether bleach may be used on the white shirt",
+            ),
+            self.db,
+            self.user,
+        )
+        hold = held_order.holds[0]
+        self.assertEqual(hold.created_by_username, self.user.username)
+        self.assertIsNone(hold.resolved_at)
+
+        with self.assertRaises(HTTPException) as blocked:
+            main.update_order_status(
+                order.id,
+                schemas.OrderStatusUpdate(status="in_progress"),
+                self.db,
+                self.user,
+            )
+        self.assertEqual(blocked.exception.status_code, 400)
+        self.assertIn("customer's reply", blocked.exception.detail)
+
+        resolved_order = main.resolve_customer_reply_hold(
+            order.id,
+            hold.id,
+            schemas.OrderHoldResolve(
+                resolution_note="Customer said not to use bleach",
+            ),
+            self.db,
+            self.user,
+        )
+        self.assertEqual(
+            resolved_order.holds[0].resolution_note,
+            "Customer said not to use bleach",
+        )
+        self.assertEqual(
+            resolved_order.holds[0].resolved_by_username,
+            self.user.username,
+        )
+
+        moved_order = main.update_order_status(
+            order.id,
+            schemas.OrderStatusUpdate(status="in_progress"),
+            self.db,
+            self.user,
+        )
+        self.assertEqual(moved_order.status, "in_progress")
 
     # Deposits append to payment history and collection waits for the full balance.
     def test_deposit_and_final_payment_control_collection(self):

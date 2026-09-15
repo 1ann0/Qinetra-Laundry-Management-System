@@ -112,6 +112,12 @@ class Order(Base):
         cascade="all, delete-orphan",
         order_by="Payment.id",
     )
+    holds = relationship(
+        "OrderHold",
+        back_populates="order",
+        cascade="all, delete-orphan",
+        order_by="OrderHold.id",
+    )
 
     # Payment totals are derived from history so staff never type over a balance.
     @property
@@ -284,6 +290,37 @@ class OrderItemCheckHistory(Base):
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
 
     service_line = relationship("OrderServiceLine", back_populates="item_history")
+
+
+# An unresolved customer question pauses work without hiding why it was paused.
+class OrderHold(Base):
+    __tablename__ = "order_holds"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(
+        Integer,
+        ForeignKey("orders.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    hold_type = Column(String(30), nullable=False, default="customer_reply")
+    reason = Column(String(300), nullable=False)
+    created_by_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_by_username = Column(String(50), nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    resolved_by_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    resolved_by_username = Column(String(50), nullable=True)
+    resolution_note = Column(String(300), nullable=True)
+    resolved_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    order = relationship("Order", back_populates="holds")
 
 
 # Append-only payment history confirmed by a staff member at the shop.

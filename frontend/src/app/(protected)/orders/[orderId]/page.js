@@ -188,6 +188,9 @@ export default function OrderDetailPage() {
   const paymentSave = usePendingSave(`/orders/${orderId}/payments`);
   const isRecordingPayment = paymentSave.isSaving;
   const [shareError, setShareError] = useState("");
+  const [holdReason, setHoldReason] = useState("");
+  const [resolutionNote, setResolutionNote] = useState("");
+  const [holdAction, setHoldAction] = useState("");
 
   // Load the receipt and lookup data without requiring customer information in the URL.
   useEffect(() => {
@@ -408,6 +411,70 @@ export default function OrderDetailPage() {
       setMessage("Payment saved. Check the payment history below.");
   }
 
+  async function placeCustomerHold(event) {
+    event.preventDefault();
+    if (!holdReason.trim()) {
+      setError("Enter what needs the customer's reply.");
+      return;
+    }
+
+    setHoldAction("placing");
+    setError("");
+    setMessage("");
+    try {
+      const updatedOrder = await authenticatedRequest(
+        `/orders/${order.id}/holds`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: holdReason.trim() }),
+        },
+      );
+      setOrder(updatedOrder);
+      setHoldReason("");
+      setMessage("Customer reply hold added. This order cannot move forward yet.");
+    } catch (holdError) {
+      setError(getUserMessage(
+        holdError,
+        "The hold could not be confirmed. Open the order again before you continue.",
+      ));
+    } finally {
+      setHoldAction("");
+    }
+  }
+
+  async function resolveCustomerHold(event, holdId) {
+    event.preventDefault();
+    if (!resolutionNote.trim()) {
+      setError("Enter what the customer confirmed.");
+      return;
+    }
+
+    setHoldAction("resolving");
+    setError("");
+    setMessage("");
+    try {
+      const updatedOrder = await authenticatedRequest(
+        `/orders/${order.id}/holds/${holdId}/resolve`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ resolution_note: resolutionNote.trim() }),
+        },
+      );
+      setOrder(updatedOrder);
+      setResolutionNote("");
+      setMessage("Customer reply recorded. The hold is closed.");
+    } catch (holdError) {
+      setError(getUserMessage(
+        holdError,
+        "The customer's reply could not be confirmed. Open the order again before you continue.",
+      ));
+    } finally {
+      setHoldAction("");
+    }
+  }
+
   // Prepare a receipt or ready notice while leaving the final Send action to staff.
   function shareOnWhatsApp() {
     const phone = getWhatsAppNumber(customer?.phone);
@@ -456,6 +523,8 @@ export default function OrderDetailPage() {
 
   const canEditItems =
     order.status === "received" || order.status === "in_progress";
+  const activeHold = (order.holds || []).find((hold) => !hold.resolved_at);
+  const resolvedHolds = (order.holds || []).filter((hold) => hold.resolved_at);
 
   return (
     <section className="mx-auto max-w-5xl">
@@ -515,6 +584,98 @@ export default function OrderDetailPage() {
         >
           {message}
         </p>
+      ) : null}
+
+      {activeHold ? (
+        <section className="mb-6 rounded-2xl border-2 border-amber-400 bg-amber-50 p-5">
+          <p className="text-sm font-bold uppercase tracking-wide text-amber-900">
+            Waiting for customer reply
+          </p>
+          <h2 className="mt-2 text-xl font-bold text-slate-900">
+            {activeHold.reason}
+          </h2>
+          <p className="mt-2 text-sm text-slate-700">
+            Added by {activeHold.created_by_username} · {formatDateTime(activeHold.created_at)}
+          </p>
+          <p className="mt-2 text-sm font-semibold text-amber-950">
+            Do not move this order forward until the customer answers.
+          </p>
+          <form
+            className="mt-4"
+            onSubmit={(event) => resolveCustomerHold(event, activeHold.id)}
+          >
+            <label
+              className="block text-sm font-bold text-slate-800"
+              htmlFor="customer-hold-resolution"
+            >
+              What did the customer confirm?
+            </label>
+            <textarea
+              className="mt-2 min-h-24 w-full rounded-xl border border-amber-300 bg-white p-3 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-2 focus:ring-blue-100"
+              id="customer-hold-resolution"
+              maxLength="300"
+              value={resolutionNote}
+              disabled={Boolean(holdAction)}
+              onChange={(event) => setResolutionNote(event.target.value)}
+            />
+            <button
+              className="mt-3 min-h-11 rounded-xl bg-[#005AAB] px-5 font-bold text-white hover:bg-[#004782] disabled:opacity-50"
+              type="submit"
+              disabled={Boolean(holdAction)}
+            >
+              {holdAction === "resolving" ? "Closing hold…" : "Record reply and close hold"}
+            </button>
+          </form>
+        </section>
+      ) : canEditItems ? (
+        <details className="mb-6 rounded-xl border border-slate-300 bg-white p-4">
+          <summary className="cursor-pointer font-bold text-[#005AAB]">
+            Wait for customer reply
+          </summary>
+          <form className="mt-4" onSubmit={placeCustomerHold}>
+            <label
+              className="block text-sm font-bold text-slate-800"
+              htmlFor="customer-hold-reason"
+            >
+              What must the customer answer?
+            </label>
+            <textarea
+              className="mt-2 min-h-24 w-full rounded-xl border border-slate-300 p-3 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-2 focus:ring-blue-100"
+              id="customer-hold-reason"
+              maxLength="300"
+              placeholder="Example: Confirm whether bleach may be used on the white shirt"
+              value={holdReason}
+              disabled={Boolean(holdAction)}
+              onChange={(event) => setHoldReason(event.target.value)}
+            />
+            <button
+              className="mt-3 min-h-11 rounded-xl border border-[#005AAB] px-5 font-bold text-[#005AAB] hover:bg-blue-50 disabled:opacity-50"
+              type="submit"
+              disabled={Boolean(holdAction)}
+            >
+              {holdAction === "placing" ? "Adding hold…" : "Add customer reply hold"}
+            </button>
+          </form>
+        </details>
+      ) : null}
+
+      {resolvedHolds.length > 0 ? (
+        <details className="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <summary className="cursor-pointer font-bold text-[#005AAB]">
+            Customer reply history ({resolvedHolds.length})
+          </summary>
+          <ol className="mt-4 space-y-4">
+            {resolvedHolds.map((hold) => (
+              <li className="text-sm text-slate-700" key={hold.id}>
+                <p className="font-bold text-slate-900">Question: {hold.reason}</p>
+                <p className="mt-1">Reply: {hold.resolution_note}</p>
+                <p className="mt-1 text-xs text-slate-600">
+                  Closed by {hold.resolved_by_username} · {formatDateTime(hold.resolved_at)}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </details>
       ) : null}
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">

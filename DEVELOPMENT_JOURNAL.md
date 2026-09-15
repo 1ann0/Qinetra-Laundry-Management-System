@@ -226,5 +226,13 @@ Ignored helpers in `tmp/` support the local fixture server, read-only smoke chec
 - The API now blocks Received → In Progress while any required clothing check is pending. Staff get the direct instruction to complete the check before washing starts.
 - Added migration `011_add_item_condition_history.sql`. It creates indexed exception/history tables, protects them with row-level security and denies browser database roles.
 - Verification: 29 focused clothing tests, 96 full backend tests, 37 frontend tests, lint, Python syntax and the production build passed. The production build needed network access only to fetch the configured Geist font.
-- Open verification: Docker Desktop was stopped, so the repeatable migration and PostgreSQL concurrency run could not start. Browser acceptance and the next genuine evidence image remain pending.
+- PostgreSQL verification completed after Docker Desktop was started: the disposable PostgreSQL 17 run passed all 102 current backend tests with no skips, including repeated migrations and concurrency cases. Browser acceptance and the next genuine evidence image remain pending.
 - Next useful evidence: one fictional saved tally showing a counted item with a condition note, the employee/time, and two visible history versions after a reasoned correction. Save it only under `docs/diagrams/evidence/`.
+
+## 15 September 2026 — Add a customer-reply hold
+
+- Staff can pause a Received or In Progress order when a clothing decision needs the customer. The reason, employee and time stay on the order.
+- Track orders removes the forward-stage action and links staff to Record customer reply. Closing the hold requires a note explaining what the customer confirmed; closed holds remain readable in the order history.
+- Added migration `012_add_customer_reply_holds.sql` with indexed ownership fields, one active hold per order, row-level security and no browser-role grants.
+- Verification: 30 focused clothing/hold tests, 37 frontend tests, lint and the production build passed. The later disposable PostgreSQL 17 run passed all 102 current backend tests with no skips, including repeated migrations 010–012 and concurrency cases.
+- No live database, deployment, external message or evidence screenshot changed.
