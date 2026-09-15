@@ -26,7 +26,16 @@ test("mixed receipt includes saved tally and garment condition details", () => {
         item_recording_mode: "tally",
         item_check_status: "completed",
         items: [
-          { item_name: "Shirt", quantity: 2 },
+          {
+            item_name: "Shirt",
+            quantity: 2,
+            exceptions: [{
+              description: "Blue school shirt",
+              is_damaged: true,
+              damage_note: "Small tear near the pocket",
+              stain_note: "Ink on the cuff",
+            }],
+          },
           { item_name: "Trouser", quantity: 1 },
         ],
       },
@@ -47,7 +56,11 @@ test("mixed receipt includes saved tally and garment condition details", () => {
   }), "Amina Wanjiku");
 
   assert.match(message, /Customer: Amina Wanjiku/);
-  assert.match(message, /Wash & Fold:\n- Shirt x2\n- Trouser x1/);
+  assert.match(message, /Wash & Fold:\n- Shirt x2/);
+  assert.match(message, /Condition note 1 — Blue school shirt/);
+  assert.match(message, /Existing damage: Small tear near the pocket/);
+  assert.match(message, /Stain note: Ink on the cuff/);
+  assert.match(message, /- Trouser x1/);
   assert.match(message, /Dry Cleaning - Shirt:\n- Shirt — Blue long-sleeved shirt/);
   assert.match(message, /Existing damage: Small tear on left cuff/);
   assert.match(message, /Stain note: Ink on right sleeve/);

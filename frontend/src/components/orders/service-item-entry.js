@@ -48,6 +48,16 @@ export function createBlankGarment(localId = 1, itemTypeId = "") {
   };
 }
 
+export function createBlankTallyException(localId = 1) {
+  return {
+    localId,
+    description: "",
+    is_damaged: false,
+    damage_note: "",
+    stain_note: "",
+  };
+}
+
 // Display the clothing controls selected in the owner's service setup.
 export default function ServiceItemEntry({
   recordingMode,
@@ -83,16 +93,79 @@ export default function ServiceItemEntry({
     const currentItem = items.find(
       (item) => item.item_type_id === itemTypeId,
     );
-    const nextQuantity = Math.max(0, (currentItem?.quantity || 0) + amount);
+    const exceptionCount = currentItem?.exceptions?.length || 0;
+    const nextQuantity = Math.max(
+      exceptionCount,
+      (currentItem?.quantity || 0) + amount,
+    );
     const otherItems = items.filter(
       (item) => item.item_type_id !== itemTypeId,
     );
 
     onItemsChange(
       nextQuantity > 0
-        ? [...otherItems, { item_type_id: itemTypeId, quantity: nextQuantity }]
+        ? [
+            ...otherItems,
+            {
+              ...currentItem,
+              item_type_id: itemTypeId,
+              quantity: nextQuantity,
+              exceptions: currentItem?.exceptions || [],
+            },
+          ]
         : otherItems,
     );
+  }
+
+  // A condition exception describes one counted piece and never adds to the tally.
+  function addTallyException(itemTypeId) {
+    onItemsChange(items.map((item) => {
+      if (item.item_type_id !== itemTypeId) return item;
+      const currentExceptions = item.exceptions || [];
+      if (currentExceptions.length >= item.quantity) return item;
+      const nextLocalId = currentExceptions.reduce(
+        (largestId, exception) =>
+          Math.max(largestId, Number(exception.localId) || 0),
+        0,
+      ) + 1;
+      return {
+        ...item,
+        exceptions: [
+          ...currentExceptions,
+          createBlankTallyException(nextLocalId),
+        ],
+      };
+    }));
+  }
+
+  function updateTallyException(itemTypeId, localId, field, value) {
+    onItemsChange(items.map((item) => {
+      if (item.item_type_id !== itemTypeId) return item;
+      return {
+        ...item,
+        exceptions: (item.exceptions || []).map((exception) => {
+          if (exception.localId !== localId) return exception;
+          const nextException = { ...exception, [field]: value };
+          if (field === "is_damaged" && !value) {
+            nextException.damage_note = "";
+          }
+          return nextException;
+        }),
+      };
+    }));
+  }
+
+  function removeTallyException(itemTypeId, localId) {
+    onItemsChange(items.map((item) =>
+      item.item_type_id === itemTypeId
+        ? {
+            ...item,
+            exceptions: (item.exceptions || []).filter(
+              (exception) => exception.localId !== localId,
+            ),
+          }
+        : item,
+    ));
   }
 
   // Save a new shop-wide Laundry choice, then count it once on this service.
@@ -187,45 +260,147 @@ export default function ServiceItemEntry({
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           {tallyItemTypes.map((itemType) => {
-            const quantity =
-              items.find((item) => item.item_type_id === itemType.id)
-                ?.quantity || 0;
+            const tallyItem = items.find(
+              (item) => item.item_type_id === itemType.id,
+            );
+            const quantity = tallyItem?.quantity || 0;
+            const exceptions = tallyItem?.exceptions || [];
 
             return (
-              <div
-                className="flex items-center justify-between gap-3 rounded-lg border border-blue-100 bg-white px-3 py-2"
+              <article
+                className="rounded-lg border border-blue-100 bg-white px-3 py-2"
                 key={itemType.id}
               >
-                <span className="text-sm font-semibold text-slate-800">
-                  {itemType.name}
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
-                    type="button"
-                    aria-label={`Remove one ${itemType.name}`}
-                    disabled={disabled || quantity === 0}
-                    onClick={() => changeTally(itemType.id, -1)}
-                  >
-                    −
-                  </button>
-                  <span
-                    className="w-6 text-center font-bold text-slate-900"
-                    aria-label={`${itemType.name} quantity`}
-                  >
-                    {quantity}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold text-slate-800">
+                    {itemType.name}
                   </span>
-                  <button
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#005AAB] font-bold text-[#005AAB] hover:bg-blue-50 disabled:opacity-40"
-                    type="button"
-                    aria-label={`Add one ${itemType.name}`}
-                    disabled={disabled}
-                    onClick={() => changeTally(itemType.id, 1)}
-                  >
-                    +
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                      type="button"
+                      aria-label={`Remove one ${itemType.name}`}
+                      disabled={disabled || quantity <= exceptions.length}
+                      onClick={() => changeTally(itemType.id, -1)}
+                    >
+                      −
+                    </button>
+                    <span
+                      className="w-6 text-center font-bold text-slate-900"
+                      aria-label={`${itemType.name} quantity`}
+                    >
+                      {quantity}
+                    </span>
+                    <button
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#005AAB] font-bold text-[#005AAB] hover:bg-blue-50 disabled:opacity-40"
+                      type="button"
+                      aria-label={`Add one ${itemType.name}`}
+                      disabled={disabled}
+                      onClick={() => changeTally(itemType.id, 1)}
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
-              </div>
+
+                {quantity > 0 ? (
+                  <button
+                    className="mt-2 text-left text-xs font-bold text-[#005AAB] hover:underline disabled:opacity-50"
+                    type="button"
+                    disabled={disabled || exceptions.length >= quantity}
+                    onClick={() => addTallyException(itemType.id)}
+                  >
+                    Add damage or stain note
+                  </button>
+                ) : null}
+
+                {exceptions.map((exception, index) => (
+                  <div
+                    className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3"
+                    key={exception.localId}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-bold text-amber-950">
+                        Affected {itemType.name.toLowerCase()} {index + 1}
+                      </p>
+                      <button
+                        className="text-xs font-bold text-red-700 hover:underline"
+                        type="button"
+                        disabled={disabled}
+                        onClick={() =>
+                          removeTallyException(itemType.id, exception.localId)
+                        }
+                      >
+                        Remove note
+                      </button>
+                    </div>
+                    <label
+                      className="mt-3 block text-xs font-semibold text-slate-800"
+                      htmlFor={`${fieldPrefix}-${itemType.id}-exception-${exception.localId}-description`}
+                    >
+                      Which item?
+                    </label>
+                    <input
+                      className="mt-1 min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-[#005AAB] focus:ring-2 focus:ring-blue-100"
+                      id={`${fieldPrefix}-${itemType.id}-exception-${exception.localId}-description`}
+                      maxLength="200"
+                      placeholder="Example: Blue school shirt"
+                      value={exception.description}
+                      disabled={disabled}
+                      onChange={(event) => updateTallyException(
+                        itemType.id,
+                        exception.localId,
+                        "description",
+                        event.target.value,
+                      )}
+                    />
+                    <label className="mt-3 flex items-center gap-2 text-xs font-semibold text-slate-800">
+                      <input
+                        type="checkbox"
+                        checked={exception.is_damaged}
+                        disabled={disabled}
+                        onChange={(event) => updateTallyException(
+                          itemType.id,
+                          exception.localId,
+                          "is_damaged",
+                          event.target.checked,
+                        )}
+                      />
+                      Existing damage
+                    </label>
+                    {exception.is_damaged ? (
+                      <input
+                        aria-label={`Existing damage on ${itemType.name} ${index + 1}`}
+                        className="mt-2 min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-[#005AAB] focus:ring-2 focus:ring-blue-100"
+                        maxLength="300"
+                        placeholder="Describe the tear, hole or other damage"
+                        value={exception.damage_note}
+                        disabled={disabled}
+                        onChange={(event) => updateTallyException(
+                          itemType.id,
+                          exception.localId,
+                          "damage_note",
+                          event.target.value,
+                        )}
+                      />
+                    ) : null}
+                    <input
+                      aria-label={`Stain note on ${itemType.name} ${index + 1}`}
+                      className="mt-2 min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-[#005AAB] focus:ring-2 focus:ring-blue-100"
+                      maxLength="300"
+                      placeholder="Describe any serious stain"
+                      value={exception.stain_note}
+                      disabled={disabled}
+                      onChange={(event) => updateTallyException(
+                        itemType.id,
+                        exception.localId,
+                        "stain_note",
+                        event.target.value,
+                      )}
+                    />
+                  </div>
+                ))}
+              </article>
             );
           })}
         </div>

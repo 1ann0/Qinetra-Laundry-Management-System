@@ -75,6 +75,10 @@ class DetailedOrderSchemaTests(unittest.TestCase):
         self.assertEqual(item.description, "Navy shirt")
         self.assertIsNone(item.damage_note)
 
+    def test_damaged_tally_exception_requires_a_note(self):
+        with self.assertRaises(ValidationError):
+            schemas.OrderItemExceptionCreate(is_damaged=True)
+
     # Only the normal or one-hour peak delay can be saved on an order.
     def test_unknown_peak_delay_is_rejected(self):
         with self.assertRaises(ValidationError):
@@ -376,8 +380,8 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
 
         self.assertEqual(wrong_garment.exception.status_code, 400)
 
-    # Choosing "Do this later" saves the order but blocks the Ready stage.
-    def test_pending_tally_blocks_ready_until_items_are_added(self):
+    # Choosing "Do this later" saves the order but blocks washing from starting.
+    def test_pending_tally_blocks_progress_until_items_are_added(self):
         request = schemas.DetailedOrderCreate(
             customer_id=self.customer.id,
             services=[
@@ -393,21 +397,15 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
 
         self.assertEqual(service_line.item_check_status, "pending")
 
-        main.update_order_status(
-            order.id,
-            schemas.OrderStatusUpdate(status="in_progress"),
-            self.db,
-            self.user,
-        )
-
         with self.assertRaises(HTTPException) as blocked:
             main.update_order_status(
                 order.id,
-                schemas.OrderStatusUpdate(status="ready"),
+                schemas.OrderStatusUpdate(status="in_progress"),
                 self.db,
                 self.user,
             )
         self.assertEqual(blocked.exception.status_code, 400)
+        self.assertIn("before washing starts", blocked.exception.detail)
 
         main.replace_order_service_items(
             order.id,
@@ -415,6 +413,12 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
             schemas.OrderItemsUpdate(
                 items=[{"item_type_id": self.shirt.id, "quantity": 4}]
             ),
+            self.db,
+            self.user,
+        )
+        main.update_order_status(
+            order.id,
+            schemas.OrderStatusUpdate(status="in_progress"),
             self.db,
             self.user,
         )
@@ -426,6 +430,120 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
         )
 
         self.assertEqual(ready_order.status, "ready")
+
+    # Condition exceptions describe affected pieces without changing tally or price.
+    def test_tally_exceptions_do_not_double_count_or_change_price(self):
+        request = schemas.DetailedOrderCreate(
+            customer_id=self.customer.id,
+            services=[{
+                "service_id": self.wash_fold.id,
+                "quantity": 3,
+                "items": [{
+                    "item_type_id": self.shirt.id,
+                    "quantity": 3,
+                    "exceptions": [
+                        {
+                            "description": "Blue school shirt",
+                            "is_damaged": True,
+                            "damage_note": "Small tear on right sleeve",
+                        },
+                        {
+                            "description": "White shirt",
+                            "stain_note": "Dark stain on collar",
+                        },
+                    ],
+                }],
+            }],
+        )
+
+        order = main.create_detailed_order(
+            request,
+            self.db,
+            self.user,
+            idempotency_key=uuid4(),
+        )
+        service_line = order.service_lines[0]
+
+        self.assertEqual(float(order.total_price), 450)
+        self.assertEqual(service_line.items[0].quantity, 3)
+        self.assertEqual(len(service_line.items[0].exceptions), 2)
+        self.assertEqual(service_line.item_checked_by_username, self.user.username)
+        self.assertIsNotNone(service_line.item_checked_at)
+        self.assertEqual(len(service_line.item_history), 1)
+        self.assertEqual(
+            len(service_line.item_history[0].item_snapshot[0]["exceptions"]),
+            2,
+        )
+
+    def test_tally_exceptions_cannot_exceed_counted_items(self):
+        with self.assertRaises(HTTPException) as too_many:
+            main.prepare_order_items(
+                self.db,
+                [schemas.OrderItemCreate(
+                    item_type_id=self.shirt.id,
+                    quantity=1,
+                    exceptions=[
+                        {"description": "Blue shirt"},
+                        {"description": "White shirt"},
+                    ],
+                )],
+                "tally",
+                1,
+            )
+
+        self.assertEqual(too_many.exception.status_code, 400)
+        self.assertIn("cannot exceed", too_many.exception.detail)
+
+    # A completed check can change only with a reason, while its first version remains.
+    def test_completed_item_check_correction_keeps_history(self):
+        order = main.create_detailed_order(
+            schemas.DetailedOrderCreate(
+                customer_id=self.customer.id,
+                services=[{
+                    "service_id": self.wash_fold.id,
+                    "quantity": 2,
+                    "items": [{"item_type_id": self.shirt.id, "quantity": 2}],
+                }],
+            ),
+            self.db,
+            self.user,
+            idempotency_key=uuid4(),
+        )
+        service_line = order.service_lines[0]
+
+        with self.assertRaises(HTTPException) as missing_reason:
+            main.replace_order_service_items(
+                order.id,
+                service_line.id,
+                schemas.OrderItemsUpdate(
+                    items=[{"item_type_id": self.shirt.id, "quantity": 1}],
+                    expected_revision=0,
+                ),
+                self.db,
+                self.user,
+            )
+        self.assertEqual(missing_reason.exception.status_code, 400)
+
+        saved_line = main.replace_order_service_items(
+            order.id,
+            service_line.id,
+            schemas.OrderItemsUpdate(
+                items=[{"item_type_id": self.shirt.id, "quantity": 1}],
+                expected_revision=0,
+                change_reason="One shirt belonged to another customer",
+            ),
+            self.db,
+            self.user,
+        )
+
+        self.assertEqual(saved_line.item_revision, 1)
+        self.assertEqual(len(saved_line.item_history), 2)
+        self.assertEqual(saved_line.item_history[0].item_snapshot[0]["quantity"], 2)
+        self.assertEqual(saved_line.item_history[1].item_snapshot[0]["quantity"], 1)
+        self.assertEqual(
+            saved_line.item_history[1].change_reason,
+            "One shirt belonged to another customer",
+        )
 
     # Deposits append to payment history and collection waits for the full balance.
     def test_deposit_and_final_payment_control_collection(self):

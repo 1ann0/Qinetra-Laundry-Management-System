@@ -218,3 +218,13 @@ Ignored helpers in `tmp/` support the local fixture server, read-only smoke chec
 - Student mixed-order browser acceptance passed. Both drafts matched ticket QL-20260915-001: two shirts, one trouser and a described dry-cleaning shirt with saved tear/stain notes. The student explained that one formatter prevents inconsistent information and standardises confirmation. No WhatsApp message was sent.
 - Browser inspection confirmed the same fictional saved record. [Evidence 40](docs/diagrams/evidence/40-clothing-record-receipt.png) was supplied by the student and inspected; it contains no password, token or real customer record.
 - Optional LinkedIn draft: "A receipt is only trustworthy when it matches the saved order. I replaced two separate QLMS message builders with one formatter that includes clothing counts and condition notes. Tests now cover mixed orders, pending checks and older records. The next check is the real staff workflow."
+
+## 15 September 2026 — Protect the pre-wash clothing check
+
+- A quick tally can now attach a separate damage or serious-stain note to an affected piece. The note does not add another item or change the service price.
+- New clothing checks record the employee and time. Later changes require a reason and retain immutable versions; the first correction to an older order also preserves the record that existed before history was added.
+- The API now blocks Received → In Progress while any required clothing check is pending. Staff get the direct instruction to complete the check before washing starts.
+- Added migration `011_add_item_condition_history.sql`. It creates indexed exception/history tables, protects them with row-level security and denies browser database roles.
+- Verification: 29 focused clothing tests, 96 full backend tests, 37 frontend tests, lint, Python syntax and the production build passed. The production build needed network access only to fetch the configured Geist font.
+- Open verification: Docker Desktop was stopped, so the repeatable migration and PostgreSQL concurrency run could not start. Browser acceptance and the next genuine evidence image remain pending.
+- Next useful evidence: one fictional saved tally showing a counted item with a condition note, the employee/time, and two visible history versions after a reasoned correction. Save it only under `docs/diagrams/evidence/`.

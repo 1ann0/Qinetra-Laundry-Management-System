@@ -1,7 +1,19 @@
 # models.py
 # Defines our database tables as Python classes.
 
-from sqlalchemy import Boolean, Column, Date, Integer, String, Numeric, ForeignKey, TIMESTAMP
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Column,
+    Date,
+    ForeignKey,
+    Integer,
+    JSON,
+    Numeric,
+    String,
+    TIMESTAMP,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from decimal import Decimal
@@ -160,6 +172,13 @@ class OrderServiceLine(Base):
     item_recording_mode = Column(String(20), nullable=False)
     item_check_status = Column(String(20), nullable=False, default="not_required")
     item_revision = Column(Integer, nullable=False, default=0, server_default="0")
+    item_checked_by_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    item_checked_by_username = Column(String(50), nullable=True)
+    item_checked_at = Column(TIMESTAMP(timezone=True), nullable=True)
 
     order = relationship("Order", back_populates="service_lines")
     items = relationship(
@@ -167,6 +186,12 @@ class OrderServiceLine(Base):
         back_populates="service_line",
         cascade="all, delete-orphan",
         order_by="OrderItem.id",
+    )
+    item_history = relationship(
+        "OrderItemCheckHistory",
+        back_populates="service_line",
+        cascade="all, delete-orphan",
+        order_by="OrderItemCheckHistory.revision",
     )
 
     @property
@@ -193,6 +218,72 @@ class OrderItem(Base):
     stain_note = Column(String(300), nullable=True)
 
     service_line = relationship("OrderServiceLine", back_populates="items")
+    exceptions = relationship(
+        "OrderItemException",
+        back_populates="order_item",
+        cascade="all, delete-orphan",
+        order_by="OrderItemException.id",
+    )
+
+
+# One affected piece inside a quick tally. It adds detail without changing the count.
+class OrderItemException(Base):
+    __tablename__ = "order_item_exceptions"
+    __table_args__ = (
+        CheckConstraint(
+            "description IS NOT NULL OR is_damaged OR stain_note IS NOT NULL",
+            name="order_item_exception_has_detail",
+        ),
+        CheckConstraint(
+            "NOT is_damaged OR damage_note IS NOT NULL",
+            name="order_item_exception_damage_has_note",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_item_id = Column(
+        Integer,
+        ForeignKey("order_items.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    description = Column(String(200), nullable=True)
+    is_damaged = Column(Boolean, nullable=False, default=False)
+    damage_note = Column(String(300), nullable=True)
+    stain_note = Column(String(300), nullable=True)
+
+    order_item = relationship("OrderItem", back_populates="exceptions")
+
+
+# Immutable snapshots preserve what staff recorded at every clothing-check revision.
+class OrderItemCheckHistory(Base):
+    __tablename__ = "order_item_check_history"
+    __table_args__ = (
+        UniqueConstraint(
+            "order_service_line_id",
+            "revision",
+            name="uq_item_check_history_line_revision",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_service_line_id = Column(
+        Integer,
+        ForeignKey("order_service_lines.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    revision = Column(Integer, nullable=False)
+    check_status = Column(String(20), nullable=False)
+    item_snapshot = Column(JSON, nullable=False)
+    changed_by_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    changed_by_username = Column(String(50), nullable=False)
+    change_reason = Column(String(200), nullable=True)
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+
+    service_line = relationship("OrderServiceLine", back_populates="item_history")
 
 
 # Append-only payment history confirmed by a staff member at the shop.

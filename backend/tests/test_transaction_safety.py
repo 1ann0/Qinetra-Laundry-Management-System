@@ -110,7 +110,11 @@ class SaveContractTests(SaveFixtures, unittest.TestCase):
         self.assertEqual(len(saved.items), 1)
 
     def test_duplicate_status_update_cannot_skip_forward(self):
-        order = self.create()
+        order = self.create(self.body(services=[{
+            "service_id": self.service_id,
+            "quantity": 2,
+            "items": [{"item_type_id": self.item.id, "quantity": 2}],
+        }]))
         body = schemas.OrderStatusUpdate(status="in_progress")
         main.update_order_status(order.id, body, self.db, self.user)
         with self.assertRaises(HTTPException):
@@ -232,21 +236,36 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
         outcomes = self.race([operation, operation])
         self.assertEqual(sorted(status for status, _ in outcomes), [200, 409])
 
-    def test_migration_upgrades_existing_records_and_can_be_repeated(self):
+    def test_migrations_upgrade_existing_records_and_can_be_repeated(self):
         order_id = self.create().id
         self.db.close()
         with self.engine.begin() as connection:
+            connection.execute(text("DROP TABLE order_item_check_history"))
+            connection.execute(text("DROP TABLE order_item_exceptions"))
+            connection.execute(text("ALTER TABLE order_service_lines DROP COLUMN item_checked_by_id, DROP COLUMN item_checked_by_username, DROP COLUMN item_checked_at"))
             connection.execute(text("ALTER TABLE orders DROP COLUMN request_key, DROP COLUMN request_hash, DROP COLUMN created_by_id"))
             connection.execute(text("ALTER TABLE payments DROP COLUMN request_key, DROP COLUMN request_hash"))
             connection.execute(text("ALTER TABLE order_service_lines DROP COLUMN item_revision"))
             connection.execute(text("DROP TABLE ticket_counters"))
-        sql = (Path(__file__).parents[1] / "migrations/010_transaction_safety.sql").read_text()
+        migration_directory = Path(__file__).parents[1] / "migrations"
+        transaction_sql = (migration_directory / "010_transaction_safety.sql").read_text()
+        item_history_sql = (migration_directory / "011_add_item_condition_history.sql").read_text()
         with self.engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
-            connection.exec_driver_sql(sql)
-            connection.exec_driver_sql(sql)
+            connection.exec_driver_sql(transaction_sql)
+            connection.exec_driver_sql(transaction_sql)
+            connection.exec_driver_sql(item_history_sql)
+            connection.exec_driver_sql(item_history_sql)
+            rls_tables = connection.execute(text("""
+                SELECT relname
+                FROM pg_class
+                WHERE relnamespace = current_schema()::regnamespace
+                  AND relrowsecurity
+                  AND relname IN ('order_item_exceptions', 'order_item_check_history')
+            """)).scalars().all()
         self.db = self.Session()
         # Reload the fixture user after replacing its closed database session.
         self.user = self.db.get(models.User, self.user_id)
         self.assertEqual(self.db.get(models.Order, order_id).total_price, Decimal("300"))
         self.assertEqual(self.db.get(models.Order, order_id).service_lines[0].item_revision, 0)
+        self.assertEqual(set(rls_tables), {"order_item_exceptions", "order_item_check_history"})
         self.assertTrue(self.create().ticket_number.endswith("-002"))

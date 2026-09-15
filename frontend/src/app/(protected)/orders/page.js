@@ -211,6 +211,23 @@ function getOrderError(
       return `Record at least one clothing item for ${serviceLine.service_name}.`;
     }
 
+    if (!serviceLine.defer_items && serviceLine.item_recording_mode === "tally") {
+      for (const item of serviceLine.items) {
+        for (const [index, exception] of (item.exceptions || []).entries()) {
+          if (exception.is_damaged && !exception.damage_note.trim()) {
+            return `Describe the existing damage for condition note ${index + 1}.`;
+          }
+          if (
+            !exception.description.trim() &&
+            !exception.is_damaged &&
+            !exception.stain_note.trim()
+          ) {
+            return `Complete or remove condition note ${index + 1}.`;
+          }
+        }
+      }
+    }
+
     if (
       !serviceLine.defer_items &&
       serviceLine.item_recording_mode === "detailed"
@@ -602,6 +619,14 @@ export default function OrderEntryPage() {
                 is_damaged: null,
                 damage_note: null,
                 stain_note: null,
+                exceptions: (item.exceptions || []).map((exception) => ({
+                  description: cleanOptionalText(exception.description),
+                  is_damaged: exception.is_damaged,
+                  damage_note: exception.is_damaged
+                    ? cleanOptionalText(exception.damage_note)
+                    : null,
+                  stain_note: cleanOptionalText(exception.stain_note),
+                })),
               })),
       })),
     };

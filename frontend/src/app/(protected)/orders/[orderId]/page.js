@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import ServiceItemEntry, {
   createBlankGarment,
+  createBlankTallyException,
 } from "@/components/orders/service-item-entry";
 import { useAuth } from "@/context/auth-context";
 import usePendingSave from "@/components/orders/use-pending-save";
@@ -86,6 +87,13 @@ function createEditableItems(serviceLine) {
     return serviceLine.items.map((item) => ({
       item_type_id: item.item_type_id,
       quantity: item.quantity,
+      exceptions: (item.exceptions || []).map((exception, index) => ({
+        ...createBlankTallyException(index + 1),
+        description: exception.description || "",
+        is_damaged: Boolean(exception.is_damaged),
+        damage_note: exception.damage_note || "",
+        stain_note: exception.stain_note || "",
+      })),
     }));
   }
 
@@ -115,6 +123,23 @@ function createEditableItems(serviceLine) {
 function getItemError(serviceLine, items) {
   if (serviceLine.item_recording_mode === "tally" && items.length === 0) {
     return `Record at least one clothing item for ${serviceLine.service_name}.`;
+  }
+
+  if (serviceLine.item_recording_mode === "tally") {
+    for (const item of items) {
+      for (const [index, exception] of (item.exceptions || []).entries()) {
+        if (exception.is_damaged && !exception.damage_note.trim()) {
+          return `Describe the existing damage for condition note ${index + 1}.`;
+        }
+        if (
+          !exception.description.trim() &&
+          !exception.is_damaged &&
+          !exception.stain_note.trim()
+        ) {
+          return `Complete or remove condition note ${index + 1}.`;
+        }
+      }
+    }
   }
 
   if (serviceLine.item_recording_mode === "detailed") {
@@ -148,6 +173,7 @@ export default function OrderDetailPage() {
   const [editingLineId, setEditingLineId] = useState(null);
   const [editingRevision, setEditingRevision] = useState(0);
   const [draftItems, setDraftItems] = useState([]);
+  const [changeReason, setChangeReason] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -203,6 +229,7 @@ export default function OrderDetailPage() {
     setEditingLineId(serviceLine.id);
     setEditingRevision(serviceLine.item_revision);
     setDraftItems(createEditableItems(serviceLine));
+    setChangeReason("");
     setError("");
     setMessage("");
   }
@@ -251,7 +278,23 @@ export default function OrderDetailPage() {
             is_damaged: null,
             damage_note: null,
             stain_note: null,
+            exceptions: (item.exceptions || []).map((exception) => ({
+              description: exception.description.trim() || null,
+              is_damaged: exception.is_damaged,
+              damage_note: exception.is_damaged
+                ? exception.damage_note.trim() || null
+                : null,
+              stain_note: exception.stain_note.trim() || null,
+            })),
           }));
+
+    if (
+      serviceLine.item_check_status === "completed" &&
+      !changeReason.trim()
+    ) {
+      setError("Explain why the completed clothing check needs to change.");
+      return;
+    }
 
     setIsSaving(true);
     setError("");
@@ -263,7 +306,14 @@ export default function OrderDetailPage() {
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ items: requestItems, expected_revision: editingRevision }),
+          body: JSON.stringify({
+            items: requestItems,
+            expected_revision: editingRevision,
+            change_reason:
+              serviceLine.item_check_status === "completed"
+                ? changeReason.trim()
+                : null,
+          }),
         },
       );
 
@@ -275,6 +325,7 @@ export default function OrderDetailPage() {
       }));
       setEditingLineId(null);
       setDraftItems([]);
+      setChangeReason("");
       setMessage(`${serviceLine.service_name} item check saved.`);
     } catch (saveError) {
       setError(getUserMessage(saveError, "QLMS could not confirm the clothing changes. Check the order before you save again."));
@@ -599,6 +650,28 @@ export default function OrderDetailPage() {
                       onAddMissingItem={addMissingTallyItem}
                       onItemsChange={setDraftItems}
                     />
+                    {serviceLine.item_check_status === "completed" ? (
+                      <div className="mt-4">
+                        <label
+                          className="block text-sm font-bold text-slate-800"
+                          htmlFor={`saved-service-${serviceLine.id}-change-reason`}
+                        >
+                          Why is this check changing?
+                        </label>
+                        <input
+                          className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-2 focus:ring-blue-100"
+                          id={`saved-service-${serviceLine.id}-change-reason`}
+                          maxLength="200"
+                          placeholder="Example: Customer confirmed one shirt was not theirs"
+                          value={changeReason}
+                          disabled={isSaving}
+                          onChange={(event) => setChangeReason(event.target.value)}
+                        />
+                        <p className="mt-1 text-xs text-slate-600">
+                          QLMS keeps the earlier check and this reason in the order history.
+                        </p>
+                      </div>
+                    ) : null}
                     <div className="mt-4 flex flex-wrap gap-3">
                       <button
                         className="min-h-11 rounded-xl bg-[#005AAB] px-5 font-bold text-white hover:bg-[#004782] disabled:opacity-50"
@@ -615,6 +688,7 @@ export default function OrderDetailPage() {
                         onClick={() => {
                           setEditingLineId(null);
                           setDraftItems([]);
+                          setChangeReason("");
                           setError("");
                         }}
                       >
@@ -638,9 +712,64 @@ export default function OrderDetailPage() {
                             {item.stain_note
                               ? ` · Note: ${item.stain_note}`
                               : ""}
+                            {(item.exceptions || []).length > 0 ? (
+                              <ul className="mt-2 space-y-1 border-l-2 border-amber-300 pl-3">
+                                {item.exceptions.map((exception, index) => (
+                                  <li key={exception.id}>
+                                    <span className="font-semibold text-amber-950">
+                                      Condition note {index + 1}
+                                    </span>
+                                    {exception.description
+                                      ? ` · ${exception.description}`
+                                      : ""}
+                                    {exception.is_damaged
+                                      ? ` · Existing damage: ${exception.damage_note}`
+                                      : ""}
+                                    {exception.stain_note
+                                      ? ` · Stain: ${exception.stain_note}`
+                                      : ""}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : null}
                           </li>
                         ))}
                       </ul>
+                    ) : null}
+
+                    {serviceLine.item_checked_by_username ? (
+                      <p className="mt-3 text-xs text-slate-600">
+                        Last checked by {serviceLine.item_checked_by_username} ·{" "}
+                        {formatDateTime(serviceLine.item_checked_at)}
+                      </p>
+                    ) : null}
+
+                    {(serviceLine.item_history || []).length > 1 ? (
+                      <details className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                        <summary className="cursor-pointer text-sm font-bold text-[#005AAB]">
+                          Clothing check history ({serviceLine.item_history.length})
+                        </summary>
+                        <ol className="mt-3 space-y-3">
+                          {serviceLine.item_history.map((entry) => (
+                            <li className="text-sm text-slate-700" key={entry.id}>
+                              <p className="font-semibold text-slate-900">
+                                Version {entry.revision + 1} · {entry.changed_by_username}
+                              </p>
+                              <p className="text-xs text-slate-600">
+                                {formatDateTime(entry.created_at)}
+                              </p>
+                              <p className="mt-1">
+                                {(entry.item_snapshot || [])
+                                  .map((item) => `${item.quantity} × ${item.item_name}`)
+                                  .join(", ") || "No clothing recorded"}
+                              </p>
+                              {entry.change_reason ? (
+                                <p className="mt-1">Reason: {entry.change_reason}</p>
+                              ) : null}
+                            </li>
+                          ))}
+                        </ol>
+                      </details>
                     ) : null}
 
                     {serviceLine.item_recording_mode !== "none" &&

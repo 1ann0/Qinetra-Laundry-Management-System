@@ -181,7 +181,30 @@ def prepare_order_items(
             detail="Each clothing type should appear once in a quick tally",
         )
 
+    if recording_mode == "tally":
+        for item in item_inputs:
+            if any([
+                item.description,
+                item.is_damaged is not None,
+                item.damage_note,
+                item.stain_note,
+            ]):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Add damage and stain details to the affected piece, not the full tally",
+                )
+            if len(item.exceptions) > item.quantity:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Condition notes cannot exceed the number of counted items",
+                )
+
     if recording_mode == "detailed":
+        if any(item.exceptions for item in item_inputs):
+            raise HTTPException(
+                status_code=400,
+                detail="Detailed garments already have their own condition fields",
+            )
         if any(item.quantity != 1 for item in item_inputs):
             raise HTTPException(
                 status_code=400,
@@ -230,8 +253,9 @@ def prepare_order_items(
                 detail=f"{item_type.name} is not in the {list_name} list",
             )
 
-    saved_items = [
-        models.OrderItem(
+    saved_items = []
+    for item in item_inputs:
+        saved_items.append(models.OrderItem(
             item_type_id=item.item_type_id,
             item_name=item_types_by_id[item.item_type_id].name,
             quantity=item.quantity,
@@ -239,15 +263,64 @@ def prepare_order_items(
             is_damaged=item.is_damaged,
             damage_note=item.damage_note,
             stain_note=item.stain_note,
-        )
-        for item in item_inputs
-    ]
+            exceptions=[
+                models.OrderItemException(
+                    description=exception.description,
+                    is_damaged=exception.is_damaged,
+                    damage_note=exception.damage_note,
+                    stain_note=exception.stain_note,
+                )
+                for exception in item.exceptions
+            ],
+        ))
     item_status = logic.get_item_check_status(
         recording_mode,
         service_quantity,
         [item.quantity for item in item_inputs],
     )
     return saved_items, item_status
+
+
+# Store a plain-data snapshot so later catalogue changes cannot rewrite history.
+def make_item_snapshot(items: list[models.OrderItem]):
+    return [
+        {
+            "item_type_id": item.item_type_id,
+            "item_name": item.item_name,
+            "quantity": item.quantity,
+            "description": item.description,
+            "is_damaged": item.is_damaged,
+            "damage_note": item.damage_note,
+            "stain_note": item.stain_note,
+            "exceptions": [
+                {
+                    "description": exception.description,
+                    "is_damaged": exception.is_damaged,
+                    "damage_note": exception.damage_note,
+                    "stain_note": exception.stain_note,
+                }
+                for exception in item.exceptions
+            ],
+        }
+        for item in items
+    ]
+
+
+def make_item_history(
+    items: list[models.OrderItem],
+    item_status: str,
+    revision: int,
+    current_user: models.User,
+    change_reason: Optional[str] = None,
+):
+    return models.OrderItemCheckHistory(
+        revision=revision,
+        check_status=item_status,
+        item_snapshot=make_item_snapshot(items),
+        changed_by_id=current_user.id,
+        changed_by_username=current_user.username,
+        change_reason=change_reason,
+    )
 
 
 # Health check route
@@ -887,6 +960,11 @@ def create_detailed_order(
 
     for prepared in prepared_lines:
         service = prepared["service"]
+        check_time = (
+            datetime.now(timezone.utc)
+            if prepared["item_status"] == "completed"
+            else None
+        )
         service_line = models.OrderServiceLine(
             service_id=service.id,
             service_name=service.name,
@@ -898,8 +976,24 @@ def create_detailed_order(
             fixed_item_type_id=service.default_item_type_id,
             item_recording_mode=service.item_recording_mode,
             item_check_status=prepared["item_status"],
+            item_checked_by_id=(
+                current_user.id if prepared["item_status"] == "completed" else None
+            ),
+            item_checked_by_username=(
+                current_user.username
+                if prepared["item_status"] == "completed"
+                else None
+            ),
+            item_checked_at=check_time,
             items=prepared["items"],
         )
+        if service.item_recording_mode != "none":
+            service_line.item_history.append(make_item_history(
+                prepared["items"],
+                prepared["item_status"],
+                0,
+                current_user,
+            ))
         new_order.service_lines.append(service_line)
 
     if order.initial_payment is not None:
@@ -1091,6 +1185,24 @@ def replace_order_service_items(
     if item_update.expected_revision != service_line.item_revision:
         raise HTTPException(409, "The clothing details changed on another screen. Open the order again before editing")
 
+    if service_line.item_check_status == "completed" and not item_update.change_reason:
+        raise HTTPException(
+            status_code=400,
+            detail="Enter why the completed clothing check needs to change",
+        )
+
+    # Preserve the current state when the first correction is made to an older order.
+    if not service_line.item_history:
+        service_line.item_history.append(models.OrderItemCheckHistory(
+            revision=service_line.item_revision,
+            check_status=service_line.item_check_status,
+            item_snapshot=make_item_snapshot(list(service_line.items)),
+            changed_by_id=service_line.item_checked_by_id,
+            changed_by_username=(
+                service_line.item_checked_by_username or "Earlier QLMS record"
+            ),
+        ))
+
     existing_item_type_ids = {item.item_type_id for item in service_line.items}
     check_fixed_service_items(
         item_update.items,
@@ -1108,6 +1220,21 @@ def replace_order_service_items(
     service_line.items.extend(saved_items)
     service_line.item_check_status = item_status
     service_line.item_revision += 1
+    if item_status == "completed":
+        service_line.item_checked_by_id = current_user.id
+        service_line.item_checked_by_username = current_user.username
+        service_line.item_checked_at = datetime.now(timezone.utc)
+    else:
+        service_line.item_checked_by_id = None
+        service_line.item_checked_by_username = None
+        service_line.item_checked_at = None
+    service_line.item_history.append(make_item_history(
+        saved_items,
+        item_status,
+        service_line.item_revision,
+        current_user,
+        item_update.change_reason,
+    ))
 
     db.commit()
     db.refresh(service_line)
@@ -1236,7 +1363,7 @@ def update_order_status(
             detail="Orders can only move forward by one stage at a time",
         )
 
-    if status_update.status == "ready":
+    if status_update.status in {"in_progress", "ready"}:
         pending_item_checks = db.query(models.OrderServiceLine).filter(
             models.OrderServiceLine.order_id == order_id,
             models.OrderServiceLine.item_check_status == "pending",
@@ -1244,7 +1371,7 @@ def update_order_status(
         if pending_item_checks:
             raise HTTPException(
                 status_code=400,
-                detail="Complete the pending clothing check before this order is ready",
+                detail="Complete the clothing check before washing starts",
             )
 
     if status_update.status == "collected" and order.balance_due > 0:

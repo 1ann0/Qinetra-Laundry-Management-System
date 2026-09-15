@@ -55,6 +55,18 @@ function getItemLines(item, recordingMode) {
     }
   }
   if (item.stain_note) lines.push(`  Stain note: ${item.stain_note}`);
+  for (const [index, exception] of (item.exceptions || []).entries()) {
+    const exceptionDescription = exception.description
+      ? ` — ${exception.description}`
+      : "";
+    lines.push(`  Condition note ${index + 1}${exceptionDescription}`);
+    if (exception.is_damaged) {
+      lines.push(`    Existing damage: ${exception.damage_note}`);
+    }
+    if (exception.stain_note) {
+      lines.push(`    Stain note: ${exception.stain_note}`);
+    }
+  }
   return lines;
 }
 

@@ -124,6 +124,8 @@ The student confirmed clothing tallies, garment identification, existing damage 
 
 Start with the 3A1 contract above. In 3A2, require an explicit completed check before washing or outsourcing, record author/time and retain corrections. A nonempty partial tally is not proof that the full check is complete. Provide a customer-reply hold for unresolved issues. In 3B, use stable physical references accepted by the user; confirm the safe labelling method with the cleaner. Track physical pieces separately from billed units (for example, a suit jacket and trousers), partial returns, return checks and authorised handover. References must survive edits. Do not mark Ready while required pieces or final checks remain outstanding.
 
+**3A2 progress (15 September 2026):** Per-piece tally exceptions, author/time, revision history, correction reasons and the pre-wash status gate are implemented locally. Automated SQLite/backend/frontend/build checks pass. PostgreSQL migration verification, browser acceptance and the customer-reply hold remain open; do not call 3A2 complete yet.
+
 ## Phase 3C — Finish the customer intake workflow
 
 **Value:** An employee can serve a new or returning customer without losing an unfinished order.

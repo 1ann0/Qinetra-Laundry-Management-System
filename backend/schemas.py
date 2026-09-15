@@ -3,7 +3,7 @@
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 from datetime import date, datetime
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 from decimal import Decimal
 
 
@@ -170,6 +170,34 @@ class OrderCreate(BaseModel):
     _quantity_precision = field_validator("quantity")(check_quantity_precision)
 
 
+# One damaged or heavily stained piece inside a quick tally.
+class OrderItemExceptionCreate(BaseModel):
+    description: Optional[str] = Field(default=None, max_length=200)
+    is_damaged: bool = False
+    damage_note: Optional[str] = Field(default=None, max_length=300)
+    stain_note: Optional[str] = Field(default=None, max_length=300)
+
+    @field_validator("description", "damage_note", "stain_note")
+    @classmethod
+    def clean_optional_text(cls, value: Optional[str]):
+        if value is None:
+            return value
+        cleaned = value.strip()
+        return cleaned or None
+
+    @model_validator(mode="after")
+    def require_condition_detail(self):
+        if self.is_damaged and not self.damage_note:
+            raise ValueError("Describe the existing damage")
+        if not any([
+            self.description,
+            self.is_damaged,
+            self.stain_note,
+        ]):
+            raise ValueError("Describe the affected item, damage or stain")
+        return self
+
+
 # One clothing entry under a selected service.
 # Tally services can use a quantity; detailed garments are saved one at a time.
 class OrderItemCreate(BaseModel):
@@ -179,6 +207,7 @@ class OrderItemCreate(BaseModel):
     is_damaged: Optional[bool] = None
     damage_note: Optional[str] = Field(default=None, max_length=300)
     stain_note: Optional[str] = Field(default=None, max_length=300)
+    exceptions: list[OrderItemExceptionCreate] = Field(default_factory=list)
 
     @field_validator("description", "damage_note", "stain_note")
     @classmethod
@@ -238,6 +267,18 @@ class DetailedOrderCreate(BaseModel):
         return self
 
 
+# Condition exception returned under one tally item.
+class OrderItemExceptionOut(BaseModel):
+    id: int
+    description: Optional[str]
+    is_damaged: bool
+    damage_note: Optional[str]
+    stain_note: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
 # Clothing data returned as part of an individual order receipt.
 class OrderItemOut(BaseModel):
     id: int
@@ -248,6 +289,21 @@ class OrderItemOut(BaseModel):
     is_damaged: Optional[bool]
     damage_note: Optional[str]
     stain_note: Optional[str]
+    exceptions: list[OrderItemExceptionOut] = Field(default_factory=list)
+
+    class Config:
+        from_attributes = True
+
+
+# One immutable clothing-check revision shown in the audit history.
+class OrderItemCheckHistoryOut(BaseModel):
+    id: int
+    revision: int
+    check_status: str
+    item_snapshot: list[dict[str, Any]]
+    changed_by_username: str
+    change_reason: Optional[str]
+    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -268,7 +324,10 @@ class OrderServiceLineOut(BaseModel):
     item_recording_mode: str
     item_check_status: str
     item_revision: int
+    item_checked_by_username: Optional[str]
+    item_checked_at: Optional[datetime]
     items: list[OrderItemOut] = Field(default_factory=list)
+    item_history: list[OrderItemCheckHistoryOut] = Field(default_factory=list)
 
     class Config:
         from_attributes = True
@@ -278,6 +337,15 @@ class OrderServiceLineOut(BaseModel):
 class OrderItemsUpdate(BaseModel):
     items: list[OrderItemCreate] = Field(default_factory=list)
     expected_revision: int = Field(default=0, ge=0)
+    change_reason: Optional[str] = Field(default=None, max_length=200)
+
+    @field_validator("change_reason")
+    @classmethod
+    def clean_change_reason(cls, value: Optional[str]):
+        if value is None:
+            return value
+        cleaned = value.strip()
+        return cleaned or None
 
 
 # Payment history shown on the receipt.
