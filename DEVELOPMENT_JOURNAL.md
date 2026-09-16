@@ -246,3 +246,12 @@ Ignored helpers in `tmp/` support the local fixture server, read-only smoke chec
 - A disposable browser smoke test passed exact matching, the explicit shared-number choice, draft restoration and the receipt handoff. It exposed a three-hour promised-time display error; the shared Nairobi formatter fixed New order, tracking, order details and receipt messages.
 - Evidence: none added. The later browser review may justify one fictional image that shows the inline match choice while entered order details remain visible; save it only in `docs/diagrams/evidence/`.
 - Optional LinkedIn draft: "Customer registration should not make a busy employee restart an order. I moved it into the QLMS order flow, added consistent Kenyan phone matching and protected unfinished work through refresh. The result is fewer repeated entries and a clearer handoff from form to receipt."
+
+## 16 September 2026 — Separate price from physical garment identity
+
+- Detailed dry-cleaning services now keep a charged quantity and a separate physical-piece list. This prevents a jacket and trousers from charging as two suits.
+- Every physical garment receives a permanent ticket reference. Editing keeps existing references, replacements receive a new suffix and old suffixes are not reused. Detailed garment descriptions are required.
+- The same reference appears on the saved receipt and WhatsApp draft. Internal cleaner information is not present because the handover register is the next unit.
+- Verification: 32 focused and 107 full SQLite backend tests passed; the full run skipped six PostgreSQL-only cases. All 45 frontend tests, lint and the production build passed. Removed the Google-font download so builds work without external font access.
+- PostgreSQL migration 014 verification remains pending because Docker Desktop's Windows service could not be started by this session. No live database, deployment or external message changed.
+- Evidence: none added. Preserve the screenshot budget for a fictional partial return that leaves one garment visibly outstanding.

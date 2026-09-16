@@ -216,6 +216,7 @@ class OrderItemExceptionCreate(BaseModel):
 # One clothing entry under a selected service.
 # Tally services can use a quantity; detailed garments are saved one at a time.
 class OrderItemCreate(BaseModel):
+    existing_item_id: Optional[int] = Field(default=None, gt=0)
     item_type_id: int = Field(gt=0)
     quantity: int = Field(default=1, gt=0)
     description: Optional[str] = Field(default=None, max_length=200)
@@ -297,6 +298,7 @@ class OrderItemExceptionOut(BaseModel):
 # Clothing data returned as part of an individual order receipt.
 class OrderItemOut(BaseModel):
     id: int
+    garment_reference: Optional[str]
     item_type_id: int
     item_name: str
     quantity: int

@@ -12,6 +12,7 @@ import { useAuth } from "@/context/auth-context";
 import usePendingSave from "@/components/orders/use-pending-save";
 import PendingSaveNotice from "@/components/orders/pending-save-notice";
 import { buildOrderReceiptMessage } from "@/lib/order-receipt";
+import { getServiceQuantity } from "@/lib/order-service";
 import { formatNairobiDateTime } from "@/lib/format-nairobi";
 import {
   clearOrderDraft,
@@ -147,14 +148,6 @@ function getServiceDisplayName(service) {
   return serviceName;
 }
 
-// Detailed service quantity comes from its garment cards.
-function getServiceQuantity(serviceLine) {
-  return serviceLine.item_recording_mode === "detailed" &&
-    !serviceLine.defer_items
-    ? serviceLine.items.length
-    : Number(serviceLine.quantity);
-}
-
 // Calculate only the employee's preview; FastAPI still confirms the final price.
 function getServiceSubtotal(serviceLine) {
   const quantity = getServiceQuantity(serviceLine);
@@ -224,7 +217,6 @@ function getOrderError(
     }
 
     if (
-      serviceLine.item_recording_mode !== "detailed" &&
       serviceLine.service_unit !== "kg" &&
       !Number.isInteger(quantity)
     ) {
@@ -260,6 +252,10 @@ function getOrderError(
       !serviceLine.defer_items &&
       serviceLine.item_recording_mode === "detailed"
     ) {
+      if (serviceLine.items.length < quantity) {
+        return `Record at least ${quantity} physical ${quantity === 1 ? "piece" : "pieces"} for ${serviceLine.service_name}.`;
+      }
+
       for (const [index, item] of serviceLine.items.entries()) {
         if (!item.item_type_id) {
           return `Select the clothing type for garment ${index + 1} in ${serviceLine.service_name}.`;
@@ -267,6 +263,10 @@ function getOrderError(
 
         if (item.is_damaged === "") {
           return `Confirm whether garment ${index + 1} in ${serviceLine.service_name} is already damaged.`;
+        }
+
+        if (!item.description.trim()) {
+          return `Describe garment ${index + 1} in ${serviceLine.service_name} so it can be identified.`;
         }
       }
     }
@@ -1289,47 +1289,34 @@ export default function OrderEntryPage() {
                         </div>
                       ) : null}
 
+                      <label
+                        className="mt-4 block font-semibold text-slate-800"
+                        htmlFor={`service-quantity-${serviceLine.service_id}`}
+                      >
+                        {serviceLine.item_recording_mode === "detailed"
+                          ? `Charged quantity (${serviceLine.service_unit})`
+                          : `Quantity (${serviceLine.service_unit})`}
+                      </label>
+                      <input
+                        className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
+                        id={`service-quantity-${serviceLine.service_id}`}
+                        type="number"
+                        min={serviceLine.service_unit === "kg" ? "0.1" : "1"}
+                        step={serviceLine.service_unit === "kg" ? "0.1" : "1"}
+                        value={serviceLine.quantity}
+                        disabled={isSubmitting}
+                        onChange={(event) =>
+                          updateServiceLine(serviceLine.service_id, {
+                            quantity: event.target.value,
+                          })
+                        }
+                      />
                       {serviceLine.item_recording_mode === "detailed" &&
                       !serviceLine.defer_items ? (
-                        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-4 py-3">
-                          <span className="font-semibold text-slate-700">
-                            Charged quantity
-                          </span>
-                          <span className="font-bold text-slate-900">
-                            {quantity}{" "}
-                            {quantity === 1
-                              ? serviceLine.service_unit
-                              : `${serviceLine.service_unit}s`}
-                          </span>
-                        </div>
-                      ) : (
-                        <>
-                          <label
-                            className="mt-4 block font-semibold text-slate-800"
-                            htmlFor={`service-quantity-${serviceLine.service_id}`}
-                          >
-                            Quantity ({serviceLine.service_unit})
-                          </label>
-                          <input
-                            className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
-                            id={`service-quantity-${serviceLine.service_id}`}
-                            type="number"
-                            min={
-                              serviceLine.service_unit === "kg" ? "0.1" : "1"
-                            }
-                            step={
-                              serviceLine.service_unit === "kg" ? "0.1" : "1"
-                            }
-                            value={serviceLine.quantity}
-                            disabled={isSubmitting}
-                            onChange={(event) =>
-                              updateServiceLine(serviceLine.service_id, {
-                                quantity: event.target.value,
-                              })
-                            }
-                          />
-                        </>
-                      )}
+                        <p className="mt-2 text-sm text-slate-600">
+                          Price uses the charged quantity. Record every physical piece below.
+                        </p>
+                      ) : null}
 
                       <ServiceItemEntry
                         recordingMode={
@@ -1923,6 +1910,9 @@ export default function OrderEntryPage() {
                     {serviceLine.items.map((item) => (
                       <li className="text-sm text-slate-700" key={item.id}>
                         <span className="font-bold text-slate-900">
+                          {item.garment_reference
+                            ? `${item.garment_reference} · `
+                            : ""}
                           {item.quantity} × {item.item_name}
                         </span>
                         {item.description ? ` · ${item.description}` : ""}

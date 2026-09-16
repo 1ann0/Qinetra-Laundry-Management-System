@@ -1,11 +1,5 @@
-import { Geist } from "next/font/google";
 import { AuthProvider } from "@/context/auth-context";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
 
 export const metadata = {
   title: "QLMS | Qinetra Laundry",
@@ -14,7 +8,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${geistSans.variable} h-full antialiased`}>
+    <html lang="en" className="h-full antialiased">
       <body className="min-h-full">
         <AuthProvider>{children}</AuthProvider>
       </body>

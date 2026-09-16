@@ -92,6 +92,8 @@ function createEditableItems(serviceLine) {
 
   const editableItems = serviceLine.items.map((item, index) => ({
     localId: index + 1,
+    existing_item_id: item.id,
+    garment_reference: item.garment_reference,
     item_type_id: String(item.item_type_id),
     description: item.description || "",
     is_damaged:
@@ -136,8 +138,8 @@ function getItemError(serviceLine, items) {
   }
 
   if (serviceLine.item_recording_mode === "detailed") {
-    if (items.length !== Number(serviceLine.quantity)) {
-      return `Record exactly ${serviceLine.quantity} garment details for ${serviceLine.service_name}.`;
+    if (items.length < Number(serviceLine.quantity)) {
+      return `Record at least ${serviceLine.quantity} physical pieces for ${serviceLine.service_name}.`;
     }
 
     for (const [index, item] of items.entries()) {
@@ -146,6 +148,9 @@ function getItemError(serviceLine, items) {
       }
       if (item.is_damaged === "") {
         return `Confirm whether garment ${index + 1} is already damaged.`;
+      }
+      if (!item.description.trim()) {
+        return `Describe garment ${index + 1} so it can be identified.`;
       }
     }
   }
@@ -257,6 +262,7 @@ export default function OrderDetailPage() {
     const requestItems =
       serviceLine.item_recording_mode === "detailed"
         ? draftItems.map((item) => ({
+            existing_item_id: item.existing_item_id,
             item_type_id: Number(item.item_type_id),
             quantity: 1,
             description: item.description.trim() || null,
@@ -857,6 +863,9 @@ export default function OrderDetailPage() {
                         {serviceLine.items.map((item) => (
                           <li className="text-sm text-slate-700" key={item.id}>
                             <span className="font-bold text-slate-900">
+                              {item.garment_reference
+                                ? `${item.garment_reference} · `
+                                : ""}
                               {item.quantity} × {item.item_name}
                             </span>
                             {item.description ? ` · ${item.description}` : ""}
@@ -914,7 +923,7 @@ export default function OrderDetailPage() {
                               </p>
                               <p className="mt-1">
                                 {(entry.item_snapshot || [])
-                                  .map((item) => `${item.quantity} × ${item.item_name}`)
+                                  .map((item) => `${item.garment_reference ? `${item.garment_reference} · ` : ""}${item.quantity} × ${item.item_name}`)
                                   .join(", ") || "No clothing recorded"}
                               </p>
                               {entry.change_reason ? (

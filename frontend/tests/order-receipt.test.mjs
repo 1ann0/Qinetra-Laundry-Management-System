@@ -44,6 +44,7 @@ test("mixed receipt includes saved tally and garment condition details", () => {
         item_recording_mode: "detailed",
         item_check_status: "completed",
         items: [{
+          garment_reference: "QL-20260915-001-G01",
           item_name: "Shirt",
           quantity: 1,
           description: "Blue long-sleeved shirt",
@@ -61,7 +62,7 @@ test("mixed receipt includes saved tally and garment condition details", () => {
   assert.match(message, /Existing damage: Small tear near the pocket/);
   assert.match(message, /Stain note: Ink on the cuff/);
   assert.match(message, /- Trouser x1/);
-  assert.match(message, /Dry Cleaning - Shirt:\n- Shirt — Blue long-sleeved shirt/);
+  assert.match(message, /Dry Cleaning - Shirt:\n- QL-20260915-001-G01 · Shirt — Blue long-sleeved shirt/);
   assert.match(message, /Existing damage: Small tear on left cuff/);
   assert.match(message, /Stain note: Ink on right sleeve/);
 });

@@ -118,14 +118,18 @@ class ItemCheckRuleTests(unittest.TestCase):
         status = logic.get_item_check_status("tally", 5.5, [2, 3, 1])
         self.assertEqual(status, "completed")
 
-    # Detailed services need one individual record for every priced garment.
-    def test_detailed_items_must_match_service_quantity(self):
+    # Physical pieces can exceed charged units, as with a two-piece suit.
+    def test_detailed_items_can_exceed_service_quantity(self):
         self.assertEqual(
             logic.get_item_check_status("detailed", 2, [1]),
             "pending",
         )
         self.assertEqual(
             logic.get_item_check_status("detailed", 2, [1, 1]),
+            "completed",
+        )
+        self.assertEqual(
+            logic.get_item_check_status("detailed", 1, [1, 1]),
             "completed",
         )
 
@@ -222,9 +226,14 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
                     "service_id": self.dry_cleaning.id,
                     "quantity": 2,
                     "items": [
-                        {"item_type_id": self.shirt.id, "is_damaged": False},
                         {
                             "item_type_id": self.shirt.id,
+                            "description": "White long-sleeved shirt",
+                            "is_damaged": False,
+                        },
+                        {
+                            "item_type_id": self.shirt.id,
+                            "description": "Blue short-sleeved shirt",
                             "is_damaged": True,
                             "damage_note": "Small tear near cuff",
                         },
@@ -242,6 +251,11 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
         self.assertEqual(order.service_lines[1].item_check_status, "completed")
         self.assertEqual(order.service_lines[1].service_name, "Dry Cleaning - Shirt")
         self.assertEqual(order.service_lines[1].fixed_item_type_id, self.shirt.id)
+        self.assertEqual(
+            [item.garment_reference for item in order.service_lines[1].items],
+            [f"{order.ticket_number}-G01", f"{order.ticket_number}-G02"],
+        )
+        self.assertEqual(order.next_garment_number, 3)
 
     def test_discount_and_order_date_are_saved_without_changing_catalogue_price(self):
         order_date = main.get_nairobi_today() - timedelta(days=2)
@@ -331,7 +345,11 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
                     "service_id": self.dry_cleaning.id,
                     "quantity": 1,
                     "items": [
-                        {"item_type_id": self.shirt.id, "is_damaged": False}
+                        {
+                            "item_type_id": self.shirt.id,
+                            "description": "White office shirt",
+                            "is_damaged": False,
+                        }
                     ],
                 }
             ],
@@ -345,6 +363,112 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
         saved_time = order.promised_ready_at.replace(tzinfo=timezone.utc)
         self.assertEqual(saved_time, promised_time)
         self.assertEqual(order.peak_delay_minutes, 60)
+
+    def test_detailed_description_is_required(self):
+        request = schemas.DetailedOrderCreate(
+            customer_id=self.customer.id,
+            services=[{
+                "service_id": self.dry_cleaning.id,
+                "quantity": 1,
+                "items": [{
+                    "item_type_id": self.shirt.id,
+                    "is_damaged": False,
+                }],
+            }],
+        )
+
+        with self.assertRaises(HTTPException) as missing_description:
+            main.create_detailed_order(
+                request,
+                self.db,
+                self.user,
+                idempotency_key=uuid4(),
+            )
+
+        self.assertIn("Describe every", missing_description.exception.detail)
+
+    def test_suit_pieces_keep_price_and_stable_references_during_corrections(self):
+        self.dry_cleaning.name = "Dry Cleaning - 2-piece Suit"
+        self.dry_cleaning.unit_price = 750
+        self.db.commit()
+        order = main.create_detailed_order(
+            schemas.DetailedOrderCreate(
+                customer_id=self.customer.id,
+                services=[{
+                    "service_id": self.dry_cleaning.id,
+                    "quantity": 1,
+                    "items": [
+                        {
+                            "item_type_id": self.shirt.id,
+                            "description": "Navy suit jacket",
+                            "is_damaged": False,
+                        },
+                        {
+                            "item_type_id": self.shirt.id,
+                            "description": "Matching navy trousers",
+                            "is_damaged": False,
+                        },
+                    ],
+                }],
+            ),
+            self.db,
+            self.user,
+            idempotency_key=uuid4(),
+        )
+        line = order.service_lines[0]
+        first_item, removed_item = list(line.items)
+        removed_item_id = removed_item.id
+        removed_reference = removed_item.garment_reference
+
+        saved_line = main.replace_order_service_items(
+            order.id,
+            line.id,
+            schemas.OrderItemsUpdate(
+                expected_revision=0,
+                change_reason="Corrected the matching trousers",
+                items=[
+                    {
+                        "existing_item_id": first_item.id,
+                        "item_type_id": self.shirt.id,
+                        "description": "Navy suit jacket",
+                        "is_damaged": False,
+                    },
+                    {
+                        "item_type_id": self.shirt.id,
+                        "description": "Matching navy trousers with stripe",
+                        "is_damaged": False,
+                    },
+                ],
+            ),
+            self.db,
+            self.user,
+        )
+
+        self.assertEqual(float(order.total_price), 750)
+        self.assertEqual(saved_line.items[0].id, first_item.id)
+        self.assertEqual(saved_line.items[0].garment_reference, f"{order.ticket_number}-G01")
+        self.assertEqual(saved_line.items[1].garment_reference, f"{order.ticket_number}-G03")
+        self.assertNotEqual(saved_line.items[1].garment_reference, removed_reference)
+        self.assertEqual(order.next_garment_number, 4)
+
+        with self.assertRaises(HTTPException) as removed_garment:
+            main.replace_order_service_items(
+                order.id,
+                line.id,
+                schemas.OrderItemsUpdate(
+                    expected_revision=1,
+                    change_reason="Tried an obsolete garment record",
+                    items=[{
+                        "existing_item_id": removed_item_id,
+                        "item_type_id": self.shirt.id,
+                        "description": "Old matching trousers",
+                        "is_damaged": False,
+                    }],
+                ),
+                self.db,
+                self.user,
+            )
+        self.assertIn("does not belong", removed_garment.exception.detail)
 
     # A direct API request cannot save a customer promise in the past.
     def test_past_promised_completion_time_is_rejected(self):

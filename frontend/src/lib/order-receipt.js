@@ -36,7 +36,10 @@ function getItemLines(item, recordingMode) {
     ? ` x${quantity}`
     : "";
   const description = item.description ? ` — ${item.description}` : "";
-  const lines = [`- ${item.item_name}${quantityText}${description}`];
+  const reference = item.garment_reference
+    ? `${item.garment_reference} · `
+    : "";
+  const lines = [`- ${reference}${item.item_name}${quantityText}${description}`];
 
   if (recordingMode === "detailed") {
     if (item.is_damaged === true) {

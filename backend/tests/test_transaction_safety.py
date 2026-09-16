@@ -237,9 +237,25 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
         self.assertEqual(sorted(status for status, _ in outcomes), [200, 409])
 
     def test_migrations_upgrade_existing_records_and_can_be_repeated(self):
-        order_id = self.create().id
+        order = self.create()
+        order_id = order.id
+        legacy_line = order.service_lines[0]
+        legacy_line.item_recording_mode = "detailed"
+        legacy_item = models.OrderItem(
+            item_type_id=self.item.id,
+            item_name=self.item.name,
+            quantity=1,
+            description="Legacy blue shirt",
+            is_damaged=False,
+        )
+        legacy_line.items.append(legacy_item)
+        self.db.commit()
+        legacy_item_id = legacy_item.id
+        legacy_ticket = order.ticket_number
         self.db.close()
         with self.engine.begin() as connection:
+            connection.execute(text("ALTER TABLE order_items DROP COLUMN garment_reference"))
+            connection.execute(text("ALTER TABLE orders DROP COLUMN next_garment_number"))
             connection.execute(text("ALTER TABLE customers DROP COLUMN phone_normalized"))
             connection.execute(text("DROP TABLE order_holds"))
             connection.execute(text("DROP TABLE order_item_check_history"))
@@ -254,6 +270,7 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
         item_history_sql = (migration_directory / "011_add_item_condition_history.sql").read_text()
         hold_sql = (migration_directory / "012_add_customer_reply_holds.sql").read_text()
         phone_sql = (migration_directory / "013_normalize_customer_phones.sql").read_text()
+        garment_sql = (migration_directory / "014_add_garment_references.sql").read_text()
         with self.engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
             connection.exec_driver_sql(transaction_sql)
             connection.exec_driver_sql(transaction_sql)
@@ -263,6 +280,8 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
             connection.exec_driver_sql(hold_sql)
             connection.exec_driver_sql(phone_sql)
             connection.exec_driver_sql(phone_sql)
+            connection.exec_driver_sql(garment_sql)
+            connection.exec_driver_sql(garment_sql)
             rls_tables = connection.execute(text("""
                 SELECT relname
                 FROM pg_class
@@ -274,6 +293,11 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
         # Reload the fixture user after replacing its closed database session.
         self.user = self.db.get(models.User, self.user_id)
         self.assertEqual(self.db.get(models.Order, order_id).total_price, Decimal("300"))
+        self.assertEqual(
+            self.db.get(models.OrderItem, legacy_item_id).garment_reference,
+            f"{legacy_ticket}-G01",
+        )
+        self.assertEqual(self.db.get(models.Order, order_id).next_garment_number, 2)
         self.assertEqual(self.db.get(models.Customer, self.customer_id).phone_normalized, "254700000000")
         self.assertEqual(self.db.get(models.Order, order_id).service_lines[0].item_revision, 0)
         self.assertEqual(

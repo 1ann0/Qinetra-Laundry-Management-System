@@ -40,6 +40,8 @@ function sortLaundryTallyItems(itemTypes) {
 export function createBlankGarment(localId = 1, itemTypeId = "") {
   return {
     localId,
+    existing_item_id: null,
+    garment_reference: null,
     item_type_id: itemTypeId,
     description: "",
     is_damaged: "",
@@ -500,6 +502,9 @@ export default function ServiceItemEntry({
             <p className="mt-1 text-sm text-slate-600">
               Add each garment separately so its condition and stains stay clear.
             </p>
+            <p className="mt-1 text-sm font-semibold text-[#005AAB]">
+              {items.length} physical {items.length === 1 ? "piece" : "pieces"} recorded
+            </p>
           </div>
           <button
             className="min-h-10 rounded-lg border border-[#005AAB] bg-white px-4 text-sm font-bold text-[#005AAB] hover:bg-blue-50 disabled:opacity-50"
@@ -524,7 +529,7 @@ export default function ServiceItemEntry({
               >
                 <div className="flex items-center justify-between gap-3">
                   <h5 className="font-bold text-slate-900">
-                    Garment {index + 1}
+                    {item.garment_reference || `New garment ${index + 1}`}
                   </h5>
                   <button
                     className="text-sm font-bold text-red-700 hover:underline disabled:opacity-50"
@@ -609,7 +614,7 @@ export default function ServiceItemEntry({
                   className="mt-4 block text-sm font-semibold text-slate-800"
                   htmlFor={`${fieldPrefix}-garment-description-${item.localId}`}
                 >
-                  Garment description
+                  Garment description <span aria-hidden="true">*</span>
                 </label>
                 <input
                   className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-2 focus:ring-blue-100"
@@ -618,6 +623,7 @@ export default function ServiceItemEntry({
                   placeholder="Example: Navy long-sleeved shirt"
                   value={item.description}
                   disabled={disabled}
+                  required
                   onChange={(event) =>
                     updateGarment(
                       item.localId,

@@ -98,6 +98,7 @@ class Order(Base):
     request_key = Column(String(36), unique=True, nullable=True)
     request_hash = Column(String(64), nullable=True)
     created_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    next_garment_number = Column(Integer, nullable=False, default=1, server_default="1")
 
     # Detailed service lines are additive, so older orders can keep their
     # original single-service columns while new mixed orders use these rows.
@@ -211,6 +212,7 @@ class OrderItem(Base):
     __tablename__ = "order_items"
 
     id = Column(Integer, primary_key=True, index=True)
+    garment_reference = Column(String(50), unique=True, nullable=True, index=True)
     order_service_line_id = Column(
         Integer,
         ForeignKey("order_service_lines.id", ondelete="CASCADE"),

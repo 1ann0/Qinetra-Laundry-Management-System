@@ -216,10 +216,10 @@ def prepare_order_items(
                 status_code=400,
                 detail="Confirm whether every detailed garment is already damaged",
             )
-        if sum(item.quantity for item in item_inputs) > service_quantity:
+        if any(not item.description for item in item_inputs):
             raise HTTPException(
                 status_code=400,
-                detail="Detailed garments cannot exceed the selected service quantity",
+                detail="Describe every detailed garment so it can be identified",
             )
 
     if not item_type_ids:
@@ -287,6 +287,7 @@ def make_item_snapshot(items: list[models.OrderItem]):
     return [
         {
             "item_type_id": item.item_type_id,
+            "garment_reference": item.garment_reference,
             "item_name": item.item_name,
             "quantity": item.quantity,
             "description": item.description,
@@ -322,6 +323,58 @@ def make_item_history(
         changed_by_username=current_user.username,
         change_reason=change_reason,
     )
+
+
+# References identify physical garments independently from the quantity charged.
+def assign_garment_references(order: models.Order, items: list[models.OrderItem]):
+    for item in items:
+        if item.garment_reference:
+            continue
+        next_number = order.next_garment_number or 1
+        item.garment_reference = (
+            f"{order.ticket_number}-G{next_number:02d}"
+        )
+        order.next_garment_number = next_number + 1
+
+
+# Keep saved garment identities during corrections while replacing their details.
+def merge_detailed_item_replacement(
+    order: models.Order,
+    service_line: models.OrderServiceLine,
+    item_inputs: list[schemas.OrderItemCreate],
+    prepared_items: list[models.OrderItem],
+):
+    existing_items = {item.id: item for item in service_line.items}
+    submitted_ids = [
+        item.existing_item_id
+        for item in item_inputs
+        if item.existing_item_id is not None
+    ]
+    if len(submitted_ids) != len(set(submitted_ids)):
+        raise HTTPException(400, "Each saved garment can appear only once")
+    if any(item_id not in existing_items for item_id in submitted_ids):
+        raise HTTPException(400, "A saved garment does not belong to this service")
+
+    replacement_items = []
+    for item_input, prepared_item in zip(item_inputs, prepared_items):
+        if item_input.existing_item_id is None:
+            assign_garment_references(order, [prepared_item])
+            replacement_items.append(prepared_item)
+            continue
+
+        saved_item = existing_items[item_input.existing_item_id]
+        saved_item.item_type_id = prepared_item.item_type_id
+        saved_item.item_name = prepared_item.item_name
+        saved_item.quantity = prepared_item.quantity
+        saved_item.description = prepared_item.description
+        saved_item.is_damaged = prepared_item.is_damaged
+        saved_item.damage_note = prepared_item.damage_note
+        saved_item.stain_note = prepared_item.stain_note
+        saved_item.exceptions = prepared_item.exceptions
+        assign_garment_references(order, [saved_item])
+        replacement_items.append(saved_item)
+
+    return replacement_items
 
 
 # Health check route
@@ -932,6 +985,12 @@ def create_detailed_order(
         service = services_by_id[line_input.service_id]
         quantity = Decimal(str(line_input.quantity))
 
+        if any(item.existing_item_id for item in line_input.items):
+            raise HTTPException(
+                status_code=400,
+                detail="Saved garment references can only be used when editing an order",
+            )
+
         if service.unit != "kg" and quantity != quantity.to_integral_value():
             raise HTTPException(
                 status_code=400,
@@ -996,6 +1055,8 @@ def create_detailed_order(
 
     for prepared in prepared_lines:
         service = prepared["service"]
+        if service.item_recording_mode == "detailed":
+            assign_garment_references(new_order, prepared["items"])
         check_time = (
             datetime.now(timezone.utc)
             if prepared["item_status"] == "completed"
@@ -1240,6 +1301,14 @@ def replace_order_service_items(
         ))
 
     existing_item_type_ids = {item.item_type_id for item in service_line.items}
+    if (
+        service_line.item_recording_mode != "detailed"
+        and any(item.existing_item_id for item in item_update.items)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Saved garment references are only used for detailed garments",
+        )
     check_fixed_service_items(
         item_update.items,
         service_line.fixed_item_type_id,
@@ -1252,8 +1321,14 @@ def replace_order_service_items(
         allowed_inactive_ids=existing_item_type_ids,
     )
 
-    service_line.items.clear()
-    service_line.items.extend(saved_items)
+    if service_line.item_recording_mode == "detailed":
+        saved_items = merge_detailed_item_replacement(
+            order,
+            service_line,
+            item_update.items,
+            saved_items,
+        )
+    service_line.items = saved_items
     service_line.item_check_status = item_status
     service_line.item_revision += 1
     if item_status == "completed":

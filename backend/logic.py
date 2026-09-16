@@ -33,7 +33,8 @@ def money(value):
 
 
 # Works out whether a selected service still needs its clothing check.
-# Detailed services only complete when each priced item has its own record.
+# Detailed services can contain several physical pieces under one charged unit,
+# such as the jacket and trousers in one two-piece suit.
 def get_item_check_status(
     recording_mode: str,
     service_quantity: float,
@@ -49,7 +50,7 @@ def get_item_check_status(
         return "completed"
 
     recorded_items = sum(item_quantities)
-    return "completed" if recorded_items == service_quantity else "pending"
+    return "completed" if recorded_items >= service_quantity else "pending"
 
 
 # Generates a unique ticket number in the format QL-YYYYMMDD-###

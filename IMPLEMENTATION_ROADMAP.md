@@ -126,6 +126,8 @@ Start with the 3A1 contract above. In 3A2, require an explicit completed check b
 
 **3A2 progress (15 September 2026):** Per-piece tally exceptions, author/time, revision history, correction reasons, the pre-wash status gate and customer-reply holds are implemented locally. Automated backend/frontend/build checks pass, including 102 tests with no skips against disposable PostgreSQL 17 and repeated migrations. Browser acceptance remains open; do not call 3A2 complete yet.
 
+**3B reference progress (16 September 2026):** QLMS now prices a detailed service from its charged quantity while recording every physical piece separately. Saved pieces receive permanent ticket references, descriptions are required, corrections preserve existing references and deleted references are never reused. The customer receipt shows the same references. SQLite, frontend, lint and production-build checks pass; migration 014 and locking checks still need the disposable PostgreSQL run after Docker Desktop is started manually. The partner handover/partial-return register remains the next unit.
+
 ## Phase 3C — Finish the customer intake workflow
 
 **Value:** An employee can serve a new or returning customer without losing an unfinished order.
