@@ -12,6 +12,7 @@ import ServiceItemEntry, {
 import { useAuth } from "@/context/auth-context";
 import usePendingSave from "@/components/orders/use-pending-save";
 import PendingSaveNotice from "@/components/orders/pending-save-notice";
+import OutsourceRegister from "@/components/orders/outsource-register";
 import { buildOrderReceiptMessage } from "@/lib/order-receipt";
 import { formatNairobiDateTime } from "@/lib/format-nairobi";
 
@@ -158,7 +159,7 @@ function getItemError(serviceLine, items) {
 }
 
 export default function OrderDetailPage() {
-  const { authenticatedRequest } = useAuth();
+  const { authenticatedRequest, role } = useAuth();
   const params = useParams();
   const orderId = Number(params.orderId);
 
@@ -233,6 +234,15 @@ export default function OrderDetailPage() {
     setChangeReason("");
     setError("");
     setMessage("");
+  }
+
+  function replaceServiceLine(savedLine) {
+    setOrder((currentOrder) => ({
+      ...currentOrder,
+      service_lines: currentOrder.service_lines.map((line) =>
+        line.id === savedLine.id ? savedLine : line,
+      ),
+    }));
   }
 
   // Add a missing Laundry choice while completing a saved order's item check.
@@ -319,12 +329,7 @@ export default function OrderDetailPage() {
         },
       );
 
-      setOrder((currentOrder) => ({
-        ...currentOrder,
-        service_lines: currentOrder.service_lines.map((line) =>
-          line.id === savedLine.id ? savedLine : line,
-        ),
-      }));
+      replaceServiceLine(savedLine);
       setEditingLineId(null);
       setDraftItems([]);
       setChangeReason("");
@@ -936,7 +941,9 @@ export default function OrderDetailPage() {
                     ) : null}
 
                     {serviceLine.item_recording_mode !== "none" &&
-                    canEditItems ? (
+                    canEditItems &&
+                    !serviceLine.outsourcing_handover &&
+                    !serviceLine.in_house_at ? (
                       <button
                         className="mt-4 font-bold text-[#005AAB] hover:underline"
                         type="button"
@@ -947,6 +954,15 @@ export default function OrderDetailPage() {
                           : "Edit clothing items"}
                       </button>
                     ) : null}
+
+                    <OutsourceRegister
+                      orderId={order.id}
+                      orderStatus={order.status}
+                      serviceLine={serviceLine}
+                      role={role}
+                      authenticatedRequest={authenticatedRequest}
+                      onServiceLineSaved={replaceServiceLine}
+                    />
                   </>
                 )}
               </article>

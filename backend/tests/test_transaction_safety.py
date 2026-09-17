@@ -254,6 +254,9 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
         legacy_ticket = order.ticket_number
         self.db.close()
         with self.engine.begin() as connection:
+            connection.execute(text("DROP TABLE outsource_handover_items"))
+            connection.execute(text("DROP TABLE outsource_handovers"))
+            connection.execute(text("ALTER TABLE order_service_lines DROP COLUMN outsourcing_required, DROP COLUMN in_house_reason, DROP COLUMN in_house_by_id, DROP COLUMN in_house_by_username, DROP COLUMN in_house_at"))
             connection.execute(text("ALTER TABLE order_items DROP COLUMN garment_reference"))
             connection.execute(text("ALTER TABLE orders DROP COLUMN next_garment_number"))
             connection.execute(text("ALTER TABLE customers DROP COLUMN phone_normalized"))
@@ -271,6 +274,7 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
         hold_sql = (migration_directory / "012_add_customer_reply_holds.sql").read_text()
         phone_sql = (migration_directory / "013_normalize_customer_phones.sql").read_text()
         garment_sql = (migration_directory / "014_add_garment_references.sql").read_text()
+        outsourcing_sql = (migration_directory / "015_add_outsource_handovers.sql").read_text()
         with self.engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
             connection.exec_driver_sql(transaction_sql)
             connection.exec_driver_sql(transaction_sql)
@@ -282,12 +286,20 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
             connection.exec_driver_sql(phone_sql)
             connection.exec_driver_sql(garment_sql)
             connection.exec_driver_sql(garment_sql)
+            connection.exec_driver_sql(outsourcing_sql)
+            connection.exec_driver_sql(outsourcing_sql)
             rls_tables = connection.execute(text("""
                 SELECT relname
                 FROM pg_class
                 WHERE relnamespace = current_schema()::regnamespace
                   AND relrowsecurity
-                  AND relname IN ('order_item_exceptions', 'order_item_check_history', 'order_holds')
+                  AND relname IN (
+                      'order_item_exceptions',
+                      'order_item_check_history',
+                      'order_holds',
+                      'outsource_handovers',
+                      'outsource_handover_items'
+                  )
             """)).scalars().all()
         self.db = self.Session()
         # Reload the fixture user after replacing its closed database session.
@@ -302,6 +314,12 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
         self.assertEqual(self.db.get(models.Order, order_id).service_lines[0].item_revision, 0)
         self.assertEqual(
             set(rls_tables),
-            {"order_item_exceptions", "order_item_check_history", "order_holds"},
+            {
+                "order_item_exceptions",
+                "order_item_check_history",
+                "order_holds",
+                "outsource_handovers",
+                "outsource_handover_items",
+            },
         )
         self.assertTrue(self.create().ticket_number.endswith("-002"))

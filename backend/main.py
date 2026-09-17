@@ -5,7 +5,7 @@ from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError
 from typing import Optional, Annotated
 from uuid import UUID
@@ -82,6 +82,21 @@ def get_promised_ready_at(
         )
 
     return promised_time
+
+
+def get_expected_return_at(requested_time: datetime) -> datetime:
+    if requested_time.tzinfo is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Expected return time must include a timezone",
+        )
+    expected_time = requested_time.astimezone(timezone.utc)
+    if expected_time <= datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=400,
+            detail="Expected return time must be in the future",
+        )
+    return expected_time
 
 
 # Convert inclusive Nairobi calendar dates into the UTC boundaries stored by PostgreSQL.
@@ -1072,6 +1087,10 @@ def create_detailed_order(
             discount_amount=prepared["discount_amount"],
             fixed_item_type_id=service.default_item_type_id,
             item_recording_mode=service.item_recording_mode,
+            outsourcing_required=(
+                service.category == "dry_cleaning"
+                and service.item_recording_mode == "detailed"
+            ),
             item_check_status=prepared["item_status"],
             item_checked_by_id=(
                 current_user.id if prepared["item_status"] == "completed" else None
@@ -1278,6 +1297,12 @@ def replace_order_service_items(
     if not service_line:
         raise HTTPException(status_code=404, detail="Order service not found")
 
+    if service_line.outsourcing_handover or service_line.in_house_at:
+        raise HTTPException(
+            status_code=400,
+            detail="Clothing details cannot change after the dry-cleaning handling choice",
+        )
+
     db.refresh(service_line)
     if item_update.expected_revision != service_line.item_revision:
         raise HTTPException(409, "The clothing details changed on another screen. Open the order again before editing")
@@ -1350,6 +1375,266 @@ def replace_order_service_items(
     db.commit()
     db.refresh(service_line)
     return service_line
+
+
+# Send every checked physical garment on one detailed service to the cleaner.
+@app.post(
+    "/orders/{order_id}/services/{service_line_id}/outsourcing",
+    response_model=schemas.OrderServiceLineOut,
+)
+def create_outsource_handover(
+    order_id: int,
+    service_line_id: int,
+    handover_input: schemas.OutsourceHandoverCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    order = (
+        db.query(models.Order)
+        .filter(models.Order.id == order_id)
+        .populate_existing()
+        .with_for_update()
+        .first()
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.status not in {"received", "in_progress"}:
+        raise HTTPException(
+            status_code=400,
+            detail="A dry-cleaner handover can only be recorded before the order is ready",
+        )
+
+    service_line = db.query(models.OrderServiceLine).filter(
+        models.OrderServiceLine.id == service_line_id,
+        models.OrderServiceLine.order_id == order_id,
+    ).first()
+    if not service_line:
+        raise HTTPException(status_code=404, detail="Order service not found")
+    if service_line.item_recording_mode != "detailed":
+        raise HTTPException(
+            status_code=400,
+            detail="Only individually recorded garments can be sent to a dry cleaner",
+        )
+    if service_line.item_check_status != "completed" or not service_line.items:
+        raise HTTPException(
+            status_code=400,
+            detail="Complete the garment check before recording the dry-cleaner handover",
+        )
+    if service_line.outsourcing_handover:
+        raise HTTPException(
+            status_code=400,
+            detail="This service already has a dry-cleaner handover",
+        )
+    if service_line.in_house_at:
+        raise HTTPException(
+            status_code=400,
+            detail="This dry cleaning was already confirmed as handled in the shop",
+        )
+
+    handover = models.OutsourceHandover(
+        partner_name=handover_input.partner_name,
+        expected_return_at=get_expected_return_at(
+            handover_input.expected_return_at,
+        ),
+        sent_by_id=current_user.id,
+        sent_by_username=current_user.username,
+        items=[
+            models.OutsourceHandoverItem(
+                order_item_id=item.id,
+                garment_reference=item.garment_reference,
+            )
+            for item in service_line.items
+        ],
+    )
+    service_line.outsourcing_handover = handover
+    db.commit()
+    db.refresh(service_line)
+    return service_line
+
+
+# The owner records an exceptional in-shop job instead of an outside handover.
+@app.post(
+    "/orders/{order_id}/services/{service_line_id}/in-house",
+    response_model=schemas.OrderServiceLineOut,
+)
+def confirm_in_house_dry_cleaning(
+    order_id: int,
+    service_line_id: int,
+    confirmation: schemas.InHouseDryCleaningConfirm,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+):
+    order = (
+        db.query(models.Order)
+        .filter(models.Order.id == order_id)
+        .populate_existing()
+        .with_for_update()
+        .first()
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.status not in {"received", "in_progress"}:
+        raise HTTPException(
+            status_code=400,
+            detail="The handling choice cannot change after the order is ready",
+        )
+
+    service_line = db.query(models.OrderServiceLine).filter(
+        models.OrderServiceLine.id == service_line_id,
+        models.OrderServiceLine.order_id == order_id,
+    ).first()
+    if not service_line:
+        raise HTTPException(status_code=404, detail="Order service not found")
+    if not service_line.outsourcing_required:
+        raise HTTPException(
+            status_code=400,
+            detail="This service does not need a dry-cleaning handling choice",
+        )
+    if service_line.item_check_status != "completed":
+        raise HTTPException(
+            status_code=400,
+            detail="Complete the garment check before confirming in-shop cleaning",
+        )
+    if service_line.outsourcing_handover:
+        raise HTTPException(
+            status_code=400,
+            detail="This service already left for the outside dry cleaner",
+        )
+    if service_line.in_house_at:
+        raise HTTPException(
+            status_code=400,
+            detail="In-shop cleaning is already confirmed for this service",
+        )
+
+    service_line.in_house_reason = confirmation.reason
+    service_line.in_house_by_id = current_user.id
+    service_line.in_house_by_username = current_user.username
+    service_line.in_house_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(service_line)
+    return service_line
+
+
+# Confirm one or more returned pieces without hiding garments still outside.
+@app.post(
+    "/orders/{order_id}/outsourcing/{handover_id}/returns",
+    response_model=schemas.OrderServiceLineOut,
+)
+def record_outsource_returns(
+    order_id: int,
+    handover_id: int,
+    return_input: schemas.OutsourceReturnCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    order = (
+        db.query(models.Order)
+        .filter(models.Order.id == order_id)
+        .populate_existing()
+        .with_for_update()
+        .first()
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.status not in {"received", "in_progress"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Dry-cleaner returns cannot change after the order is ready",
+        )
+
+    handover = (
+        db.query(models.OutsourceHandover)
+        .join(models.OrderServiceLine)
+        .filter(
+            models.OutsourceHandover.id == handover_id,
+            models.OrderServiceLine.order_id == order_id,
+        )
+        .first()
+    )
+    if not handover:
+        raise HTTPException(status_code=404, detail="Dry-cleaner handover not found")
+
+    handover_items = {item.id: item for item in handover.items}
+    requested_ids = [item.handover_item_id for item in return_input.items]
+    if any(item_id not in handover_items for item_id in requested_ids):
+        raise HTTPException(
+            status_code=400,
+            detail="A returned garment is not part of this handover",
+        )
+    if any(handover_items[item_id].returned_at for item_id in requested_ids):
+        raise HTTPException(
+            status_code=400,
+            detail="A returned garment was already confirmed",
+        )
+
+    returned_at = datetime.now(timezone.utc)
+    for returned_input in return_input.items:
+        item = handover_items[returned_input.handover_item_id]
+        item.returned_by_id = current_user.id
+        item.returned_by_username = current_user.username
+        item.returned_at = returned_at
+        item.return_condition = returned_input.return_condition
+        item.issue_note = returned_input.issue_note
+
+    db.commit()
+    db.refresh(handover.service_line)
+    return handover.service_line
+
+
+# Only the owner closes a discrepancy; the original return note remains visible.
+@app.patch(
+    "/orders/{order_id}/outsourcing/{handover_id}/returns/{handover_item_id}/resolve",
+    response_model=schemas.OrderServiceLineOut,
+)
+def resolve_outsource_issue(
+    order_id: int,
+    handover_id: int,
+    handover_item_id: int,
+    resolution: schemas.OutsourceIssueResolve,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+):
+    order = (
+        db.query(models.Order)
+        .filter(models.Order.id == order_id)
+        .populate_existing()
+        .with_for_update()
+        .first()
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    handover_item = (
+        db.query(models.OutsourceHandoverItem)
+        .join(models.OutsourceHandover)
+        .join(models.OrderServiceLine)
+        .filter(
+            models.OutsourceHandoverItem.id == handover_item_id,
+            models.OutsourceHandover.id == handover_id,
+            models.OrderServiceLine.order_id == order_id,
+        )
+        .first()
+    )
+    if not handover_item:
+        raise HTTPException(status_code=404, detail="Returned garment not found")
+    if handover_item.return_condition != "issue":
+        raise HTTPException(
+            status_code=400,
+            detail="This returned garment has no issue to resolve",
+        )
+    if handover_item.issue_resolved_at:
+        raise HTTPException(
+            status_code=400,
+            detail="This return issue is already resolved",
+        )
+
+    handover_item.issue_resolved_by_id = current_user.id
+    handover_item.issue_resolved_by_username = current_user.username
+    handover_item.issue_resolved_at = datetime.now(timezone.utc)
+    handover_item.resolution_note = resolution.resolution_note
+    db.commit()
+    db.refresh(handover_item.handover.service_line)
+    return handover_item.handover.service_line
 
 
 # Pause an order while staff wait for the customer to answer a clothing question.
@@ -1580,6 +1865,41 @@ def update_order_status(
             raise HTTPException(
                 status_code=400,
                 detail="Record the customer's reply and close the hold before moving this order",
+            )
+
+    if status_update.status == "ready":
+        missing_handovers = db.query(models.OrderServiceLine).filter(
+            models.OrderServiceLine.order_id == order_id,
+            models.OrderServiceLine.outsourcing_required.is_(True),
+            models.OrderServiceLine.in_house_at.is_(None),
+            ~models.OrderServiceLine.outsourcing_handover.has(),
+        ).count()
+        if missing_handovers:
+            raise HTTPException(
+                status_code=400,
+                detail="Record the dry-cleaner handover or ask the owner to confirm in-shop cleaning before marking this order ready",
+            )
+
+        unresolved_outsourcing = (
+            db.query(models.OutsourceHandoverItem)
+            .join(models.OutsourceHandover)
+            .join(models.OrderServiceLine)
+            .filter(
+                models.OrderServiceLine.order_id == order_id,
+                or_(
+                    models.OutsourceHandoverItem.returned_at.is_(None),
+                    and_(
+                        models.OutsourceHandoverItem.return_condition == "issue",
+                        models.OutsourceHandoverItem.issue_resolved_at.is_(None),
+                    ),
+                ),
+            )
+            .count()
+        )
+        if unresolved_outsourcing:
+            raise HTTPException(
+                status_code=400,
+                detail="Confirm every outsourced garment return and resolve any issue before marking this order ready",
             )
 
     if status_update.status == "collected" and order.balance_due > 0:

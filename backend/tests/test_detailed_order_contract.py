@@ -79,6 +79,18 @@ class DetailedOrderSchemaTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             schemas.OrderItemExceptionCreate(is_damaged=True)
 
+    def test_outsource_issue_requires_a_note_and_duplicate_returns_are_rejected(self):
+        with self.assertRaises(ValidationError):
+            schemas.OutsourceReturnItemCreate(
+                handover_item_id=1,
+                return_condition="issue",
+            )
+        with self.assertRaises(ValidationError):
+            schemas.OutsourceReturnCreate(items=[
+                {"handover_item_id": 1, "return_condition": "returned_ok"},
+                {"handover_item_id": 1, "return_condition": "returned_ok"},
+            ])
+
     # Only the normal or one-hour peak delay can be saved on an order.
     def test_unknown_peak_delay_is_rejected(self):
         with self.assertRaises(ValidationError):
@@ -144,6 +156,10 @@ class DetailedOrderRouteTests(unittest.TestCase):
             ("POST", "/orders/{order_id}/holds"),
             ("PATCH", "/orders/{order_id}/holds/{hold_id}/resolve"),
             ("POST", "/orders/{order_id}/payments"),
+            ("POST", "/orders/{order_id}/services/{service_line_id}/outsourcing"),
+            ("POST", "/orders/{order_id}/outsourcing/{handover_id}/returns"),
+            ("POST", "/orders/{order_id}/services/{service_line_id}/in-house"),
+            ("PATCH", "/orders/{order_id}/outsourcing/{handover_id}/returns/{handover_item_id}/resolve"),
         }
 
         for route in main.app.routes:
@@ -155,10 +171,27 @@ class DetailedOrderRouteTests(unittest.TestCase):
                 dependency_calls = {
                     dependency.call for dependency in route.dependant.dependencies
                 }
-                self.assertIn(auth.get_current_user, dependency_calls, route_key)
+                expected_dependency = (
+                    auth.require_owner
+                    if route.path.endswith("/{handover_item_id}/resolve")
+                    or route.path.endswith("/{service_line_id}/in-house")
+                    else auth.get_current_user
+                )
+                self.assertIn(expected_dependency, dependency_calls, route_key)
                 protected_routes.remove(route_key)
 
         self.assertEqual(protected_routes, set())
+
+    def test_outsource_issue_resolution_requires_owner(self):
+        route = next(
+            route
+            for route in main.app.routes
+            if route.path == "/orders/{order_id}/outsourcing/{handover_id}/returns/{handover_item_id}/resolve"
+        )
+        dependency_calls = {
+            dependency.call for dependency in route.dependant.dependencies
+        }
+        self.assertIn(auth.require_owner, dependency_calls)
 
 
 class DetailedOrderDatabaseTests(unittest.TestCase):
@@ -469,6 +502,234 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
                 self.user,
             )
         self.assertIn("does not belong", removed_garment.exception.detail)
+
+    def test_outsource_partial_return_and_issue_block_ready(self):
+        order = main.create_detailed_order(
+            schemas.DetailedOrderCreate(
+                customer_id=self.customer.id,
+                services=[{
+                    "service_id": self.dry_cleaning.id,
+                    "quantity": 1,
+                    "items": [
+                        {
+                            "item_type_id": self.shirt.id,
+                            "description": "Grey suit jacket",
+                            "is_damaged": False,
+                        },
+                        {
+                            "item_type_id": self.shirt.id,
+                            "description": "Matching grey trousers",
+                            "is_damaged": False,
+                        },
+                    ],
+                }],
+            ),
+            self.db,
+            self.user,
+            idempotency_key=uuid4(),
+        )
+        service_line = order.service_lines[0]
+        self.assertTrue(service_line.outsourcing_required)
+        saved_line = main.create_outsource_handover(
+            order.id,
+            service_line.id,
+            schemas.OutsourceHandoverCreate(
+                partner_name="  Trusted Cleaner  ",
+                expected_return_at=datetime.now(timezone.utc) + timedelta(days=2),
+            ),
+            self.db,
+            self.user,
+        )
+        handover = saved_line.outsourcing_handover
+        first_return, second_return = list(handover.items)
+
+        self.assertEqual(handover.partner_name, "Trusted Cleaner")
+        self.assertEqual(handover.outstanding_count, 2)
+        self.assertEqual(
+            [item.garment_reference for item in handover.items],
+            [item.garment_reference for item in saved_line.items],
+        )
+
+        with self.assertRaises(HTTPException) as locked_items:
+            main.replace_order_service_items(
+                order.id,
+                service_line.id,
+                schemas.OrderItemsUpdate(
+                    expected_revision=0,
+                    change_reason="Too late correction",
+                    items=[],
+                ),
+                self.db,
+                self.user,
+            )
+        self.assertIn("handling choice", locked_items.exception.detail)
+
+        main.record_outsource_returns(
+            order.id,
+            handover.id,
+            schemas.OutsourceReturnCreate(items=[{
+                "handover_item_id": first_return.id,
+                "return_condition": "returned_ok",
+            }]),
+            self.db,
+            self.user,
+        )
+        self.assertEqual(handover.outstanding_count, 1)
+
+        with self.assertRaises(HTTPException) as duplicate_return:
+            main.record_outsource_returns(
+                order.id,
+                handover.id,
+                schemas.OutsourceReturnCreate(items=[{
+                    "handover_item_id": first_return.id,
+                    "return_condition": "returned_ok",
+                }]),
+                self.db,
+                self.user,
+            )
+        self.assertIn("already confirmed", duplicate_return.exception.detail)
+
+        main.update_order_status(
+            order.id,
+            schemas.OrderStatusUpdate(status="in_progress"),
+            self.db,
+            self.user,
+        )
+        with self.assertRaises(HTTPException) as missing_piece:
+            main.update_order_status(
+                order.id,
+                schemas.OrderStatusUpdate(status="ready"),
+                self.db,
+                self.user,
+            )
+        self.assertIn("outsourced garment", missing_piece.exception.detail)
+
+        main.record_outsource_returns(
+            order.id,
+            handover.id,
+            schemas.OutsourceReturnCreate(items=[{
+                "handover_item_id": second_return.id,
+                "return_condition": "issue",
+                "issue_note": "New mark on the left leg",
+            }]),
+            self.db,
+            self.user,
+        )
+        self.assertEqual(handover.outstanding_count, 0)
+        self.assertEqual(handover.unresolved_issue_count, 1)
+        with self.assertRaises(HTTPException) as unresolved_issue:
+            main.update_order_status(
+                order.id,
+                schemas.OrderStatusUpdate(status="ready"),
+                self.db,
+                self.user,
+            )
+        self.assertIn("resolve any issue", unresolved_issue.exception.detail)
+
+        owner = models.User(
+            username="test_owner",
+            password_hash="not-used-by-this-test",
+            role="owner",
+        )
+        self.db.add(owner)
+        self.db.commit()
+        resolved_line = main.resolve_outsource_issue(
+            order.id,
+            handover.id,
+            second_return.id,
+            schemas.OutsourceIssueResolve(
+                resolution_note="Cleaner accepted responsibility and corrected it",
+            ),
+            self.db,
+            owner,
+        )
+        self.assertEqual(
+            resolved_line.outsourcing_handover.unresolved_issue_count,
+            0,
+        )
+        ready_order = main.update_order_status(
+            order.id,
+            schemas.OrderStatusUpdate(status="ready"),
+            self.db,
+            self.user,
+        )
+        self.assertEqual(ready_order.status, "ready")
+
+    def test_new_dry_cleaning_needs_handover_or_owner_in_house_confirmation(self):
+        order = main.create_detailed_order(
+            schemas.DetailedOrderCreate(
+                customer_id=self.customer.id,
+                services=[{
+                    "service_id": self.dry_cleaning.id,
+                    "quantity": 1,
+                    "items": [{
+                        "item_type_id": self.shirt.id,
+                        "description": "Cream dinner shirt",
+                        "is_damaged": False,
+                    }],
+                }],
+            ),
+            self.db,
+            self.user,
+            idempotency_key=uuid4(),
+        )
+        line = order.service_lines[0]
+        main.update_order_status(
+            order.id,
+            schemas.OrderStatusUpdate(status="in_progress"),
+            self.db,
+            self.user,
+        )
+
+        with self.assertRaises(HTTPException) as missing_choice:
+            main.update_order_status(
+                order.id,
+                schemas.OrderStatusUpdate(status="ready"),
+                self.db,
+                self.user,
+            )
+        self.assertIn("dry-cleaner handover", missing_choice.exception.detail)
+
+        owner = models.User(
+            username="in_house_owner",
+            password_hash="not-used-by-this-test",
+            role="owner",
+        )
+        self.db.add(owner)
+        self.db.commit()
+        saved_line = main.confirm_in_house_dry_cleaning(
+            order.id,
+            line.id,
+            schemas.InHouseDryCleaningConfirm(
+                reason="Special fabric cleaned with Qinetra equipment",
+            ),
+            self.db,
+            owner,
+        )
+        self.assertEqual(saved_line.in_house_by_username, owner.username)
+        self.assertIsNotNone(saved_line.in_house_at)
+        with self.assertRaises(HTTPException) as locked_check:
+            main.replace_order_service_items(
+                order.id,
+                line.id,
+                schemas.OrderItemsUpdate(
+                    expected_revision=0,
+                    change_reason="Attempted after handling choice",
+                    items=[],
+                ),
+                self.db,
+                self.user,
+            )
+        self.assertIn("handling choice", locked_check.exception.detail)
+        self.assertEqual(
+            main.update_order_status(
+                order.id,
+                schemas.OrderStatusUpdate(status="ready"),
+                self.db,
+                self.user,
+            ).status,
+            "ready",
+        )
 
     # A direct API request cannot save a customer promise in the past.
     def test_past_promised_completion_time_is_rejected(self):

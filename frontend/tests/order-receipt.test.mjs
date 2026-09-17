@@ -25,6 +25,10 @@ test("mixed receipt includes saved tally and garment condition details", () => {
         service_name: "Wash & Fold",
         item_recording_mode: "tally",
         item_check_status: "completed",
+        outsourcing_handover: {
+          partner_name: "Internal Cleaner Ltd",
+          outstanding_count: 1,
+        },
         items: [
           {
             item_name: "Shirt",
@@ -65,6 +69,7 @@ test("mixed receipt includes saved tally and garment condition details", () => {
   assert.match(message, /Dry Cleaning - Shirt:\n- QL-20260915-001-G01 · Shirt — Blue long-sleeved shirt/);
   assert.match(message, /Existing damage: Small tear on left cuff/);
   assert.match(message, /Stain note: Ink on right sleeve/);
+  assert.doesNotMatch(message, /Internal Cleaner/);
 });
 
 test("pending check is explicit and does not invent a zero-piece record", () => {

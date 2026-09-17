@@ -312,6 +312,106 @@ class OrderItemOut(BaseModel):
         from_attributes = True
 
 
+class OutsourceHandoverCreate(BaseModel):
+    partner_name: str = Field(min_length=1, max_length=100)
+    expected_return_at: datetime
+
+    @field_validator("partner_name")
+    @classmethod
+    def clean_partner_name(cls, value: str):
+        cleaned = " ".join(value.split())
+        if not cleaned:
+            raise ValueError("Enter the dry cleaner's name")
+        return cleaned
+
+
+class OutsourceReturnItemCreate(BaseModel):
+    handover_item_id: int = Field(gt=0)
+    return_condition: Literal["returned_ok", "issue"]
+    issue_note: Optional[str] = Field(default=None, max_length=300)
+
+    @field_validator("issue_note")
+    @classmethod
+    def clean_issue_note(cls, value: Optional[str]):
+        if value is None:
+            return value
+        cleaned = value.strip()
+        return cleaned or None
+
+    @model_validator(mode="after")
+    def require_issue_note(self):
+        if self.return_condition == "issue" and not self.issue_note:
+            raise ValueError("Describe the return issue")
+        if self.return_condition == "returned_ok":
+            self.issue_note = None
+        return self
+
+
+class OutsourceReturnCreate(BaseModel):
+    items: list[OutsourceReturnItemCreate] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def prevent_duplicate_returns(self):
+        item_ids = [item.handover_item_id for item in self.items]
+        if len(item_ids) != len(set(item_ids)):
+            raise ValueError("Select each returned garment only once")
+        return self
+
+
+class OutsourceIssueResolve(BaseModel):
+    resolution_note: str = Field(min_length=1, max_length=300)
+
+    @field_validator("resolution_note")
+    @classmethod
+    def clean_resolution_note(cls, value: str):
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Enter how the return issue was resolved")
+        return cleaned
+
+
+class InHouseDryCleaningConfirm(BaseModel):
+    reason: str = Field(min_length=1, max_length=300)
+
+    @field_validator("reason")
+    @classmethod
+    def clean_reason(cls, value: str):
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Explain why this dry cleaning stayed in the shop")
+        return cleaned
+
+
+class OutsourceHandoverItemOut(BaseModel):
+    id: int
+    order_item_id: int
+    garment_reference: str
+    returned_by_username: Optional[str]
+    returned_at: Optional[datetime]
+    return_condition: Optional[str]
+    issue_note: Optional[str]
+    issue_resolved_by_username: Optional[str]
+    issue_resolved_at: Optional[datetime]
+    resolution_note: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+class OutsourceHandoverOut(BaseModel):
+    id: int
+    partner_name: str
+    expected_return_at: datetime
+    sent_by_username: str
+    sent_at: datetime
+    outstanding_count: int
+    unresolved_issue_count: int
+    items: list[OutsourceHandoverItemOut] = Field(default_factory=list)
+
+    class Config:
+        from_attributes = True
+
+
 # One immutable clothing-check revision shown in the audit history.
 class OrderItemCheckHistoryOut(BaseModel):
     id: int
@@ -339,12 +439,17 @@ class OrderServiceLineOut(BaseModel):
     line_total: float
     fixed_item_type_id: Optional[int]
     item_recording_mode: str
+    outsourcing_required: bool
+    in_house_reason: Optional[str]
+    in_house_by_username: Optional[str]
+    in_house_at: Optional[datetime]
     item_check_status: str
     item_revision: int
     item_checked_by_username: Optional[str]
     item_checked_at: Optional[datetime]
     items: list[OrderItemOut] = Field(default_factory=list)
     item_history: list[OrderItemCheckHistoryOut] = Field(default_factory=list)
+    outsourcing_handover: Optional[OutsourceHandoverOut] = None
 
     class Config:
         from_attributes = True

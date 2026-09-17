@@ -128,6 +128,8 @@ Start with the 3A1 contract above. In 3A2, require an explicit completed check b
 
 **3B reference progress (16 September 2026):** QLMS now prices a detailed service from its charged quantity while recording every physical piece separately. Saved pieces receive permanent ticket references, descriptions are required, corrections preserve existing references and deleted references are never reused. The customer receipt shows the same references. SQLite, frontend, lint and production-build checks pass; migration 014 and locking checks still need the disposable PostgreSQL run after Docker Desktop is started manually. The partner handover/partial-return register remains the next unit.
 
+**3B register progress (17 September 2026):** A staff member can record the partner, expected return, all sent garment references and a separate return check for each piece. Partial returns and unresolved return issues block Ready. The owner can resolve an issue without deleting the original note. New dry-cleaning service lines also require a handover or an owner-attributed in-shop exception before Ready. This is local code only: 111 SQLite tests pass with six PostgreSQL-only skips, 45 frontend tests pass, and lint/build pass. Migrations 014–015, the PostgreSQL locking cases, a representative browser check and the physical attachment method still need verification. No live schema, deployment or customer data changed.
+
 ## Phase 3C — Finish the customer intake workflow
 
 **Value:** An employee can serve a new or returning customer without losing an unfinished order.

@@ -255,3 +255,12 @@ Ignored helpers in `tmp/` support the local fixture server, read-only smoke chec
 - Verification: 32 focused and 107 full SQLite backend tests passed; the full run skipped six PostgreSQL-only cases. All 45 frontend tests, lint and the production build passed. Removed the Google-font download so builds work without external font access.
 - PostgreSQL migration 014 verification remains pending because Docker Desktop's Windows service could not be started by this session. No live database, deployment or external message changed.
 - Evidence: none added. Preserve the screenshot budget for a fictional partial return that leaves one garment visibly outstanding.
+
+## 17 September 2026 — Reconcile outside dry cleaning
+
+- Added one handover per detailed service with cleaner, expected return, sender and timestamp. Every referenced physical piece gets an independent return check.
+- A partial return stays visible. Staff record any return issue; only the owner can close it with a reason while the original note remains. Ready is blocked until all sent pieces are returned and issues resolved.
+- New dry-cleaning orders cannot skip the handling step: QLMS requires the outside handover or the owner's attributed in-shop explanation. Clothing edits lock after either choice.
+- Verification: 36 focused and 111 full SQLite backend tests passed (six PostgreSQL-only cases skipped); 45 frontend tests, lint and production build passed. Disposable PostgreSQL migration 014–015 and locking checks, browser acceptance and the actual physical reference method remain open. No live deployment or data change.
+- No new screenshot was added. The next distinct evidence should show one returned garment and one still outstanding on a fictional order under `docs/diagrams/evidence/`.
+- Optional LinkedIn draft: "Two garments can leave the shop together and return on different days. I added a QLMS handover record that tracks each piece separately. A partial return now stays open, and a problem on return needs an owner-recorded outcome before the order can be marked ready. The next check is whether staff can use it quickly during a normal shift."

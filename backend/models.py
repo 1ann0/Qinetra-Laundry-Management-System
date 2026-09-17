@@ -178,6 +178,15 @@ class OrderServiceLine(Base):
         nullable=True,
     )
     item_recording_mode = Column(String(20), nullable=False)
+    outsourcing_required = Column(Boolean, nullable=False, default=False, server_default="false")
+    in_house_reason = Column(String(300), nullable=True)
+    in_house_by_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    in_house_by_username = Column(String(50), nullable=True)
+    in_house_at = Column(TIMESTAMP(timezone=True), nullable=True)
     item_check_status = Column(String(20), nullable=False, default="not_required")
     item_revision = Column(Integer, nullable=False, default=0, server_default="0")
     item_checked_by_id = Column(
@@ -200,6 +209,12 @@ class OrderServiceLine(Base):
         back_populates="service_line",
         cascade="all, delete-orphan",
         order_by="OrderItemCheckHistory.revision",
+    )
+    outsourcing_handover = relationship(
+        "OutsourceHandover",
+        back_populates="service_line",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
 
     @property
@@ -232,6 +247,11 @@ class OrderItem(Base):
         back_populates="order_item",
         cascade="all, delete-orphan",
         order_by="OrderItemException.id",
+    )
+    outsourcing_record = relationship(
+        "OutsourceHandoverItem",
+        back_populates="order_item",
+        uselist=False,
     )
 
 
@@ -293,6 +313,104 @@ class OrderItemCheckHistory(Base):
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
 
     service_line = relationship("OrderServiceLine", back_populates="item_history")
+
+
+# One attributed dispatch of a detailed service to an outside cleaner.
+class OutsourceHandover(Base):
+    __tablename__ = "outsource_handovers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_service_line_id = Column(
+        Integer,
+        ForeignKey("order_service_lines.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    partner_name = Column(String(100), nullable=False)
+    expected_return_at = Column(TIMESTAMP(timezone=True), nullable=False)
+    sent_by_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    sent_by_username = Column(String(50), nullable=False)
+    sent_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+
+    service_line = relationship("OrderServiceLine", back_populates="outsourcing_handover")
+    items = relationship(
+        "OutsourceHandoverItem",
+        back_populates="handover",
+        cascade="all, delete-orphan",
+        order_by="OutsourceHandoverItem.id",
+    )
+
+    @property
+    def outstanding_count(self):
+        return sum(item.returned_at is None for item in self.items)
+
+    @property
+    def unresolved_issue_count(self):
+        return sum(
+            item.return_condition == "issue" and item.issue_resolved_at is None
+            for item in self.items
+        )
+
+
+# Return state is stored per physical garment so partial returns remain visible.
+class OutsourceHandoverItem(Base):
+    __tablename__ = "outsource_handover_items"
+    __table_args__ = (
+        CheckConstraint(
+            "(returned_at IS NULL AND returned_by_username IS NULL "
+            "AND return_condition IS NULL AND issue_note IS NULL) OR "
+            "(returned_at IS NOT NULL AND returned_by_username IS NOT NULL "
+            "AND return_condition IN ('returned_ok', 'issue') "
+            "AND ((return_condition = 'returned_ok' AND issue_note IS NULL) "
+            "OR (return_condition = 'issue' AND issue_note IS NOT NULL)))",
+            name="outsource_return_state_complete",
+        ),
+        CheckConstraint(
+            "(issue_resolved_at IS NULL AND issue_resolved_by_username IS NULL "
+            "AND resolution_note IS NULL) OR "
+            "(issue_resolved_at IS NOT NULL AND issue_resolved_by_username IS NOT NULL "
+            "AND resolution_note IS NOT NULL AND return_condition = 'issue')",
+            name="outsource_issue_resolution_complete",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    handover_id = Column(
+        Integer,
+        ForeignKey("outsource_handovers.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    order_item_id = Column(
+        Integer,
+        ForeignKey("order_items.id", ondelete="RESTRICT"),
+        nullable=False,
+        unique=True,
+    )
+    garment_reference = Column(String(50), nullable=False)
+    returned_by_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    returned_by_username = Column(String(50), nullable=True)
+    returned_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    return_condition = Column(String(20), nullable=True)
+    issue_note = Column(String(300), nullable=True)
+    issue_resolved_by_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    issue_resolved_by_username = Column(String(50), nullable=True)
+    issue_resolved_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    resolution_note = Column(String(300), nullable=True)
+
+    handover = relationship("OutsourceHandover", back_populates="items")
+    order_item = relationship("OrderItem", back_populates="outsourcing_record")
 
 
 # An unresolved customer question pauses work without hiding why it was paused.
