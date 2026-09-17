@@ -273,3 +273,11 @@ Ignored helpers in `tmp/` support the local fixture server, read-only smoke chec
 - Five focused correction tests and 116 full SQLite backend tests passed (six PostgreSQL-only tests skipped); the updated receipt test and production build passed. Docker's Linux engine was not available, so migration 016 and concurrency checks remain unverified. No live database or deployment changed.
 - Evidence: none added. After a fictional browser review, capture one clear owner correction-history screen under `docs/diagrams/evidence/`; avoid a second similar payment screenshot.
 - Optional LinkedIn draft: "A payment mistake should not erase the original record. I added an owner correction that links back to the payment, and a separate refund record for money actually returned. The daily figures now show the difference. My next check is whether the owner can use the flow quickly during a normal shift."
+
+## 17 September 2026 — Keep cancelled tickets and stage mistakes accountable
+
+- Added an owner-only one-step stage correction. The saved event records before/after state, timestamps, reason, actor and any physical-item confirmation. Ordinary staff status updates still move forward one step.
+- Added a narrow cancellation path for unpaid Received orders before work starts. The owner confirms all items were returned; active holds and dry-cleaner/in-shop handling block this cancellation path.
+- Cancelled tickets remain searchable. Active work, outstanding debt and booked-value totals exclude them. Finance counts cancelled tickets for the selected booking period, and the CSV separates original price from effective value.
+- Five focused stage/cancellation tests and the full 121-test SQLite suite passed, with six PostgreSQL-only checks skipped. All 47 frontend tests, lint and the final production build passed. Migrations 016–017 and browser acceptance remain open because Docker's Linux engine is unavailable. No live data or deployment changed.
+- Evidence: none added. A fictional correction-history screen is useful only if it explains a distinct safeguard; save it in `docs/diagrams/evidence/` after browser verification.

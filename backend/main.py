@@ -1205,7 +1205,7 @@ def list_orders(
         local_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
         local_end = local_start + timedelta(days=1)
         query = query.filter(
-            models.Order.status != "collected",
+            models.Order.status.notin_(["collected", "cancelled"]),
             models.Order.promised_ready_at >= local_start.astimezone(timezone.utc),
             models.Order.promised_ready_at < local_end.astimezone(timezone.utc),
         )
@@ -1220,6 +1220,8 @@ def list_orders(
         value is not None
         for value in (customer_id, service_id, start_date, end_date)
     )
+    if not status and not search_text and not is_history_filter:
+        query = query.filter(models.Order.status != "cancelled")
     if due_today or production_late:
         orders = query.order_by(models.Order.promised_ready_at.asc()).all()
     elif is_history_filter:
@@ -1897,6 +1899,97 @@ def adjust_order_payment(
     return order
 
 
+def order_stage_snapshot(order):
+    return {
+        "status": order.status,
+        "ready_at": order.ready_at.isoformat() if order.ready_at else None,
+        "collected_at": order.collected_at.isoformat() if order.collected_at else None,
+    }
+
+
+@app.post("/orders/{order_id}/corrections", response_model=schemas.OrderOut)
+def correct_order_stage(
+    order_id: int,
+    correction: schemas.OrderCorrectionCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+    *,
+    idempotency_key: Annotated[UUID, Header()],
+):
+    fingerprint = request_fingerprint(f"order-correction:{order_id}", correction)
+    lock_save_reference(db, idempotency_key)
+    saved = find_saved_order(db, models.OrderCorrection, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+
+    order = (
+        db.query(models.Order)
+        .filter(models.Order.id == order_id)
+        .populate_existing()
+        .with_for_update()
+        .first()
+    )
+    if not order:
+        raise HTTPException(404, "Order not found")
+    saved = find_saved_order(db, models.OrderCorrection, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+    if not correction.confirmed:
+        raise HTTPException(400, "Confirm this correction before saving it")
+    if order.status != correction.expected_status:
+        raise HTTPException(409, "The order stage changed. Reload the order before correcting it")
+
+    before_state = order_stage_snapshot(order)
+    if correction.action == "cancel":
+        if order.status != "received":
+            raise HTTPException(400, "Only an order still at Received can be cancelled")
+        if order.amount_paid != 0:
+            raise HTTPException(400, "Correct or refund all recorded payments before cancelling this order")
+        if any(line.outsourcing_handover for line in order.service_lines):
+            raise HTTPException(400, "An order sent to the dry cleaner cannot be cancelled here")
+        if any(line.in_house_at for line in order.service_lines):
+            raise HTTPException(400, "An order already handled in the shop cannot be cancelled here")
+        if any(hold.resolved_at is None for hold in order.holds):
+            raise HTTPException(400, "Close the customer-reply hold before cancelling")
+        if not correction.goods_returned:
+            raise HTTPException(400, "Confirm that all customer items have been returned before cancelling")
+        order.status = "cancelled"
+    else:
+        previous_stage = {
+            "in_progress": "received",
+            "ready": "in_progress",
+            "collected": "ready",
+        }.get(order.status)
+        if not previous_stage:
+            raise HTTPException(400, "This order cannot move back another stage")
+        if order.status == "collected" and not correction.still_in_shop:
+            raise HTTPException(400, "Confirm the order is still in the shop before reversing collection")
+        order.status = previous_stage
+        if previous_stage == "in_progress":
+            order.ready_at = None
+        elif previous_stage == "ready":
+            order.collected_at = None
+
+    db.add(models.OrderCorrection(
+        order_id=order.id,
+        action=correction.action,
+        before_state=before_state,
+        after_state=order_stage_snapshot(order),
+        reason=correction.reason,
+        goods_returned_confirmed=correction.action == "cancel" and correction.goods_returned,
+        still_in_shop_confirmed=before_state["status"] == "collected" and correction.still_in_shop,
+        request_key=str(idempotency_key),
+        request_hash=fingerprint,
+        confirmed_by_id=current_user.id,
+        confirmed_by_username=current_user.username,
+    ))
+    saved = commit_once(db, models.OrderCorrection, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+    db.refresh(order)
+    return order
+
+
 # Updates an order's status, and stamps ready_at / collected_at when relevant
 @app.patch("/orders/{order_id}/status", response_model=schemas.OrderOut)
 def update_order_status(
@@ -2040,10 +2133,11 @@ def financial_summary(
             detail="End date cannot be before start date",
         )
 
-    orders = db.query(models.Order).filter(
+    period_orders = db.query(models.Order).filter(
         models.Order.order_date >= start_date,
         models.Order.order_date <= end_date,
     ).all()
+    orders = [order for order in period_orders if order.status != "cancelled"]
     payments = db.query(models.Payment).filter(
         models.Payment.received_date >= start_date,
         models.Payment.received_date <= end_date,
@@ -2176,6 +2270,7 @@ def financial_summary(
         start_date=start_date,
         end_date=end_date,
         orders_booked=len(orders),
+        cancelled_orders=len(period_orders) - len(orders),
         gross_order_value=sum(
             (order.subtotal_before_discount for order in orders),
             Decimal("0"),
@@ -2253,7 +2348,7 @@ def export_orders_csv(db: Session = Depends(get_db), current_user: models.User =
     writer.writerow([
         "Ticket Number", "Customer ID", "Order Date", "Services",
         "Subtotal Before Discount", "Discount", "Discount Reason",
-        "Discounted By", "Total Price",
+        "Discounted By", "Total Price", "Effective Order Value",
         "Amount Paid", "Entry Corrections", "Refunds Returned",
         "Balance Due", "Payment Status", "Payment Methods",
         "Payment Received Dates", "Status", "Recorded At", "Ready At",
@@ -2293,7 +2388,9 @@ def export_orders_csv(db: Session = Depends(get_db), current_user: models.User =
             service_summary, format_money(order.subtotal_before_discount),
             format_money(order.discount_amount), order.discount_reason or "",
             order.discounted_by_username or "",
-            format_money(order.total_price), format_money(order.amount_paid),
+            format_money(order.total_price),
+            format_money(0 if order.status == "cancelled" else order.total_price),
+            format_money(order.amount_paid),
             format_money(entry_corrections), format_money(refunds_returned),
             format_money(order.balance_due),
             order.payment_status, payment_methods, payment_received_dates,

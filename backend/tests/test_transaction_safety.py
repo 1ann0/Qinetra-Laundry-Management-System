@@ -267,6 +267,7 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
             connection.execute(text("ALTER TABLE orders DROP COLUMN request_key, DROP COLUMN request_hash, DROP COLUMN created_by_id"))
             connection.execute(text("ALTER TABLE payments DROP COLUMN request_key, DROP COLUMN request_hash"))
             connection.execute(text("DROP TABLE payment_adjustments"))
+            connection.execute(text("DROP TABLE order_corrections"))
             connection.execute(text("ALTER TABLE order_service_lines DROP COLUMN item_revision"))
             connection.execute(text("DROP TABLE ticket_counters"))
         migration_directory = Path(__file__).parents[1] / "migrations"
@@ -277,6 +278,7 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
         garment_sql = (migration_directory / "014_add_garment_references.sql").read_text()
         outsourcing_sql = (migration_directory / "015_add_outsource_handovers.sql").read_text()
         adjustments_sql = (migration_directory / "016_add_payment_adjustments.sql").read_text()
+        corrections_sql = (migration_directory / "017_add_order_corrections.sql").read_text()
         with self.engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
             connection.exec_driver_sql(transaction_sql)
             connection.exec_driver_sql(transaction_sql)
@@ -292,6 +294,8 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
             connection.exec_driver_sql(outsourcing_sql)
             connection.exec_driver_sql(adjustments_sql)
             connection.exec_driver_sql(adjustments_sql)
+            connection.exec_driver_sql(corrections_sql)
+            connection.exec_driver_sql(corrections_sql)
             rls_tables = connection.execute(text("""
                 SELECT relname
                 FROM pg_class
@@ -303,7 +307,8 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
                       'order_holds',
                       'outsource_handovers',
                       'outsource_handover_items',
-                      'payment_adjustments'
+                      'payment_adjustments',
+                      'order_corrections'
                   )
             """)).scalars().all()
         self.db = self.Session()
@@ -326,6 +331,7 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
                 "outsource_handovers",
                 "outsource_handover_items",
                 "payment_adjustments",
+                "order_corrections",
             },
         )
         self.assertTrue(self.create().ticket_number.endswith("-002"))

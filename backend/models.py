@@ -120,6 +120,12 @@ class Order(Base):
         cascade="all, delete-orphan",
         order_by="PaymentAdjustment.id",
     )
+    corrections = relationship(
+        "OrderCorrection",
+        back_populates="order",
+        cascade="all, delete-orphan",
+        order_by="OrderCorrection.id",
+    )
     holds = relationship(
         "OrderHold",
         back_populates="order",
@@ -142,11 +148,15 @@ class Order(Base):
 
     @property
     def balance_due(self):
+        if self.status == "cancelled":
+            return Decimal("0")
         balance = Decimal(str(self.total_price)) - self.amount_paid
         return max(balance, Decimal("0"))
 
     @property
     def payment_status(self):
+        if self.status == "cancelled":
+            return "cancelled"
         if self.amount_paid <= 0:
             return "unpaid"
         if self.balance_due > 0:
@@ -515,6 +525,33 @@ class PaymentAdjustment(Base):
 
     order = relationship("Order", back_populates="payment_adjustments")
     payment = relationship("Payment", back_populates="adjustments")
+
+
+# Owner-only stage and cancellation events keep the state that existed before.
+class OrderCorrection(Base):
+    __tablename__ = "order_corrections"
+    __table_args__ = (
+        CheckConstraint(
+            "action IN ('stage_back', 'cancel')",
+            name="order_correction_action",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
+    action = Column(String(20), nullable=False)
+    before_state = Column(JSON, nullable=False)
+    after_state = Column(JSON, nullable=False)
+    reason = Column(String(300), nullable=False)
+    goods_returned_confirmed = Column(Boolean, nullable=False, default=False)
+    still_in_shop_confirmed = Column(Boolean, nullable=False, default=False)
+    request_key = Column(String(36), unique=True, nullable=True)
+    request_hash = Column(String(64), nullable=True)
+    confirmed_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    confirmed_by_username = Column(String(50), nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+
+    order = relationship("Order", back_populates="corrections")
 
 
 # One counter per business date, locked while a ticket number is allocated.

@@ -18,6 +18,7 @@ function formatDate(value) {
 }
 
 function getStatusLabel(status) {
+  if (status === "cancelled") return "Cancelled";
   if (status === "in_progress") return "In Progress";
   if (status === "ready") return "Ready for Collection";
   if (status === "collected") return "Collected";
@@ -101,15 +102,17 @@ export function buildOrderReceiptMessage(order, customerName) {
     `Services: ${getServiceNames(order)}`,
     ...getClothingLines(order),
     "",
-    `Total: ${formatKes(order.total_price)}`,
+    `${order.status === "cancelled" ? "Original total" : "Total"}: ${formatKes(order.total_price)}`,
     `Paid: ${formatKes(order.amount_paid)}`,
     ...(entryMistakes ? [`Payment entry corrected: ${formatKes(entryMistakes)}`] : []),
     ...(refunds ? [`Refund returned: ${formatKes(refunds)}`] : []),
     `Balance: ${formatKes(order.balance_due)}`,
-    `Ready by: ${formatNairobiDateTime(order.promised_ready_at)}`,
+    ...(order.status === "cancelled" ? [] : [`Ready by: ${formatNairobiDateTime(order.promised_ready_at)}`]),
     `Status: ${getStatusLabel(order.status)}`,
     "",
-    readyNotice
+    order.status === "cancelled"
+      ? "This ticket was cancelled. Contact Qinetra Laundry if you have a question."
+      : readyNotice
       ? "Please clear any balance before collection."
       : "Thank you for choosing Qinetra Laundry.",
   ].join("\n");

@@ -14,6 +14,7 @@ import usePendingSave from "@/components/orders/use-pending-save";
 import PendingSaveNotice from "@/components/orders/pending-save-notice";
 import OutsourceRegister from "@/components/orders/outsource-register";
 import PaymentCorrections from "@/components/orders/payment-corrections";
+import OrderCorrections from "@/components/orders/order-corrections";
 import { buildOrderReceiptMessage } from "@/lib/order-receipt";
 import { formatNairobiDateTime } from "@/lib/format-nairobi";
 
@@ -43,6 +44,7 @@ function formatDate(value) {
 }
 
 function getStatusLabel(status) {
+  if (status === "cancelled") return "Cancelled";
   if (status === "in_progress") return "In Progress";
   if (status === "ready") return "Ready for Collection";
   if (status === "collected") return "Collected";
@@ -50,6 +52,7 @@ function getStatusLabel(status) {
 }
 
 function getPaymentLabel(status) {
+  if (status === "cancelled") return "Cancelled";
   if (status === "part_paid") return "Part paid";
   if (status === "paid") return "Paid";
   return "Not paid";
@@ -546,7 +549,7 @@ export default function OrderDetailPage() {
           </p>
         </div>
         <div className="flex flex-col items-start gap-3 sm:items-end">
-          <button
+          {order.status !== "cancelled" ? <button
             className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#005AAB] px-5 font-bold text-white hover:bg-[#004782]"
             type="button"
             onClick={shareOnWhatsApp}
@@ -554,7 +557,7 @@ export default function OrderDetailPage() {
             {order.status === "ready"
               ? "Share ready update on WhatsApp"
               : "Share receipt on WhatsApp"}
-          </button>
+          </button> : null}
           <Link
             className="font-bold text-[#005AAB] hover:underline"
             href="/orders/status"
@@ -985,7 +988,9 @@ export default function OrderDetailPage() {
             </p>
           </div>
           <div>
-            <p className="text-sm text-slate-500">Final order total</p>
+            <p className="text-sm text-slate-500">
+              {order.status === "cancelled" ? "Original order total" : "Final order total"}
+            </p>
             <p className="mt-1 text-xl font-bold text-slate-900">
               {formatKes(order.total_price)}
             </p>
@@ -1013,6 +1018,15 @@ export default function OrderDetailPage() {
           </div>
         </div>
       </section>
+
+      <OrderCorrections
+        order={order}
+        isOwner={role === "owner"}
+        onUpdated={(updatedOrder) => {
+          setOrder(updatedOrder);
+          setMessage("Order corrected. Check its stage and history.");
+        }}
+      />
 
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
         <h2 className="text-2xl font-bold text-slate-900">Payment history</h2>
@@ -1190,6 +1204,10 @@ export default function OrderDetailPage() {
             </button>
           </fieldset>
           </form>
+        ) : order.status === "cancelled" ? (
+          <p className="mt-5 rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 font-semibold text-slate-800">
+            This ticket was cancelled. No balance is due.
+          </p>
         ) : Number(order.balance_due) === 0 ? (
           <p className="mt-5 rounded-xl border border-green-300 bg-green-50 px-4 py-3 font-semibold text-green-800">
             Fully paid. This order can be collected when it is ready.

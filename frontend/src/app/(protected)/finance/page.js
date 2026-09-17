@@ -488,6 +488,11 @@ function FinancialSnapshotContent() {
               <p className="mt-3 text-4xl font-bold text-slate-900">
                 {summary.orders_booked}
               </p>
+              {summary.cancelled_orders > 0 ? (
+                <p className="mt-2 text-sm text-slate-600">
+                  {summary.cancelled_orders} cancelled ticket{summary.cancelled_orders === 1 ? "" : "s"} excluded from order value.
+                </p>
+              ) : null}
               <p className="mt-4 text-sm text-slate-600">Final order value</p>
               <p className="mt-1 text-xl font-bold text-[#005AAB]">
                 {formatKes(summary.order_value)}

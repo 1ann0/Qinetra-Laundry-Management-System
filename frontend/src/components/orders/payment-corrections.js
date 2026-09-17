@@ -35,6 +35,8 @@ export default function PaymentCorrections({ order, isOwner, onUpdated }) {
       .reduce((total, item) => total + Number(item.amount), 0)
     : 0;
 
+  if (!isOwner && !(order.payment_adjustments || []).length) return null;
+
   function finish(updatedOrder) {
     onUpdated(updatedOrder);
     setAmount("");

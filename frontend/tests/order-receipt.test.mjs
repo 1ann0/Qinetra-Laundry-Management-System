@@ -142,3 +142,12 @@ test("receipt shows net paid and identifies returned money without exposing reas
   assert.match(message, /Refund returned: KES 50/);
   assert.doesNotMatch(message, /Private/);
 });
+
+test("cancelled ticket is not presented as an active collection promise", () => {
+  const message = buildOrderReceiptMessage(savedOrder({
+    status: "cancelled", amount_paid: 0, balance_due: 0,
+  }), "Pilot customer");
+
+  assert.match(message, /Status: Cancelled/);
+  assert.doesNotMatch(message, /Ready by:|clear any balance before collection/);
+});

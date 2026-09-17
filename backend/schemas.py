@@ -523,6 +523,38 @@ class PaymentAdjustmentOut(BaseModel):
         from_attributes = True
 
 
+class OrderCorrectionCreate(BaseModel):
+    action: Literal["stage_back", "cancel"]
+    expected_status: Literal["received", "in_progress", "ready", "collected"]
+    reason: str = Field(min_length=1, max_length=300)
+    confirmed: bool
+    goods_returned: bool = False
+    still_in_shop: bool = False
+
+    @field_validator("reason")
+    @classmethod
+    def clean_reason(cls, value: str):
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Explain why this order needs a correction")
+        return cleaned
+
+
+class OrderCorrectionOut(BaseModel):
+    id: int
+    action: str
+    before_state: dict
+    after_state: dict
+    reason: str
+    goods_returned_confirmed: bool
+    still_in_shop_confirmed: bool
+    confirmed_by_username: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 # A staff-recorded pause while Qinetra waits for the customer to answer.
 class OrderHoldCreate(BaseModel):
     reason: str = Field(min_length=1, max_length=300)
@@ -592,6 +624,7 @@ class OrderOut(BaseModel):
     payment_status: str
     payments: list[PaymentOut] = Field(default_factory=list)
     payment_adjustments: list[PaymentAdjustmentOut] = Field(default_factory=list)
+    corrections: list[OrderCorrectionOut] = Field(default_factory=list)
     holds: list[OrderHoldOut] = Field(default_factory=list)
 
     class Config:
@@ -699,6 +732,7 @@ class FinancialSummary(BaseModel):
     start_date: date
     end_date: date
     orders_booked: int
+    cancelled_orders: int
     gross_order_value: float
     discounts_given: float
     order_value: float

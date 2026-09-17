@@ -50,6 +50,7 @@ function formatDate(value) {
 }
 
 function getStatusLabel(status) {
+  if (status === "cancelled") return "Cancelled";
   return ORDER_STAGES.find((stage) => stage.value === status)?.label || status;
 }
 
@@ -192,7 +193,7 @@ function OrderCard({
           </p>
         </div>
         <div>
-          <p className="text-sm text-slate-500">Order value</p>
+          <p className="text-sm text-slate-500">{order.status === "cancelled" ? "Original order value" : "Order value"}</p>
           <p className="mt-1 font-semibold text-slate-900">
             {formatKes(order.total_price)}
           </p>
@@ -223,7 +224,11 @@ function OrderCard({
         </div>
       </div>
 
-      <div className="mb-5 grid gap-2 sm:grid-cols-4" aria-label="Ticket progress">
+      {order.status === "cancelled" ? (
+        <p className="mb-5 rounded-xl border border-slate-300 bg-slate-50 p-3 font-semibold text-slate-800">
+          This ticket was cancelled. Open the order to see why.
+        </p>
+      ) : <div className="mb-5 grid gap-2 sm:grid-cols-4" aria-label="Ticket progress">
         {ORDER_STAGES.map((stage, index) => {
           const hasReachedStage = index <= currentStage;
 
@@ -241,7 +246,7 @@ function OrderCard({
             </div>
           );
         })}
-      </div>
+      </div>}
 
       {order.ready_at || order.collected_at ? (
         <div className="mb-5 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
@@ -315,7 +320,7 @@ function OrderCard({
       ) : (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="font-semibold text-green-700">
-            Order completed and collected.
+            {order.status === "cancelled" ? "Order cancelled." : "Order completed and collected."}
           </p>
           <Link
             className="font-bold text-[#005AAB] hover:underline"

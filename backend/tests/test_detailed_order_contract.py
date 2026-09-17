@@ -1240,7 +1240,8 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
         self.assertEqual(summary.unpaid, 1)
         self.assertEqual(summary.outstanding_balance, 400)
         self.assertIn("Wash & Fold (4 kg)", csv_text)
-        self.assertIn(",600.00,0.00,,,600.00,200.00,400.00,part_paid,cash,", csv_text)
+        self.assertIn("Effective Order Value,Amount Paid,Entry Corrections,Refunds Returned", csv_text)
+        self.assertIn(",600.00,0.00,,,600.00,600.00,200.00,0.00,0.00,400.00,part_paid,cash,", csv_text)
 
 
 if __name__ == "__main__":
