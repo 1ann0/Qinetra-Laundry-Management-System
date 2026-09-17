@@ -16,6 +16,7 @@ import OutsourceRegister from "@/components/orders/outsource-register";
 import PaymentCorrections from "@/components/orders/payment-corrections";
 import OrderCorrections from "@/components/orders/order-corrections";
 import QuantityCorrection from "@/components/orders/quantity-correction";
+import CustomerReassignment from "@/components/orders/customer-reassignment";
 import { buildOrderReceiptMessage } from "@/lib/order-receipt";
 import { formatNairobiDateTime } from "@/lib/format-nairobi";
 
@@ -171,6 +172,7 @@ export default function OrderDetailPage() {
   // Store the complete receipt, matching customer and active clothing choices.
   const [order, setOrder] = useState(null);
   const [customer, setCustomer] = useState(null);
+  const [customerOptions, setCustomerOptions] = useState([]);
   const [itemTypes, setItemTypes] = useState([]);
 
   // Keep one service editor open at a time.
@@ -214,6 +216,7 @@ export default function OrderDetailPage() {
           ]);
 
         setOrder(orderResponse);
+        setCustomerOptions(customerResponse);
         setPaymentAmount(String(orderResponse.balance_due));
         setCustomer(
           customerResponse.find(
@@ -728,6 +731,16 @@ export default function OrderDetailPage() {
             </p>
           </div>
         </div>
+
+        {role === "owner" ? <CustomerReassignment
+          order={order}
+          customers={customerOptions}
+          onUpdated={(updatedOrder) => {
+            setOrder(updatedOrder);
+            setCustomer(customerOptions.find((item) => item.id === updatedOrder.customer_id) || null);
+            setMessage("Customer corrected. Check the ticket and correction history.");
+          }}
+        /> : null}
 
         {Number(order.discount_amount) > 0 ? (
           <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4">

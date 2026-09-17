@@ -23,11 +23,12 @@ class OrderCorrectionTests(unittest.TestCase):
         self.owner = models.User(username="owner", password_hash="unused", role="owner")
         self.employee = models.User(username="employee", password_hash="unused", role="employee")
         customer = models.Customer(name="Pilot customer", phone="0700000000")
+        self.other_customer = models.Customer(name="Correct customer", phone="0711111111")
         self.service = models.Service(
             code="wash_fold", name="Wash & Fold", unit="kg", unit_price=150,
             item_recording_mode="tally", turnaround_minutes=180,
         )
-        self.db.add_all([self.owner, self.employee, customer, self.service])
+        self.db.add_all([self.owner, self.employee, customer, self.other_customer, self.service])
         self.db.flush()
         self.order = models.Order(
             ticket_number="QL-TEST-001", customer_id=customer.id,
@@ -62,6 +63,18 @@ class OrderCorrectionTests(unittest.TestCase):
         return main.correct_order_quantity(
             self.order.id, schemas.OrderQuantityCorrectionCreate(**body),
             self.db, self.owner, idempotency_key=uuid4(),
+        )
+
+    def correct_customer(self, key=None, **changes):
+        body = dict(
+            expected_customer_id=self.order.customer_id,
+            new_customer_id=self.other_customer.id,
+            reason="Ticket was linked to the wrong person", confirmed=True,
+        )
+        body.update(changes)
+        return main.correct_order_customer(
+            self.order.id, schemas.OrderCustomerCorrectionCreate(**body),
+            self.db, self.owner, idempotency_key=key or uuid4(),
         )
 
     def test_cancel_unpaid_received_order_keeps_ticket_but_excludes_work_and_value(self):
@@ -165,6 +178,9 @@ class OrderCorrectionTests(unittest.TestCase):
         quantity_route = next(route for route in main.app.routes
                               if getattr(route, "path", "") == "/orders/{order_id}/quantity-corrections")
         self.assertIn(auth.require_owner, [dependency.call for dependency in quantity_route.dependant.dependencies])
+        customer_route = next(route for route in main.app.routes
+                              if getattr(route, "path", "") == "/orders/{order_id}/customer-corrections")
+        self.assertIn(auth.require_owner, [dependency.call for dependency in customer_route.dependant.dependencies])
 
     def test_legacy_wash_quantity_uses_saved_rate_and_keeps_before_after(self):
         self.service.unit_price = 200
@@ -188,7 +204,7 @@ class OrderCorrectionTests(unittest.TestCase):
 
         report = asyncio.run(csv_text())
         self.assertIn("Order Correction History", report)
-        self.assertIn("quantity: 2", report)
+        self.assertIn("quantity: Wash & Fold 2", report)
         self.assertIn("Scale reading was corrected", report)
 
     def test_mixed_order_quantity_and_discount_keep_other_service_unchanged(self):
@@ -262,6 +278,43 @@ class OrderCorrectionTests(unittest.TestCase):
             self.correct_quantity(new_quantity=2)
         self.assertEqual(unchanged.exception.status_code, 400)
         self.assertEqual(self.db.query(models.OrderCorrection).count(), 0)
+
+    def test_wrong_customer_is_reassigned_without_merging_people_or_payments(self):
+        old_customer_id = self.order.customer_id
+        self.db.add(models.Payment(
+            order_id=self.order.id, payment_method="cash", amount=100,
+            received_date=self.order.order_date, confirmed_by_username="employee",
+        ))
+        self.db.commit()
+        order = self.correct_customer()
+        self.assertEqual(order.customer_id, self.other_customer.id)
+        self.assertEqual(order.amount_paid, Decimal("100"))
+        self.assertEqual(order.corrections[0].before_state["customer_id"], old_customer_id)
+        self.assertEqual(order.corrections[0].after_state["customer_name"], "Correct customer")
+        self.assertEqual(main.list_orders(customer_id=old_customer_id, db=self.db, current_user=self.employee), [])
+        self.assertEqual(len(main.list_orders(customer_id=self.other_customer.id, db=self.db, current_user=self.employee)), 1)
+        summary = main.financial_summary(order.order_date, order.order_date, self.db, self.owner)
+        self.assertEqual(summary.customer_revenue[0].customer_id, self.other_customer.id)
+
+        async def csv_text():
+            parts = []
+            async for part in main.export_orders_csv(self.db, self.owner).body_iterator:
+                parts.append(part if isinstance(part, bytes) else part.encode())
+            return b"".join(parts).decode()
+
+        report = asyncio.run(csv_text())
+        self.assertIn("Pilot customer (#", report)
+        self.assertIn("to Correct customer (#", report)
+
+    def test_wrong_customer_retry_and_stale_selection_are_safe(self):
+        old_id = self.order.customer_id
+        key = uuid4()
+        self.correct_customer(key=key)
+        self.correct_customer(key=key, expected_customer_id=old_id)
+        self.assertEqual(self.db.query(models.OrderCorrection).count(), 1)
+        with self.assertRaises(HTTPException) as stale:
+            self.correct_customer(expected_customer_id=old_id)
+        self.assertEqual(stale.exception.status_code, 409)
 
 
 if __name__ == "__main__":

@@ -79,6 +79,8 @@ export default function OrderCorrections({ order, isOwner, onUpdated }) {
             <li className="rounded-xl border border-slate-200 bg-slate-50 p-3" key={item.id}>
               <strong>{item.action === "quantity"
                 ? `${item.before_state.service_name}: ${Number(item.before_state.quantity)} → ${Number(item.after_state.quantity)} kg; total ${item.before_state.order_total} → ${item.after_state.order_total} KES`
+                : item.action === "customer_reassign"
+                  ? `Customer: ${item.before_state.customer_name} (#${item.before_state.customer_id}) → ${item.after_state.customer_name} (#${item.after_state.customer_id})`
                 : `${labels[item.before_state.status]} → ${labels[item.after_state.status]}`}</strong>
               <span> · {item.confirmed_by_username} · {formatNairobiDateTime(item.created_at)}</span>
               <p className="mt-1">Reason: {item.reason}</p>

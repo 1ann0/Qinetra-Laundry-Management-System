@@ -567,6 +567,21 @@ class OrderQuantityCorrectionCreate(BaseModel):
         return cleaned
 
 
+class OrderCustomerCorrectionCreate(BaseModel):
+    expected_customer_id: int = Field(gt=0)
+    new_customer_id: int = Field(gt=0)
+    reason: str = Field(min_length=1, max_length=300)
+    confirmed: bool
+
+    @field_validator("reason")
+    @classmethod
+    def clean_reason(cls, value: str):
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Explain why this ticket belongs to another customer")
+        return cleaned
+
+
 class OrderCorrectionOut(BaseModel):
     id: int
     action: str

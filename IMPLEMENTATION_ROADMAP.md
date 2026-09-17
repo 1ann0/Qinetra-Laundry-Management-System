@@ -175,6 +175,8 @@ The history and reports must explain every change. Employees must not gain owner
 
 **Phase 4 quantity progress (17 September 2026):** The owner can correct billed kg on a saved Wash & Fold line, including one line of a mixed order, using its original saved rate. The new discount amount is explicit; QLMS blocks a total below money already paid. Before/after quantity, subtotal, discount, order total, owner and reason remain in history and the CSV. Legacy single-service Wash & Fold orders are supported. Item/pair quantity correction is intentionally deferred because it must stay consistent with physical garment references and the outside-cleaner register. The 126-test SQLite run passed with six PostgreSQL-only skips; migration 018, browser acceptance and customer corrections remain open.
 
+**Phase 4 wrong-customer progress (17 September 2026):** The owner can reassign a saved ticket to another existing customer with a reason. The original and corrected customer IDs/names stay in correction history and CSV; the ticket and payments themselves remain intact. Customer history search and customer payment attribution follow the corrected link. The UI warns the owner to handle any receipt already sent to the wrong person. Migration 019 and browser acceptance remain open. Editing a customer's own name/phone is the next correction unit; Qinetra pilot release still waits for PostgreSQL verification.
+
 ## Phase 5 — Make the owner's daily review trustworthy
 
 **Value:** The owner can explain the day's work, receipts and unpaid balances.

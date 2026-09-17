@@ -289,3 +289,10 @@ Ignored helpers in `tmp/` support the local fixture server, read-only smoke chec
 - This intentionally does not change clothing counts or dry-cleaning item quantities. Those physical records need their own consistent correction path.
 - Five focused quantity cases and the full 126-test SQLite backend run passed (six PostgreSQL-only skips). All 47 frontend tests, lint and the production build passed. Migration 018 and browser acceptance remain open. No live data or deployment changed.
 - Optional LinkedIn draft: "A catalogue price can change after a customer leaves an order. I added a QLMS weight correction that uses the rate saved on that ticket, updates only the affected service and keeps the old figures in history. The next check is a real owner workflow on a fictional mixed order."
+
+## 17 September 2026 — Correct a ticket linked to the wrong customer
+
+- Added an owner-only reassignment to an existing customer. The ticket, service lines and payment events remain unchanged; before/after customer IDs and names, actor and reason are retained in history and CSV.
+- Search and customer payment attribution now follow the ticket's corrected customer. The owner UI includes a reminder that a receipt already sent to the wrong person requires a real follow-up.
+- Two focused reassignment tests and all 128 SQLite backend tests passed (six PostgreSQL-only skips). The frontend's 47 tests, lint and production build passed. Migration 019 and browser acceptance remain open. No live data or deployment changed.
+- Optional LinkedIn draft: "I found that fixing a wrong customer name is different from fixing a ticket assigned to the wrong person. QLMS now moves only that ticket, keeps the original link in history and updates the correct customer's order view. It cannot undo a receipt already sent to the wrong phone, so the owner gets a clear follow-up reminder."

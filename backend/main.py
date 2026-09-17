@@ -1993,7 +1993,7 @@ def correct_order_stage(
 def quantity_snapshot(order, line):
     return {
         "service_line_id": line.id if line else None,
-        "service_name": line.service_name if line else order.service_type,
+        "service_name": line.service_name if line else "Wash & Fold",
         "quantity": str(line.quantity if line else order.quantity),
         "unit_price": str(line.unit_price if line else order.unit_price),
         "subtotal": str(line.subtotal if line else order.total_price),
@@ -2088,6 +2088,63 @@ def correct_order_quantity(
         action="quantity",
         before_state=before_state,
         after_state=quantity_snapshot(order, line),
+        reason=correction.reason,
+        request_key=str(idempotency_key),
+        request_hash=fingerprint,
+        confirmed_by_id=current_user.id,
+        confirmed_by_username=current_user.username,
+    ))
+    saved = commit_once(db, models.OrderCorrection, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+    db.refresh(order)
+    return order
+
+
+@app.post("/orders/{order_id}/customer-corrections", response_model=schemas.OrderOut)
+def correct_order_customer(
+    order_id: int,
+    correction: schemas.OrderCustomerCorrectionCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+    *,
+    idempotency_key: Annotated[UUID, Header()],
+):
+    fingerprint = request_fingerprint(f"customer-correction:{order_id}", correction)
+    lock_save_reference(db, idempotency_key)
+    saved = find_saved_order(db, models.OrderCorrection, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+
+    order = (
+        db.query(models.Order)
+        .filter(models.Order.id == order_id)
+        .populate_existing()
+        .with_for_update()
+        .first()
+    )
+    if not order:
+        raise HTTPException(404, "Order not found")
+    saved = find_saved_order(db, models.OrderCorrection, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+    if not correction.confirmed:
+        raise HTTPException(400, "Confirm the correct customer before saving")
+    if order.customer_id != correction.expected_customer_id:
+        raise HTTPException(409, "This order's customer changed. Reload before correcting it")
+    if correction.new_customer_id == order.customer_id:
+        raise HTTPException(400, "Select a different customer for this ticket")
+    previous_customer = db.get(models.Customer, order.customer_id)
+    new_customer = db.get(models.Customer, correction.new_customer_id)
+    if not new_customer:
+        raise HTTPException(404, "Selected customer not found")
+
+    order.customer_id = new_customer.id
+    db.add(models.OrderCorrection(
+        order_id=order.id,
+        action="customer_reassign",
+        before_state={"customer_id": previous_customer.id, "customer_name": previous_customer.name},
+        after_state={"customer_id": new_customer.id, "customer_name": new_customer.name},
         reason=correction.reason,
         request_key=str(idempotency_key),
         request_hash=fingerprint,
@@ -2454,6 +2511,20 @@ def export_orders_csv(db: Session = Depends(get_db), current_user: models.User =
     def format_money(value):
         return f"{Decimal(str(value)):.2f}"
 
+    def correction_description(item):
+        before = item.before_state
+        after = item.after_state
+        if item.action == "customer_reassign":
+            change = (
+                f"{before['customer_name']} (#{before['customer_id']}) to "
+                f"{after['customer_name']} (#{after['customer_id']})"
+            )
+        elif item.action == "quantity":
+            change = f"{before['service_name']} {before['quantity']} to {after['quantity']} kg"
+        else:
+            change = f"{before['status']} to {after['status']}"
+        return f"#{item.id} {item.action}: {change}; {item.confirmed_by_username}; {item.reason}"
+
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow([
@@ -2495,11 +2566,7 @@ def export_orders_csv(db: Session = Depends(get_db), current_user: models.User =
             Decimal("0"),
         )
         correction_history = "; ".join(
-            f"#{item.id} {item.action}: "
-            f"{item.before_state.get('quantity', item.before_state.get('status'))} to "
-            f"{item.after_state.get('quantity', item.after_state.get('status'))}; "
-            f"{item.confirmed_by_username}; {item.reason}"
-            for item in order.corrections
+            correction_description(item) for item in order.corrections
         )
         adjustment_history = "; ".join(
             f"#{item.id} {item.kind}: {format_money(item.amount)} on "
