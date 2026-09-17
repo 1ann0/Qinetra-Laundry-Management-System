@@ -173,6 +173,8 @@ The history and reports must explain every change. Employees must not gain owner
 
 **Phase 4 stage/cancellation progress (17 September 2026):** The owner can move an accidental stage back one step with a reason, or cancel a Received order after all items have been returned and net payment is zero. An order marked Collected can move back only with explicit confirmation that it is still in the shop. Before/after stages, timestamps, actor, reason and confirmations stay in an append-only history. Cancelled tickets remain searchable but are excluded from active work, outstanding debt and booked value; Finance counts them separately and CSV shows original versus effective value. The 121-test SQLite run passed with six PostgreSQL-only skips; migration 017 and browser acceptance remain open. Customer and quantity correction are still needed for the Phase 4 exit gate.
 
+**Phase 4 quantity progress (17 September 2026):** The owner can correct billed kg on a saved Wash & Fold line, including one line of a mixed order, using its original saved rate. The new discount amount is explicit; QLMS blocks a total below money already paid. Before/after quantity, subtotal, discount, order total, owner and reason remain in history and the CSV. Legacy single-service Wash & Fold orders are supported. Item/pair quantity correction is intentionally deferred because it must stay consistent with physical garment references and the outside-cleaner register. The 126-test SQLite run passed with six PostgreSQL-only skips; migration 018, browser acceptance and customer corrections remain open.
+
 ## Phase 5 — Make the owner's daily review trustworthy
 
 **Value:** The owner can explain the day's work, receipts and unpaid balances.

@@ -15,6 +15,7 @@ import PendingSaveNotice from "@/components/orders/pending-save-notice";
 import OutsourceRegister from "@/components/orders/outsource-register";
 import PaymentCorrections from "@/components/orders/payment-corrections";
 import OrderCorrections from "@/components/orders/order-corrections";
+import QuantityCorrection from "@/components/orders/quantity-correction";
 import { buildOrderReceiptMessage } from "@/lib/order-receipt";
 import { formatNairobiDateTime } from "@/lib/format-nairobi";
 
@@ -1018,6 +1019,11 @@ export default function OrderDetailPage() {
           </div>
         </div>
       </section>
+
+      {role === "owner" ? <QuantityCorrection order={order} onUpdated={(updatedOrder) => {
+        setOrder(updatedOrder);
+        setMessage("Quantity corrected. Check the new total and clothing record.");
+      }} /> : null}
 
       <OrderCorrections
         order={order}

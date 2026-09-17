@@ -23,7 +23,11 @@ class OrderCorrectionTests(unittest.TestCase):
         self.owner = models.User(username="owner", password_hash="unused", role="owner")
         self.employee = models.User(username="employee", password_hash="unused", role="employee")
         customer = models.Customer(name="Pilot customer", phone="0700000000")
-        self.db.add_all([self.owner, self.employee, customer])
+        self.service = models.Service(
+            code="wash_fold", name="Wash & Fold", unit="kg", unit_price=150,
+            item_recording_mode="tally", turnaround_minutes=180,
+        )
+        self.db.add_all([self.owner, self.employee, customer, self.service])
         self.db.flush()
         self.order = models.Order(
             ticket_number="QL-TEST-001", customer_id=customer.id,
@@ -46,6 +50,17 @@ class OrderCorrectionTests(unittest.TestCase):
         body.update(changes)
         return main.correct_order_stage(
             self.order.id, schemas.OrderCorrectionCreate(**body),
+            self.db, self.owner, idempotency_key=uuid4(),
+        )
+
+    def correct_quantity(self, **changes):
+        body = dict(
+            expected_quantity=self.order.quantity, new_quantity=3,
+            reason="Scale reading was corrected", confirmed=True,
+        )
+        body.update(changes)
+        return main.correct_order_quantity(
+            self.order.id, schemas.OrderQuantityCorrectionCreate(**body),
             self.db, self.owner, idempotency_key=uuid4(),
         )
 
@@ -147,6 +162,106 @@ class OrderCorrectionTests(unittest.TestCase):
         route = next(route for route in main.app.routes
                      if getattr(route, "path", "") == "/orders/{order_id}/corrections")
         self.assertIn(auth.require_owner, [dependency.call for dependency in route.dependant.dependencies])
+        quantity_route = next(route for route in main.app.routes
+                              if getattr(route, "path", "") == "/orders/{order_id}/quantity-corrections")
+        self.assertIn(auth.require_owner, [dependency.call for dependency in quantity_route.dependant.dependencies])
+
+    def test_legacy_wash_quantity_uses_saved_rate_and_keeps_before_after(self):
+        self.service.unit_price = 200
+        self.db.commit()
+        order = self.correct_quantity()
+        self.assertEqual(order.quantity, 3)
+        self.assertEqual(order.total_price, Decimal("450"))
+        self.assertEqual(order.balance_due, Decimal("450"))
+        event = order.corrections[0]
+        self.assertEqual(event.action, "quantity")
+        self.assertEqual(Decimal(event.before_state["quantity"]), 2)
+        self.assertEqual(Decimal(event.after_state["quantity"]), 3)
+        self.assertEqual(Decimal(event.before_state["order_total"]), 300)
+        self.assertEqual(Decimal(event.after_state["order_total"]), 450)
+
+        async def csv_text():
+            parts = []
+            async for part in main.export_orders_csv(self.db, self.owner).body_iterator:
+                parts.append(part if isinstance(part, bytes) else part.encode())
+            return b"".join(parts).decode()
+
+        report = asyncio.run(csv_text())
+        self.assertIn("Order Correction History", report)
+        self.assertIn("quantity: 2", report)
+        self.assertIn("Scale reading was corrected", report)
+
+    def test_mixed_order_quantity_and_discount_keep_other_service_unchanged(self):
+        duvet = models.Service(
+            code="duvet", name="Duvet", unit="item", unit_price=800,
+            item_recording_mode="none", turnaround_minutes=180,
+        )
+        self.db.add(duvet)
+        self.db.flush()
+        wash_line = models.OrderServiceLine(
+            service_id=self.service.id, service_name="Wash & Fold", service_unit="kg",
+            quantity=2, unit_price=150, subtotal=300, discount_amount=50,
+            item_recording_mode="tally", item_check_status="pending",
+        )
+        duvet_line = models.OrderServiceLine(
+            service_id=duvet.id, service_name="Duvet", service_unit="item",
+            quantity=1, unit_price=800, subtotal=800, discount_amount=0,
+            item_recording_mode="none", item_check_status="not_required",
+        )
+        self.order.service_type = "mixed"
+        self.order.quantity = 2
+        self.order.total_price = 1050
+        self.order.service_lines.extend([wash_line, duvet_line])
+        self.service.unit_price = 200
+        self.db.commit()
+
+        order = self.correct_quantity(
+            service_line_id=wash_line.id, expected_quantity=2,
+            new_quantity=3, new_discount_amount=75,
+        )
+        self.assertEqual(order.total_price, Decimal("1175"))
+        self.assertEqual(order.quantity, 2)  # Mixed-order summary is its service count.
+        self.assertEqual(wash_line.subtotal, Decimal("450"))
+        self.assertEqual(wash_line.discount_amount, Decimal("75"))
+        self.assertEqual(duvet_line.line_total, Decimal("800"))
+        self.assertEqual(Decimal(order.corrections[0].before_state["discount_amount"]), 50)
+        self.assertEqual(Decimal(order.corrections[0].after_state["discount_amount"]), 75)
+
+    def test_quantity_cannot_create_an_overpayment_or_change_a_collected_order(self):
+        self.db.add(models.Payment(
+            order_id=self.order.id, payment_method="cash", amount=280,
+            received_date=self.order.order_date, confirmed_by_username="employee",
+        ))
+        self.db.commit()
+        with self.assertRaises(HTTPException) as overpaid:
+            self.correct_quantity(new_quantity=1)
+        self.assertEqual(overpaid.exception.status_code, 400)
+        self.db.rollback()
+        self.assertEqual(self.order.total_price, 300)
+        self.order.status = "collected"
+        self.db.commit()
+        with self.assertRaises(HTTPException) as collected:
+            self.correct_quantity()
+        self.assertEqual(collected.exception.status_code, 400)
+
+    def test_quantity_retry_and_stale_value_do_not_write_twice(self):
+        body = schemas.OrderQuantityCorrectionCreate(
+            expected_quantity=2, new_quantity=3,
+            reason="Scale correction", confirmed=True,
+        )
+        key = uuid4()
+        main.correct_order_quantity(self.order.id, body, self.db, self.owner, idempotency_key=key)
+        main.correct_order_quantity(self.order.id, body, self.db, self.owner, idempotency_key=key)
+        self.assertEqual(self.db.query(models.OrderCorrection).count(), 1)
+        with self.assertRaises(HTTPException) as stale:
+            self.correct_quantity(expected_quantity=2, new_quantity=4)
+        self.assertEqual(stale.exception.status_code, 409)
+
+    def test_quantity_action_cannot_be_used_for_a_discount_only_change(self):
+        with self.assertRaises(HTTPException) as unchanged:
+            self.correct_quantity(new_quantity=2)
+        self.assertEqual(unchanged.exception.status_code, 400)
+        self.assertEqual(self.db.query(models.OrderCorrection).count(), 0)
 
 
 if __name__ == "__main__":

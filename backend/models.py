@@ -532,7 +532,7 @@ class OrderCorrection(Base):
     __tablename__ = "order_corrections"
     __table_args__ = (
         CheckConstraint(
-            "action IN ('stage_back', 'cancel')",
+            "action IN ('stage_back', 'cancel', 'quantity')",
             name="order_correction_action",
         ),
     )

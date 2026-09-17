@@ -540,6 +540,33 @@ class OrderCorrectionCreate(BaseModel):
         return cleaned
 
 
+class OrderQuantityCorrectionCreate(BaseModel):
+    service_line_id: Optional[int] = Field(default=None, gt=0)
+    expected_quantity: float = Field(gt=0, allow_inf_nan=False)
+    new_quantity: float = Field(gt=0, allow_inf_nan=False)
+    new_discount_amount: Optional[float] = Field(default=None, ge=0, allow_inf_nan=False)
+    reason: str = Field(min_length=1, max_length=300)
+    confirmed: bool
+
+    _expected_precision = field_validator("expected_quantity")(check_quantity_precision)
+    _new_precision = field_validator("new_quantity")(check_quantity_precision)
+
+    @field_validator("new_discount_amount")
+    @classmethod
+    def check_discount_precision(cls, value: Optional[float]):
+        if value is not None and Decimal(str(value)) * 100 != (Decimal(str(value)) * 100).to_integral_value():
+            raise ValueError("Use at most two decimal places for the discount")
+        return value
+
+    @field_validator("reason")
+    @classmethod
+    def clean_reason(cls, value: str):
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Explain why the quantity needs correction")
+        return cleaned
+
+
 class OrderCorrectionOut(BaseModel):
     id: int
     action: str

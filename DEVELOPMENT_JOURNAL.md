@@ -281,3 +281,11 @@ Ignored helpers in `tmp/` support the local fixture server, read-only smoke chec
 - Cancelled tickets remain searchable. Active work, outstanding debt and booked-value totals exclude them. Finance counts cancelled tickets for the selected booking period, and the CSV separates original price from effective value.
 - Five focused stage/cancellation tests and the full 121-test SQLite suite passed, with six PostgreSQL-only checks skipped. All 47 frontend tests, lint and the final production build passed. Migrations 016–017 and browser acceptance remain open because Docker's Linux engine is unavailable. No live data or deployment changed.
 - Evidence: none added. A fictional correction-history screen is useful only if it explains a distinct safeguard; save it in `docs/diagrams/evidence/` after browser verification.
+
+## 17 September 2026 — Correct billed kg with the saved rate
+
+- Added an owner-only correction for Wash & Fold kg. The calculation uses the unit rate saved on the ticket, adjusts only the selected line in a mixed order and requires the owner to confirm the new fixed discount and reason.
+- QLMS blocks a new total below recorded money, rejects stale quantities and recognises retry requests. Original and corrected quantities, discount and order total stay in the order's history and CSV.
+- This intentionally does not change clothing counts or dry-cleaning item quantities. Those physical records need their own consistent correction path.
+- Five focused quantity cases and the full 126-test SQLite backend run passed (six PostgreSQL-only skips). All 47 frontend tests, lint and the production build passed. Migration 018 and browser acceptance remain open. No live data or deployment changed.
+- Optional LinkedIn draft: "A catalogue price can change after a customer leaves an order. I added a QLMS weight correction that uses the rate saved on that ticket, updates only the affected service and keeps the old figures in history. The next check is a real owner workflow on a fictional mixed order."

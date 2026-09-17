@@ -77,7 +77,9 @@ export default function OrderCorrections({ order, isOwner, onUpdated }) {
         <ol className="mt-4 space-y-2 text-sm text-slate-800">
           {order.corrections.map((item) => (
             <li className="rounded-xl border border-slate-200 bg-slate-50 p-3" key={item.id}>
-              <strong>{labels[item.before_state.status]} → {labels[item.after_state.status]}</strong>
+              <strong>{item.action === "quantity"
+                ? `${item.before_state.service_name}: ${Number(item.before_state.quantity)} → ${Number(item.after_state.quantity)} kg; total ${item.before_state.order_total} → ${item.after_state.order_total} KES`
+                : `${labels[item.before_state.status]} → ${labels[item.after_state.status]}`}</strong>
               <span> · {item.confirmed_by_username} · {formatNairobiDateTime(item.created_at)}</span>
               <p className="mt-1">Reason: {item.reason}</p>
               {item.goods_returned_confirmed ? <p className="mt-1">Owner confirmed all items were returned.</p> : null}

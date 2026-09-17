@@ -279,6 +279,7 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
         outsourcing_sql = (migration_directory / "015_add_outsource_handovers.sql").read_text()
         adjustments_sql = (migration_directory / "016_add_payment_adjustments.sql").read_text()
         corrections_sql = (migration_directory / "017_add_order_corrections.sql").read_text()
+        quantity_sql = (migration_directory / "018_allow_quantity_corrections.sql").read_text()
         with self.engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
             connection.exec_driver_sql(transaction_sql)
             connection.exec_driver_sql(transaction_sql)
@@ -296,6 +297,8 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
             connection.exec_driver_sql(adjustments_sql)
             connection.exec_driver_sql(corrections_sql)
             connection.exec_driver_sql(corrections_sql)
+            connection.exec_driver_sql(quantity_sql)
+            connection.exec_driver_sql(quantity_sql)
             rls_tables = connection.execute(text("""
                 SELECT relname
                 FROM pg_class

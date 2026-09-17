@@ -1990,6 +1990,117 @@ def correct_order_stage(
     return order
 
 
+def quantity_snapshot(order, line):
+    return {
+        "service_line_id": line.id if line else None,
+        "service_name": line.service_name if line else order.service_type,
+        "quantity": str(line.quantity if line else order.quantity),
+        "unit_price": str(line.unit_price if line else order.unit_price),
+        "subtotal": str(line.subtotal if line else order.total_price),
+        "discount_amount": str(line.discount_amount if line else 0),
+        "order_total": str(order.total_price),
+    }
+
+
+@app.post("/orders/{order_id}/quantity-corrections", response_model=schemas.OrderOut)
+def correct_order_quantity(
+    order_id: int,
+    correction: schemas.OrderQuantityCorrectionCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+    *,
+    idempotency_key: Annotated[UUID, Header()],
+):
+    fingerprint = request_fingerprint(f"quantity-correction:{order_id}", correction)
+    lock_save_reference(db, idempotency_key)
+    saved = find_saved_order(db, models.OrderCorrection, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+
+    order = (
+        db.query(models.Order)
+        .filter(models.Order.id == order_id)
+        .populate_existing()
+        .with_for_update()
+        .first()
+    )
+    if not order:
+        raise HTTPException(404, "Order not found")
+    saved = find_saved_order(db, models.OrderCorrection, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+    if order.status in {"collected", "cancelled"}:
+        raise HTTPException(400, "Correct the order stage before changing its quantity")
+    if not correction.confirmed:
+        raise HTTPException(400, "Confirm the quantity and new price before saving")
+
+    db.expire(order, ["service_lines", "payments", "payment_adjustments"])
+    line = next((item for item in order.service_lines if item.id == correction.service_line_id), None)
+    if order.service_lines and line is None:
+        raise HTTPException(404, "Select a saved service on this order")
+    if line and line.service_unit != "kg":
+        raise HTTPException(400, "This correction currently supports kg services only")
+    if not line and order.service_type != "wash_fold":
+        raise HTTPException(400, "This older order's quantity cannot be corrected here")
+
+    old_quantity = Decimal(str(line.quantity if line else order.quantity))
+    if Decimal(str(correction.expected_quantity)) != old_quantity:
+        raise HTTPException(409, "The quantity changed. Reload this order before correcting it")
+    before_state = quantity_snapshot(order, line)
+    new_quantity = Decimal(str(correction.new_quantity))
+    unit_price = Decimal(str(line.unit_price if line else order.unit_price))
+    new_subtotal = logic.money(unit_price * new_quantity)
+    old_line_total = line.line_total if line else Decimal(str(order.total_price))
+    if line:
+        if correction.new_discount_amount is None and Decimal(str(line.discount_amount)) > 0:
+            raise HTTPException(400, "Confirm the new discount amount for this service")
+        new_discount = logic.money(correction.new_discount_amount or 0)
+    else:
+        if correction.new_discount_amount not in {None, 0}:
+            raise HTTPException(400, "This older order has no service discount to change")
+        new_discount = Decimal("0")
+    if new_discount >= new_subtotal:
+        raise HTTPException(400, "Discount must be less than the new service subtotal")
+    new_total = logic.money(Decimal(str(order.total_price)) - old_line_total + new_subtotal - new_discount)
+    if new_total < order.amount_paid:
+        raise HTTPException(400, "The new total is below money already paid. Correct or refund the payment first")
+    if new_quantity == old_quantity:
+        raise HTTPException(400, "Enter a different kg quantity before saving")
+
+    if line:
+        old_discount = Decimal(str(line.discount_amount))
+        line.quantity = new_quantity
+        line.subtotal = new_subtotal
+        line.discount_amount = new_discount
+        if len(order.service_lines) == 1:
+            order.quantity = new_quantity
+        if new_discount != old_discount:
+            order.discount_reason = correction.reason if any(
+                Decimal(str(item.discount_amount)) > 0 for item in order.service_lines
+            ) else None
+            order.discounted_by_username = current_user.username if order.discount_reason else None
+    else:
+        order.quantity = new_quantity
+    order.total_price = new_total
+
+    db.add(models.OrderCorrection(
+        order_id=order.id,
+        action="quantity",
+        before_state=before_state,
+        after_state=quantity_snapshot(order, line),
+        reason=correction.reason,
+        request_key=str(idempotency_key),
+        request_hash=fingerprint,
+        confirmed_by_id=current_user.id,
+        confirmed_by_username=current_user.username,
+    ))
+    saved = commit_once(db, models.OrderCorrection, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+    db.refresh(order)
+    return order
+
+
 # Updates an order's status, and stamps ready_at / collected_at when relevant
 @app.patch("/orders/{order_id}/status", response_model=schemas.OrderOut)
 def update_order_status(
@@ -2352,7 +2463,7 @@ def export_orders_csv(db: Session = Depends(get_db), current_user: models.User =
         "Amount Paid", "Entry Corrections", "Refunds Returned",
         "Balance Due", "Payment Status", "Payment Methods",
         "Payment Received Dates", "Status", "Recorded At", "Ready At",
-        "Collected At"
+        "Collected At", "Order Correction History", "Payment Adjustment History"
     ])
     for order in orders:
         service_summary = (
@@ -2383,6 +2494,18 @@ def export_orders_csv(db: Session = Depends(get_db), current_user: models.User =
              if item.kind == "refund"),
             Decimal("0"),
         )
+        correction_history = "; ".join(
+            f"#{item.id} {item.action}: "
+            f"{item.before_state.get('quantity', item.before_state.get('status'))} to "
+            f"{item.after_state.get('quantity', item.after_state.get('status'))}; "
+            f"{item.confirmed_by_username}; {item.reason}"
+            for item in order.corrections
+        )
+        adjustment_history = "; ".join(
+            f"#{item.id} {item.kind}: {format_money(item.amount)} on "
+            f"{item.effective_date}; {item.confirmed_by_username}; {item.reason}"
+            for item in order.payment_adjustments
+        )
         writer.writerow([
             order.ticket_number, order.customer_id, order.order_date,
             service_summary, format_money(order.subtotal_before_discount),
@@ -2395,7 +2518,8 @@ def export_orders_csv(db: Session = Depends(get_db), current_user: models.User =
             format_money(order.balance_due),
             order.payment_status, payment_methods, payment_received_dates,
             order.status,
-            order.created_at, order.ready_at, order.collected_at
+            order.created_at, order.ready_at, order.collected_at,
+            correction_history, adjustment_history,
         ])
     output.seek(0)
 
