@@ -88,6 +88,11 @@ function getClothingLines(order) {
 
 export function buildOrderReceiptMessage(order, customerName) {
   const readyNotice = order.status === "ready";
+  const corrections = order.payment_adjustments || [];
+  const entryMistakes = corrections.filter((item) => item.kind === "entry_error")
+    .reduce((total, item) => total + Number(item.amount), 0);
+  const refunds = corrections.filter((item) => item.kind === "refund")
+    .reduce((total, item) => total + Number(item.amount), 0);
   return [
     readyNotice ? "Your laundry is ready for collection" : "Qinetra Laundry receipt",
     `Customer: ${customerName || `Customer ${order.customer_id}`}`,
@@ -98,6 +103,8 @@ export function buildOrderReceiptMessage(order, customerName) {
     "",
     `Total: ${formatKes(order.total_price)}`,
     `Paid: ${formatKes(order.amount_paid)}`,
+    ...(entryMistakes ? [`Payment entry corrected: ${formatKes(entryMistakes)}`] : []),
+    ...(refunds ? [`Refund returned: ${formatKes(refunds)}`] : []),
     `Balance: ${formatKes(order.balance_due)}`,
     `Ready by: ${formatNairobiDateTime(order.promised_ready_at)}`,
     `Status: ${getStatusLabel(order.status)}`,

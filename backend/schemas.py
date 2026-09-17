@@ -483,6 +483,46 @@ class PaymentOut(BaseModel):
         from_attributes = True
 
 
+class PaymentAdjustmentCreate(BaseModel):
+    kind: Literal["entry_error", "refund"]
+    refund_method: Optional[Literal["cash", "mpesa"]] = None
+    amount: float = Field(gt=0, allow_inf_nan=False)
+    reason: str = Field(min_length=1, max_length=300)
+    confirmed: bool
+    effective_date: Optional[date] = None
+
+    @field_validator("reason")
+    @classmethod
+    def clean_reason(cls, value: str):
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Explain why this payment is being adjusted")
+        return cleaned
+
+    @model_validator(mode="after")
+    def validate_refund_method(self):
+        if self.kind == "refund" and not self.refund_method:
+            raise ValueError("Select how the customer received the refund")
+        if self.kind == "entry_error" and self.refund_method:
+            raise ValueError("An entry correction does not return money")
+        return self
+
+
+class PaymentAdjustmentOut(BaseModel):
+    id: int
+    payment_id: int
+    kind: str
+    refund_method: Optional[str]
+    amount: float
+    reason: str
+    effective_date: date
+    confirmed_by_username: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 # A staff-recorded pause while Qinetra waits for the customer to answer.
 class OrderHoldCreate(BaseModel):
     reason: str = Field(min_length=1, max_length=300)
@@ -551,6 +591,7 @@ class OrderOut(BaseModel):
     balance_due: float
     payment_status: str
     payments: list[PaymentOut] = Field(default_factory=list)
+    payment_adjustments: list[PaymentAdjustmentOut] = Field(default_factory=list)
     holds: list[OrderHoldOut] = Field(default_factory=list)
 
     class Config:
@@ -664,6 +705,8 @@ class FinancialSummary(BaseModel):
     cash_received: float
     mpesa_received: float
     total_received: float
+    refunds_sent: float
+    net_cash_movement: float
     outstanding_orders: int
     outstanding_balance: float
     daily_received: list[DailyReceivedTotal]

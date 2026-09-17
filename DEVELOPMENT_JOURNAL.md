@@ -264,3 +264,12 @@ Ignored helpers in `tmp/` support the local fixture server, read-only smoke chec
 - Verification: 36 focused and 111 full SQLite backend tests passed (six PostgreSQL-only cases skipped); 45 frontend tests, lint and production build passed. Disposable PostgreSQL migration 014–015 and locking checks, browser acceptance and the actual physical reference method remain open. No live deployment or data change.
 - No new screenshot was added. The next distinct evidence should show one returned garment and one still outstanding on a fictional order under `docs/diagrams/evidence/`.
 - Optional LinkedIn draft: "Two garments can leave the shop together and return on different days. I added a QLMS handover record that tracks each piece separately. A partial return now stays open, and a problem on return needs an owner-recorded outcome before the order can be marked ready. The next check is whether staff can use it quickly during a normal shift."
+
+## 17 September 2026 — Start owner payment corrections
+
+- Qinetra pilot decision: only the owner may correct saved payments. A recorded entry mistake and an actual refund use different linked events; both preserve the original payment and require a reason and explicit confirmation.
+- The owner form shows the payment and its remaining correctable amount. An idempotency key protects against duplicate refunds after a lost network reply. Collected orders require a separate status correction first.
+- Corrected receipts use the payment's original date; actual refunds use the day money went back to the customer. Finance separates payments received, refunds sent and cash after refunds. The CSV includes correction and refund totals.
+- Five focused correction tests and 116 full SQLite backend tests passed (six PostgreSQL-only tests skipped); the updated receipt test and production build passed. Docker's Linux engine was not available, so migration 016 and concurrency checks remain unverified. No live database or deployment changed.
+- Evidence: none added. After a fictional browser review, capture one clear owner correction-history screen under `docs/diagrams/evidence/`; avoid a second similar payment screenshot.
+- Optional LinkedIn draft: "A payment mistake should not erase the original record. I added an owner correction that links back to the payment, and a separate refund record for money actually returned. The daily figures now show the difference. My next check is whether the owner can use the flow quickly during a normal shift."

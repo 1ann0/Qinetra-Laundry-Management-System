@@ -1754,7 +1754,7 @@ def record_order_payment(
     saved = find_saved_order(db, models.Payment, idempotency_key, fingerprint, current_user.id)
     if saved is not None:
         return saved
-    db.expire(order, ["payments"])
+    db.expire(order, ["payments", "payment_adjustments"])
     new_payment = prepare_payment(order, payment, current_user)
     new_payment.order_id = order.id
     new_payment.request_key = str(idempotency_key)
@@ -1770,10 +1770,10 @@ def record_order_payment(
 def prepare_payment(order, payment, current_user):
     """Validate a receipt of money without committing it separately from its order."""
 
-    if order.status == "collected":
+    if order.status in {"collected", "cancelled"}:
         raise HTTPException(
             status_code=400,
-            detail="Payments cannot be changed after an order is collected",
+            detail="Payments cannot be added after an order is collected or cancelled",
         )
 
     if not payment.confirmed:
@@ -1814,6 +1814,87 @@ def prepare_payment(order, payment, current_user):
         confirmed_by_username=current_user.username,
         received_date=received_date,
     )
+
+
+# Keep the original receipt; an owner links each correction to that payment.
+@app.post("/orders/{order_id}/payments/{payment_id}/adjustments", response_model=schemas.OrderOut)
+def adjust_order_payment(
+    order_id: int,
+    payment_id: int,
+    adjustment: schemas.PaymentAdjustmentCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+    *,
+    idempotency_key: Annotated[UUID, Header()],
+):
+    fingerprint = request_fingerprint(f"payment-adjustment:{order_id}:{payment_id}", adjustment)
+    lock_save_reference(db, idempotency_key)
+    saved = find_saved_order(db, models.PaymentAdjustment, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+
+    order = (
+        db.query(models.Order)
+        .filter(models.Order.id == order_id)
+        .populate_existing()
+        .with_for_update()
+        .first()
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    saved = find_saved_order(db, models.PaymentAdjustment, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+    if order.status in {"collected", "cancelled"}:
+        raise HTTPException(400, "Correct this order's status before changing its payment")
+
+    payment = db.query(models.Payment).filter(
+        models.Payment.id == payment_id,
+        models.Payment.order_id == order_id,
+    ).first()
+    if payment is None or payment.payment_method not in {"cash", "mpesa"}:
+        raise HTTPException(404, "Confirmed payment not found for this order")
+    if not adjustment.confirmed:
+        raise HTTPException(400, "Confirm the correction before saving it")
+
+    db.expire(order, ["payment_adjustments"])
+    db.expire(payment, ["adjustments"])
+    amount = logic.money(adjustment.amount)
+    already_adjusted = sum(
+        (Decimal(str(item.amount)) for item in payment.adjustments),
+        Decimal("0"),
+    )
+    if amount <= 0 or amount > Decimal(str(payment.amount)) - already_adjusted:
+        raise HTTPException(400, "Amount must be greater than zero and no more than the payment left to correct")
+
+    today = get_nairobi_today()
+    effective_date = adjustment.effective_date or today
+    if adjustment.kind == "refund":
+        if effective_date < payment.received_date or effective_date > today:
+            raise HTTPException(400, "Refund date must be between the payment date and today")
+    else:
+        if adjustment.effective_date and adjustment.effective_date != payment.received_date:
+            raise HTTPException(400, "A mistaken entry is corrected on its original payment date")
+        effective_date = payment.received_date
+
+    db.add(models.PaymentAdjustment(
+        order_id=order.id,
+        payment_id=payment.id,
+        kind=adjustment.kind,
+        refund_method=adjustment.refund_method,
+        amount=amount,
+        reason=adjustment.reason,
+        effective_date=effective_date,
+        request_key=str(idempotency_key),
+        request_hash=fingerprint,
+        confirmed_by_id=current_user.id,
+        confirmed_by_username=current_user.username,
+    ))
+    saved = commit_once(db, models.PaymentAdjustment, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+    db.refresh(order)
+    return order
 
 
 # Updates an order's status, and stamps ready_at / collected_at when relevant
@@ -1968,6 +2049,11 @@ def financial_summary(
         models.Payment.received_date <= end_date,
         models.Payment.payment_method.in_(["cash", "mpesa"]),
     ).all()
+    refunds = db.query(models.PaymentAdjustment).filter(
+        models.PaymentAdjustment.kind == "refund",
+        models.PaymentAdjustment.effective_date >= start_date,
+        models.PaymentAdjustment.effective_date <= end_date,
+    ).all()
 
     daily_totals = {
         start_date + timedelta(days=day_offset): Decimal("0")
@@ -2059,7 +2145,13 @@ def financial_summary(
     customers_by_id = {customer.id: customer for customer in customers}
 
     for payment in payments:
-        payment_amount = Decimal(str(payment.amount))
+        # An entry mistake restates the original day's receipt. A real refund
+        # remains a separate cash-out event on the date money was returned.
+        payment_amount = Decimal(str(payment.amount)) - sum(
+            (Decimal(str(item.amount)) for item in payment.adjustments
+             if item.kind == "entry_error"),
+            Decimal("0"),
+        )
         if payment.payment_method == "cash":
             cash_received += payment_amount
         else:
@@ -2075,6 +2167,10 @@ def financial_summary(
         )
 
     outstanding_orders = [order for order in orders if order.balance_due > 0]
+    refunds_sent = sum(
+        (Decimal(str(refund.amount)) for refund in refunds),
+        Decimal("0"),
+    )
 
     return schemas.FinancialSummary(
         start_date=start_date,
@@ -2095,6 +2191,8 @@ def financial_summary(
         cash_received=cash_received,
         mpesa_received=mpesa_received,
         total_received=cash_received + mpesa_received,
+        refunds_sent=refunds_sent,
+        net_cash_movement=cash_received + mpesa_received - refunds_sent,
         outstanding_orders=len(outstanding_orders),
         outstanding_balance=sum(
             (order.balance_due for order in outstanding_orders),
@@ -2156,7 +2254,8 @@ def export_orders_csv(db: Session = Depends(get_db), current_user: models.User =
         "Ticket Number", "Customer ID", "Order Date", "Services",
         "Subtotal Before Discount", "Discount", "Discount Reason",
         "Discounted By", "Total Price",
-        "Amount Paid", "Balance Due", "Payment Status", "Payment Methods",
+        "Amount Paid", "Entry Corrections", "Refunds Returned",
+        "Balance Due", "Payment Status", "Payment Methods",
         "Payment Received Dates", "Status", "Recorded At", "Ready At",
         "Collected At"
     ])
@@ -2179,12 +2278,23 @@ def export_orders_csv(db: Session = Depends(get_db), current_user: models.User =
             if order.payments
             else "None"
         )
+        entry_corrections = sum(
+            (Decimal(str(item.amount)) for item in order.payment_adjustments
+             if item.kind == "entry_error"),
+            Decimal("0"),
+        )
+        refunds_returned = sum(
+            (Decimal(str(item.amount)) for item in order.payment_adjustments
+             if item.kind == "refund"),
+            Decimal("0"),
+        )
         writer.writerow([
             order.ticket_number, order.customer_id, order.order_date,
             service_summary, format_money(order.subtotal_before_discount),
             format_money(order.discount_amount), order.discount_reason or "",
             order.discounted_by_username or "",
             format_money(order.total_price), format_money(order.amount_paid),
+            format_money(entry_corrections), format_money(refunds_returned),
             format_money(order.balance_due),
             order.payment_status, payment_methods, payment_received_dates,
             order.status,

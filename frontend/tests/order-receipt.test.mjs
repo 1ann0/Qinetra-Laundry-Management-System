@@ -126,3 +126,19 @@ test("ready order uses the ready heading and current saved totals", () => {
   assert.match(message, /Balance: KES 0/);
   assert.match(message, /Status: Ready for Collection/);
 });
+
+test("receipt shows net paid and identifies returned money without exposing reasons", () => {
+  const message = buildOrderReceiptMessage(savedOrder({
+    amount_paid: 300,
+    balance_due: 350,
+    payment_adjustments: [
+      { kind: "entry_error", amount: 100, reason: "Private shop note" },
+      { kind: "refund", amount: 50, reason: "Private refund note" },
+    ],
+  }), "Pilot customer");
+
+  assert.match(message, /Paid: KES 300/);
+  assert.match(message, /Payment entry corrected: KES 100/);
+  assert.match(message, /Refund returned: KES 50/);
+  assert.doesNotMatch(message, /Private/);
+});

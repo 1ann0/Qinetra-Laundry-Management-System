@@ -169,6 +169,8 @@ The history and reports must explain every change. Employees must not gain owner
 
 **Decision before building:** Agree the permitted corrections, refund handling and who approves each one.
 
+**Phase 4 decision (17 September 2026):** Saved-order and payment corrections are owner-only for the Qinetra pilot. A payment entry mistake and money actually returned to a customer are separate events. The first local unit links either event to its original payment, keeps the receipt unchanged, prevents over-correction and repeat saves, and gives a refund its own date and method. Finance shows corrected receipts, refunds sent and the amount after refunds separately; CSV shows correction totals. SQLite, frontend, lint and build checks pass. Migration 016 and browser acceptance remain open because Docker's Linux engine is unavailable. Customer/order detail correction, cancellation and accidental-stage correction are next; the Phase 4 exit gate is not yet met.
+
 ## Phase 5 — Make the owner's daily review trustworthy
 
 **Value:** The owner can explain the day's work, receipts and unpaid balances.

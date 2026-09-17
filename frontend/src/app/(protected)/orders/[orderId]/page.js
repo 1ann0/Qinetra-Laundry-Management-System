@@ -13,6 +13,7 @@ import { useAuth } from "@/context/auth-context";
 import usePendingSave from "@/components/orders/use-pending-save";
 import PendingSaveNotice from "@/components/orders/pending-save-notice";
 import OutsourceRegister from "@/components/orders/outsource-register";
+import PaymentCorrections from "@/components/orders/payment-corrections";
 import { buildOrderReceiptMessage } from "@/lib/order-receipt";
 import { formatNairobiDateTime } from "@/lib/format-nairobi";
 
@@ -1059,6 +1060,16 @@ export default function OrderDetailPage() {
             No payment has been recorded for this order.
           </p>
         )}
+
+        <PaymentCorrections
+          key={order.payments.find((payment) => payment.payment_method !== "legacy")?.id || 0}
+          order={order}
+          isOwner={role === "owner"}
+          onUpdated={(updatedOrder) => {
+            setOrder(updatedOrder);
+            setPaymentAmount(String(updatedOrder.balance_due));
+          }}
+        />
 
         <PendingSaveNotice {...paymentSave} onRetry={retryPayment} />
         {Number(order.balance_due) > 0 && order.status !== "collected" ? (

@@ -529,6 +529,10 @@ function FinancialSnapshotContent() {
                   </dd>
                 </div>
               </dl>
+              <dl className="mt-4 grid grid-cols-2 gap-4 border-t border-blue-200 pt-4 text-sm">
+                <div><dt className="text-slate-600">Refunds sent</dt><dd className="mt-1 font-bold text-slate-900">{formatKes(summary.refunds_sent)}</dd></div>
+                <div><dt className="text-slate-600">After refunds</dt><dd className="mt-1 font-bold text-slate-900">{formatKes(summary.net_cash_movement)}</dd></div>
+              </dl>
             </article>
 
             <article className="rounded-2xl border border-amber-300 bg-amber-50 p-6 shadow-sm">
@@ -685,11 +689,11 @@ function FinancialSnapshotContent() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-slate-900">
-                  Revenue by customer
+                  Payments by customer
                 </h2>
                 <p className="mt-2 max-w-2xl text-slate-600">
                   Confirmed payments received from each customer during this
-                  period. Unpaid order value is not included.
+                  period, after entry corrections. Refunds are shown separately above.
                 </p>
               </div>
 
@@ -701,8 +705,8 @@ function FinancialSnapshotContent() {
                   value={customerSort}
                   onChange={(event) => setCustomerSort(event.target.value)}
                 >
-                  <option value="highest">Highest revenue first</option>
-                  <option value="lowest">Lowest revenue first</option>
+                  <option value="highest">Highest payments first</option>
+                  <option value="lowest">Lowest payments first</option>
                   <option value="name">Customer name A–Z</option>
                 </select>
               </label>

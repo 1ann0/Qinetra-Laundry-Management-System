@@ -114,6 +114,12 @@ class Order(Base):
         cascade="all, delete-orphan",
         order_by="Payment.id",
     )
+    payment_adjustments = relationship(
+        "PaymentAdjustment",
+        back_populates="order",
+        cascade="all, delete-orphan",
+        order_by="PaymentAdjustment.id",
+    )
     holds = relationship(
         "OrderHold",
         back_populates="order",
@@ -124,10 +130,15 @@ class Order(Base):
     # Payment totals are derived from history so staff never type over a balance.
     @property
     def amount_paid(self):
-        return sum(
+        payments_total = sum(
             (Decimal(str(payment.amount)) for payment in self.payments),
             Decimal("0"),
         )
+        adjustments_total = sum(
+            (Decimal(str(adjustment.amount)) for adjustment in self.payment_adjustments),
+            Decimal("0"),
+        )
+        return payments_total - adjustments_total
 
     @property
     def balance_due(self):
@@ -464,6 +475,46 @@ class Payment(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     order = relationship("Order", back_populates="payments")
+    adjustments = relationship(
+        "PaymentAdjustment",
+        back_populates="payment",
+        cascade="all, delete-orphan",
+        order_by="PaymentAdjustment.id",
+    )
+
+
+# A linked adjustment never edits the original receipt of money.
+class PaymentAdjustment(Base):
+    __tablename__ = "payment_adjustments"
+    __table_args__ = (
+        CheckConstraint("amount > 0", name="payment_adjustment_positive"),
+        CheckConstraint(
+            "kind IN ('entry_error', 'refund')",
+            name="payment_adjustment_kind",
+        ),
+        CheckConstraint(
+            "(kind = 'entry_error' AND refund_method IS NULL) "
+            "OR (kind = 'refund' AND refund_method IN ('cash', 'mpesa'))",
+            name="payment_adjustment_refund_method",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
+    payment_id = Column(Integer, ForeignKey("payments.id", ondelete="CASCADE"), nullable=False)
+    kind = Column(String(20), nullable=False)
+    refund_method = Column(String(20), nullable=True)
+    amount = Column(Numeric(10, 2), nullable=False)
+    reason = Column(String(300), nullable=False)
+    effective_date = Column(Date, nullable=False)
+    request_key = Column(String(36), unique=True, nullable=True)
+    request_hash = Column(String(64), nullable=True)
+    confirmed_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    confirmed_by_username = Column(String(50), nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+
+    order = relationship("Order", back_populates="payment_adjustments")
+    payment = relationship("Payment", back_populates="adjustments")
 
 
 # One counter per business date, locked while a ticket number is allocated.
