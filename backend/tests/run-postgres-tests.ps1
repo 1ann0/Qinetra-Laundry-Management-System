@@ -1,6 +1,14 @@
 # Creates one disposable PostgreSQL container; never uses the project's database URL.
+param([string]$PythonExecutable = '')
+
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
+if (-not $PythonExecutable) {
+    $PythonExecutable = Join-Path $repoRoot 'backend/venv/Scripts/python.exe'
+}
+# Fail before creating a container if the selected virtual environment is broken.
+& $PythonExecutable --version
+if ($LASTEXITCODE -ne 0) { throw 'Choose a working Python environment with -PythonExecutable.' }
 $containerName = 'qlms-save-test-' + [guid]::NewGuid().ToString('N')
 $containerCreated = $false
 $previousEnv = @{}
@@ -22,11 +30,11 @@ try {
     }
     if (-not $ready) { throw 'The disposable database did not become ready.' }
     $env:DATABASE_URL = 'sqlite://'
-    $env:SECRET_KEY = 'local-test-only-secret'
+    $env:SECRET_KEY = 'local-test-fixture-only-at-least-thirty-two-bytes'
     $env:QLMS_TEST_DATABASE_URL = 'postgresql://postgres:qlms-local-test@127.0.0.1:55432/qlms_test'
     Push-Location (Join-Path $repoRoot 'backend')
     try {
-        & (Join-Path $repoRoot 'backend/venv/Scripts/python.exe') -m unittest discover -s tests
+        & $PythonExecutable -m unittest discover -s tests
         $testExitCode = $LASTEXITCODE
     } finally { Pop-Location }
 } finally {

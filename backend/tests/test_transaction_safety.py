@@ -236,6 +236,38 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
         outcomes = self.race([operation, operation])
         self.assertEqual(sorted(status for status, _ in outcomes), [200, 409])
 
+    def test_simultaneous_quantity_corrections_reject_the_stale_request(self):
+        order = self.create()
+        order_id, line_id = order.id, order.service_lines[0].id
+        self.user.role = "owner"
+        self.db.commit()
+        body = schemas.OrderQuantityCorrectionCreate(
+            service_line_id=line_id, expected_quantity=2, new_quantity=3,
+            reason="Owner checked the weight", confirmed=True,
+        )
+        operation = lambda db, user: main.correct_order_quantity(order_id, body, db, user, idempotency_key=uuid4())
+        outcomes = self.race([operation, operation])
+        self.assertEqual(sorted(status for status, _ in outcomes), [200, 409])
+        rejection = next(detail for status, detail in outcomes if status == 409)
+        self.assertEqual(rejection["code"], "QLMS-STALE-RECORD")
+        self.assertEqual(rejection["save_state"], "not_saved")
+        self.assertEqual(self.db.query(models.OrderCorrection).count(), 1)
+
+    def test_simultaneous_quantity_retry_keeps_one_correction(self):
+        order = self.create()
+        order_id, line_id = order.id, order.service_lines[0].id
+        self.user.role = "owner"
+        self.db.commit()
+        body = schemas.OrderQuantityCorrectionCreate(
+            service_line_id=line_id, expected_quantity=2, new_quantity=3,
+            reason="Owner checked the weight", confirmed=True,
+        )
+        key = uuid4()
+        operation = lambda db, user: main.correct_order_quantity(order_id, body, db, user, idempotency_key=key)
+        outcomes = self.race([operation, operation])
+        self.assertEqual(outcomes, [(200, order_id), (200, order_id)])
+        self.assertEqual(self.db.query(models.OrderCorrection).count(), 1)
+
     def test_migrations_upgrade_existing_records_and_can_be_repeated(self):
         order = self.create()
         order_id = order.id

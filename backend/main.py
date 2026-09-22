@@ -22,7 +22,10 @@ import schemas
 import logic
 import auth
 from customer_phone import normalize_kenyan_phone, phone_search_digits
-from transaction_safety import request_fingerprint, find_saved_order, commit_once, lock_save_reference
+from transaction_safety import (
+    request_fingerprint, find_saved_order, commit_once,
+    lock_save_reference, reject_unsaved_change,
+)
 
 # Kenya uses UTC+3 throughout the year, with no daylight-saving changes.
 NAIROBI_TIMEZONE = timezone(timedelta(hours=3))
@@ -1307,7 +1310,7 @@ def replace_order_service_items(
 
     db.refresh(service_line)
     if item_update.expected_revision != service_line.item_revision:
-        raise HTTPException(409, "The clothing details changed on another screen. Open the order again before editing")
+        raise reject_unsaved_change("QLMS-STALE-RECORD", "The clothing details changed on another screen. Open the order again before editing")
 
     if service_line.item_check_status == "completed" and not item_update.change_reason:
         raise HTTPException(
@@ -1937,7 +1940,7 @@ def correct_order_stage(
     if not correction.confirmed:
         raise HTTPException(400, "Confirm this correction before saving it")
     if order.status != correction.expected_status:
-        raise HTTPException(409, "The order stage changed. Reload the order before correcting it")
+        raise reject_unsaved_change("QLMS-STALE-RECORD", "The order stage changed. Reload the order before correcting it")
 
     before_state = order_stage_snapshot(order)
     if correction.action == "cancel":
@@ -2045,7 +2048,7 @@ def correct_order_quantity(
 
     old_quantity = Decimal(str(line.quantity if line else order.quantity))
     if Decimal(str(correction.expected_quantity)) != old_quantity:
-        raise HTTPException(409, "The quantity changed. Reload this order before correcting it")
+        raise reject_unsaved_change("QLMS-STALE-RECORD", "The quantity changed. Reload this order before correcting it")
     before_state = quantity_snapshot(order, line)
     new_quantity = Decimal(str(correction.new_quantity))
     unit_price = Decimal(str(line.unit_price if line else order.unit_price))
@@ -2131,7 +2134,7 @@ def correct_order_customer(
     if not correction.confirmed:
         raise HTTPException(400, "Confirm the correct customer before saving")
     if order.customer_id != correction.expected_customer_id:
-        raise HTTPException(409, "This order's customer changed. Reload before correcting it")
+        raise reject_unsaved_change("QLMS-STALE-RECORD", "This order's customer changed. Reload before correcting it")
     if correction.new_customer_id == order.customer_id:
         raise HTTPException(400, "Select a different customer for this ticket")
     previous_customer = db.get(models.Customer, order.customer_id)

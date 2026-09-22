@@ -1,10 +1,11 @@
 // Keep staff instructions separate from technical details returned by the API.
 export class ApiError extends Error {
-  constructor(message, status = 0, code = "") {
+  constructor(message, status = 0, code = "", saveState = "unknown") {
     super(code ? `${message} Support code: ${code}.` : message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.saveState = saveState;
   }
 }
 
@@ -110,7 +111,22 @@ const FIELD_NAMES = {
   service_lines: "services", items: "clothing items", turnaround_minutes: "service time",
 };
 
+const REJECTED_SAVE_MESSAGES = {
+  "QLMS-STALE-RECORD": "These details changed. Your changes were not saved. Reload this page, check the latest details, then enter your correction again.",
+  "QLMS-PHONE-SHARED": "This phone number is already saved for another customer. Your changes were not saved. Check the matching customer, or confirm that they share this number.",
+};
+
 export function responseError(status, payload, path, recovery) {
+  // A known rejection is safe to edit; an unknown conflict may follow a lost reply.
+  if (status === 409) {
+    const detail = payload?.detail;
+    if (detail?.save_state === "not_saved" && Object.hasOwn(REJECTED_SAVE_MESSAGES, detail.code)) {
+      return new ApiError(REJECTED_SAVE_MESSAGES[detail.code], status, detail.code, "not_saved");
+    }
+    if (detail?.code === "QLMS-SAVE-CONFLICT") {
+      return new ApiError(INPUT_MESSAGES["This save reference was already used for different details"], status, detail.code);
+    }
+  }
   if (status === 401) {
     return new ApiError(
       path === "/auth/login"

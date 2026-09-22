@@ -9,6 +9,13 @@ from sqlalchemy import text
 import models
 
 
+def reject_unsaved_change(code, message):
+    """Use only after replay lookup, when this request has not committed."""
+    return HTTPException(409, detail={
+        "code": code, "message": message, "save_state": "not_saved",
+    })
+
+
 def lock_save_reference(db, key):
     # Wait for an in-flight copy before checking dates, prices or its saved result.
     # Otherwise a retry could fail validation while the first copy is still saving.
@@ -31,9 +38,15 @@ def find_saved_order(db, record_type, key, fingerprint, user_id):
         return None
     actor_id = saved.created_by_id if record_type is models.Order else saved.confirmed_by_id
     if actor_id != user_id or saved.request_hash != fingerprint:
-        raise HTTPException(409, "This save reference was already used for different details")
+        raise HTTPException(409, detail={
+            "code": "QLMS-SAVE-CONFLICT",
+            "message": "This save reference was already used for different details",
+            "save_state": "unknown",
+        })
     # Return the original order with its current balance and status.
-    return saved if record_type is models.Order else saved.order
+    if record_type is models.Order:
+        return saved
+    return saved.order
 
 
 def commit_once(db, record_type, key, fingerprint, user_id):

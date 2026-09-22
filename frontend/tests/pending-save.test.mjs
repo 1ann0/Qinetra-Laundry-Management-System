@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ApiError } from "../src/lib/user-messages.js";
+import { ApiError, responseError } from "../src/lib/user-messages.js";
 import { apiRequest } from "../src/lib/api.js";
 import { saveScope, readPendingSave, prepareSave, sendPendingSave } from "../src/lib/pending-save.js";
 
@@ -57,6 +57,51 @@ for (const status of [400, 422]) {
     assert.equal(readPendingSave(store, scope), null);
   });
 }
+
+for (const code of ["QLMS-STALE-RECORD", "QLMS-PHONE-SHARED"]) {
+  test(`${code} clears a rejected save so corrected details can be submitted`, async (t) => {
+    const originalUrl = process.env.NEXT_PUBLIC_API_URL;
+    process.env.NEXT_PUBLIC_API_URL = "http://qlms.invalid";
+    const store = storage();
+    const attempt = prepareSave(store, scope, { quantity: 2 }, () => "rejected-key");
+    t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({
+      detail: { code, save_state: "not_saved", message: "private server detail" },
+    }), { status: 409, headers: { "content-type": "application/json" } }));
+    try {
+      await assert.rejects(sendPendingSave(apiRequest, store, scope, path, attempt), (error) => {
+        assert.equal(error.saveState, "not_saved");
+        assert.match(error.message, /not saved/);
+        assert.doesNotMatch(error.message, /private server detail/);
+        return true;
+      });
+      assert.equal(readPendingSave(store, scope), null);
+      const corrected = prepareSave(store, scope, { quantity: 3 }, () => "corrected-key");
+      assert.equal(corrected.key, "corrected-key");
+      assert.equal(corrected.body, '{"quantity":3}');
+    } finally {
+      if (originalUrl === undefined) delete process.env.NEXT_PUBLIC_API_URL;
+      else process.env.NEXT_PUBLIC_API_URL = originalUrl;
+    }
+  });
+}
+
+test("unknown, malformed and reused-key conflicts never discard a pending save", async () => {
+  for (const detail of [
+    { code: "QLMS-SAVE-CONFLICT", save_state: "unknown" },
+    { code: "QLMS-SAVE-CONFLICT", save_state: "not_saved" },
+    { code: "UNKNOWN", save_state: "not_saved" },
+    { code: "QLMS-STALE-RECORD" },
+    "Legacy conflict response",
+    null,
+  ]) {
+    const store = storage();
+    const attempt = prepareSave(store, scope, {}, () => "original");
+    const error = responseError(409, { detail }, path, "Retry previous save.");
+    await assert.rejects(sendPendingSave(async () => { throw error; }, store, scope, path, attempt));
+    assert.deepEqual(readPendingSave(store, scope), attempt);
+    assert.equal(error.saveState, "unknown");
+  }
+});
 
 test("requests belong to one staff account and one destination", () => {
   const store = storage();

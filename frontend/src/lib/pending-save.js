@@ -40,7 +40,7 @@ export async function sendPendingSave(request, storage, scope, path, attempt) {
     });
   } catch (error) {
     // These responses reject the request before a save; uncertain results retain the key.
-    if (error instanceof ApiError && [400, 422].includes(error.status)) {
+    if (error instanceof ApiError && ([400, 422].includes(error.status) || error.saveState === "not_saved")) {
       storage.removeItem(scope);
     }
     throw error;

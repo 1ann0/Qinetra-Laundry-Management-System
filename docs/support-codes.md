@@ -6,6 +6,9 @@ Staff should report the code, time, page and action. Do not ask for passwords, s
 
 | Code | Meaning for support | First checks |
 | --- | --- | --- |
+| QLMS-STALE-RECORD | A correction used older details; this attempt did not save | Reload the page, check the current details, then enter the correction again. This recognized rejection clears its pending save reference. |
+| QLMS-PHONE-SHARED | A customer correction needs an explicit shared-number decision; this attempt did not save | Check the matching customer before confirming that the number is shared. The form can be edited again. |
+| QLMS-SAVE-CONFLICT | A reference belongs to different saved details or another actor | Preserve the reference and investigate the saved event. Do not discard it or generate a new reference to bypass the conflict. |
 | QLMS-CONNECTION | Fetch failed before a usable reply | Check the user's connection, then API reachability, TLS and CORS. A browser failure alone cannot identify the cause. |
 | QLMS-TIMEOUT | No complete reply within 30 seconds | Check slow requests, hosting wake-up time and service health. A timed-out save may still finish on the server. |
 | QLMS-SETUP | Frontend API address is missing | Check `NEXT_PUBLIC_API_URL` in the environment used to build the frontend. Rebuild after correcting it. |
@@ -32,7 +35,7 @@ Phase 2 adds `QLMS-SAVE-STORAGE` when the tab cannot retain/read/clear its origi
 - Preserve useful validation instructions. Do not send staff to support for every missing field.
 - Do not say a save failed when its result is unknown.
 - Do not automatically repeat order, payment, customer or account writes.
-- Preserve form values on failure. Do not advise a page refresh that could remove unsaved work.
+- Preserve form values when the result is uncertain. For a recognized stale correction that was definitely rejected, explain that it was not saved before asking the user to reload and re-enter it.
 
 `src/lib/api.js` handles transport failures and the deadline. `src/lib/user-messages.js` translates known errors into staff instructions.
 Screen-level catches use `getUserMessage` so unexpected JavaScript errors also receive safe wording.
@@ -42,7 +45,8 @@ Screen-level catches use `getUserMessage` so unexpected JavaScript errors also r
 | What could go wrong? | Current protection | Remaining work |
 | --- | --- | --- |
 | Staff mistake a filter for an order update | Stage buttons say View orders; the selected button says Showing these orders | Ask an unfamiliar user to filter without coaching. |
-| A slow save succeeds, but staff submit it again | No automatic retries; uncertain-save message tells staff to check the record | Backend idempotency and reconciliation need a separate approved phase. |
+| A slow save succeeds, but staff submit it again | Keyed saves retain the exact request and recognize retries | Release verification must include both lost replies and simultaneous requests. |
+| A rejected correction traps the owner in Retry previous save | Only recognized pre-save rejections unlock the form; unknown conflicts retain the reference | Local two-tab and lost-reply checks passed on 22 September; student acceptance remains pending. See `save-rejection-check.md`. |
 | The API fails and staff see an empty shop | Tracking shows a load failure and retry action instead of No orders found | Other screens still need hands-on outage checks. |
 | A new backend validation rule has no translation | Generic safe message and QLMS-INPUT code | Add its specific instruction when the API rule changes. |
 | A slow hosting wake-up exceeds 30 seconds | Finite wait and a clear timeout message | Measure real response times; consider always-on hosting if needed. |
