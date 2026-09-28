@@ -1,8 +1,12 @@
 # Truthful refunds — local acceptance
 
-Updated 28 September 2026. Local implementation; no production deployment or real money transfer.
+Updated 29 September 2026. Local implementation; no production deployment or real money transfer.
 
 ## Verification record
+
+- **29 September form follow-up:** `payment-corrections.js` now starts without an action or refund purpose selected, previews the resulting charge/retained money/debt, and clears confirmation when details change. All 52 frontend tests, lint and production build passed. Browser checks on fresh fictional receipt 3 verified blank-choice gating, KES 60 entry-correction versus service-refund previews, confirmation reset, and a lost reply followed by refresh/retry with one KES 60 refund (charge/retained KES 240, zero debt/refund due, still Collected). Backend code was unchanged and its suite was not repeated. Screenshot 44 shows the preview and explicit refund confirmation. Expired-session reauthentication required a receipt refresh; this remains in the separate session-recovery launch review.
+
+- **29 September student check:** the student reported completion. Read-only browser inspection of ticket 1 found the additional KES 100 saved as `entry_error`, with reason `further refund test`, rather than a service refund. Current values: net charge KES 800, retained KES 700, debt KES 100, original service refund KES 200, still Collected. This is consistent with an entry correction but does **not** pass the intended refund acceptance check. Preserve the history; repeat the service-refund check on a fresh fictional receipt. This also exposes a form-selection usability issue to address before shop use. No further financial event was created by the agent.
 
 - Working-tree backend: **146 tests passed**, including disposable PostgreSQL 17 concurrency and migration checks; no skips. Separate requests cannot over-refund; same-key concurrent retries create one event; a racing kg correction cannot make the charge negative. Migration 021 repeats and leaves older refund purposes unknown.
 - Exact staged backend, copied without the unfinished contact-correction draft: **145 tests passed** in a second disposable PostgreSQL run, with no skips. The one additional working-tree test belongs to that separate draft.
@@ -55,7 +59,7 @@ Student acceptance and explain-back remain separate from agent checks. Explain w
 
 ### Continue with the currently running fixture
 
-The agent has already completed the above sequence. Ticket 1 now has KES 800 charged/retained; ticket 2 has KES 150 charged/retained. To perform your own small acceptance check without resetting anything: sign out of the employee account, sign in as `nav_owner` with `NavTest123!`, open `/orders/1`, and record a further **fictional KES 100 service refund**. Expect KES 700 net charge, KES 700 retained, zero debt/refund due, two refund events totalling KES 300, and Collected unchanged. Refresh and check the same result. Do not follow the fresh-fixture starting numbers against an already tested receipt.
+The earlier instruction to refund a further KES 100 on ticket 1 is superseded by the 29 September finding above. Preserve its history. Fresh student receipt **QL-20260929-002**, `/orders/4`, starts Collected with KES 300 charge/retained money and no adjustments. In the local owner session, choose **Money returned to customer → Service refund — reduce the charge**, enter **KES 60**, Cash and a fictional-test reason, read the preview, confirm and save. Expect charge/retained money **KES 240**, debt/refund due **KES 0**, one KES 60 refund and unchanged Collected status after refresh. This student check remains pending. Receipt 3 is the completed agent test; the initial two-receipt Finance totals above are historical and do not include these new receipts.
 
 ## Release requirements
 

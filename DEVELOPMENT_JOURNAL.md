@@ -326,3 +326,13 @@ Ignored helpers in `tmp/` support the local fixture server, read-only smoke chec
 - Verification: 146 working-tree backend tests, 145 exact staged-backend tests without the separate contact draft, all including disposable PostgreSQL and no skips; 52 frontend tests, lint and production build passed. Concurrency, repeatable migrations, permissions, tampered fields and old replay are covered.
 - Browser: a deliberately lost KES 200 refund reply recovered exactly once after refresh/retry; KES 1,000 became KES 800 charged/retained with no debt, still Collected. Correcting a second paid KES 300 ticket to KES 150 showed money owed back; its excess return kept charge KES 150. Finance and authenticated CSV matched KES 1,300 receipts, KES 350 returned and KES 950 retained. Employee saw history without owner controls.
 - Local screenshots 42/43 and exact fresh/current-fixture steps are documented in docs/refund-check.md and the evidence tracker. Student actions/explain-back are pending. No production changes, real refunds, purchases or real customer entry. Contact-correction draft remains separate; launch gates still apply.
+
+## 29 September 2026 — Student refund check requires a repeat
+
+- Student reported completion. Read-only browser inspection found a KES 100 Entry mistake with reason "further refund test" on QL-REFUND-TEST-001, not a service refund. Net charge KES 800, retained KES 700, debt KES 100, existing service refund KES 200; Collected stayed unchanged.
+- The saved figures match that operation, but the intended refund acceptance is not passed. Preserve audit history and repeat on a fresh fictional receipt. Record the ambiguous operation selection as a usability finding before shop use. No extra money event or deployment was performed.
+
+### Refund form follow-up
+
+- Removed default action/purpose, added outcome preview and action-specific confirmation, and reset confirmation on detail changes. Only frontend behavior changed; 52 frontend tests, lint/build and focused browser checks passed, including lost-reply refresh/retry with one refund. Details and student receipt 4 steps: `docs/refund-check.md`. Screenshot 44 records the preview. The contact draft is preserved; no deployment or real money movement.
+- User requested less process overhead: prioritise daily-work value and launch blockers, reuse valid evidence and keep updates concise. Expired-session receipt refresh remains a separate launch check.

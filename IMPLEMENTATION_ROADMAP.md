@@ -25,6 +25,8 @@ Start with one laundry and one location. The previously confirmed working volume
 
 Keep a stable released version in use while improvements are developed against fictional data. Do not test on real customer records or deploy an unfinished branch merely because a local feature passes. The first release requires S0, C1/C2, S1a-c, C3, O1a, D1, R1 and P1. S2, O1b and optional growth are separate; bring a specific item forward only when launch checks expose an unacceptable risk or unusable workflow.
 
+After that baseline, release small verified improvements to the pilot without waiting for the later roadmap. Prioritise work that saves staff time, prevents money/data errors or removes a launch blocker. Run checks proportional to the changed behavior; repeat wider suites only for new code, failures or unresolved risks. Keep detailed evidence in the relevant check record and link it from brief handover/learning notes instead of copying it. The 29 September refund-form follow-up addresses an observed wrong-action selection; it is not a reason to expand refund scope.
+
 ## Evidence and boundaries
 
 | Area | Evidence available on 26 September | Limit |

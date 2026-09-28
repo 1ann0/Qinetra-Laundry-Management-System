@@ -19,9 +19,9 @@ export default function PaymentCorrections({ order, isOwner, onUpdated }) {
   const [paymentId, setPaymentId] = useState(
     order.payments.find((payment) => payment.payment_method !== "legacy")?.id || 0,
   );
-  const [kind, setKind] = useState("entry_error");
+  const [kind, setKind] = useState("");
   const [refundMethod, setRefundMethod] = useState("cash");
-  const [refundPurpose, setRefundPurpose] = useState("service_refund");
+  const [refundPurpose, setRefundPurpose] = useState("");
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
   const [effectiveDate, setEffectiveDate] = useState(todayInNairobi);
@@ -39,6 +39,13 @@ export default function PaymentCorrections({ order, isOwner, onUpdated }) {
     : 0;
   const remaining = kind === "refund" ? Math.min(paymentRemaining,
     Number(refundPurpose === "service_refund" ? order.net_charge : order.refund_due)) : paymentRemaining;
+  const operationChosen = kind === "entry_error" || (kind === "refund" &&
+    ["service_refund", "excess_payment"].includes(refundPurpose));
+  const validAmount = /^\d+(?:\.\d{1,2})?$/.test(amount) && Number(amount) > 0 && Number(amount) <= remaining;
+  // Preview in whole cents; the backend still decides the saved amounts.
+  const previewCharge = (Math.round(Number(order.net_charge) * 100) -
+    (kind === "refund" && refundPurpose === "service_refund" ? Math.round(Number(amount) * 100) : 0)) / 100;
+  const previewRetained = (Math.round(Number(order.amount_paid) * 100) - Math.round(Number(amount) * 100)) / 100;
 
   if (!isOwner && !(order.payment_adjustments || []).length) return null;
 
@@ -47,14 +54,20 @@ export default function PaymentCorrections({ order, isOwner, onUpdated }) {
     setAmount("");
     setReason("");
     setConfirmed(false);
-    setMessage("Correction saved. Check the history and new balance.");
+    setKind("");
+    setRefundPurpose("");
+    setMessage("Saved. Check the payment history and updated amounts.");
   }
 
   async function submit(event) {
     event.preventDefault();
     setError("");
     setMessage("");
-    if (!selectedPayment || !Number.isFinite(Number(amount)) || Number(amount) <= 0 || Number(amount) > remaining) {
+    if (!operationChosen) {
+      setError("Choose what happened and, for money returned, the refund purpose.");
+      return;
+    }
+    if (!selectedPayment || !validAmount) {
       setError(`Enter an amount greater than zero and no more than ${money(remaining)}.`);
       return;
     }
@@ -114,45 +127,54 @@ export default function PaymentCorrections({ order, isOwner, onUpdated }) {
       </> : null}
       {isOwner && order.payments.some((payment) => payment.payment_method !== "legacy") && order.status !== "cancelled" ? (
         <form className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-4" onSubmit={submit}>
-          <h4 className="font-bold text-slate-900">Owner: correct a payment</h4>
-          <p className="mt-1 text-sm text-slate-700">Use Entry mistake when the recorded amount was wrong. Use Money returned only after the customer receives a refund. The original payment and clothing stage stay in history.</p>
+          <h4 className="font-bold text-slate-900">Owner: record a refund or entry correction</h4>
+          <p className="mt-1 text-sm text-slate-700">Choose what actually happened. A refund records money returned to the customer. An entry mistake corrects money that was never received. Check the amounts below before saving.</p>
           <fieldset disabled={save.isSaving || refundSave.isSaving || Boolean(save.pending) || Boolean(refundSave.pending) || !save.ready || !refundSave.ready} className="mt-4 grid gap-4 sm:grid-cols-2">
             <label className="font-semibold text-slate-800">Payment
-              <select className="mt-1 min-h-11 w-full rounded-lg border border-slate-400 bg-white px-3" value={paymentId} onChange={(event) => { setPaymentId(Number(event.target.value)); setAmount(""); }}>
+              <select className="mt-1 min-h-11 w-full rounded-lg border border-slate-400 bg-white px-3" value={paymentId} onChange={(event) => { setPaymentId(Number(event.target.value)); setAmount(""); setConfirmed(false); }}>
                 {order.payments.filter((payment) => payment.payment_method !== "legacy").map((payment) => (
                   <option key={payment.id} value={payment.id}>#{payment.id} · {payment.payment_method === "mpesa" ? "M-PESA" : "Cash"} · {money(payment.amount)} · {payment.received_date}</option>
                 ))}
               </select>
             </label>
             <label className="font-semibold text-slate-800">What happened?
-              <select className="mt-1 min-h-11 w-full rounded-lg border border-slate-400 bg-white px-3" value={kind} onChange={(event) => { setKind(event.target.value); setConfirmed(false); }}>
-                <option value="entry_error">Entry mistake (no money returned)</option>
+              <select className="mt-1 min-h-11 w-full rounded-lg border border-slate-400 bg-white px-3" value={kind} onChange={(event) => { setKind(event.target.value); setRefundPurpose(""); setConfirmed(false); }} required>
+                <option value="" disabled>Choose what happened</option>
                 <option value="refund">Money returned to customer</option>
+                <option value="entry_error">Entry mistake — money was never received</option>
               </select>
             </label>
             {kind === "refund" ? <label className="font-semibold text-slate-800 sm:col-span-2">Refund purpose
-              <select className="mt-1 min-h-11 w-full rounded-lg border border-slate-400 bg-white px-3" value={refundPurpose} onChange={(event) => { setRefundPurpose(event.target.value); setConfirmed(false); }}>
+              <select className="mt-1 min-h-11 w-full rounded-lg border border-slate-400 bg-white px-3" value={refundPurpose} onChange={(event) => { setRefundPurpose(event.target.value); setConfirmed(false); }} required>
+                <option value="" disabled>Choose why money was returned</option>
                 <option value="service_refund">Service refund — reduce the charge</option>
                 <option value="excess_payment">Return excess payment — keep the corrected charge</option>
               </select>
               <span className="mt-1 block text-sm font-normal">Charge: {money(order.net_charge)}. Excess payment due back: {money(order.refund_due)}.</span>
             </label> : null}
+            {operationChosen ? <>
             <label className="font-semibold text-slate-800">Amount (up to {money(remaining)})
-              <input className="mt-1 min-h-11 w-full rounded-lg border border-slate-400 bg-white px-3" type="number" min="0.01" max={remaining} step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} required />
+              <input className="mt-1 min-h-11 w-full rounded-lg border border-slate-400 bg-white px-3" type="number" min="0.01" max={remaining} step="0.01" value={amount} onChange={(event) => { setAmount(event.target.value); setConfirmed(false); }} required />
             </label>
             {kind === "refund" ? <>
               <label className="font-semibold text-slate-800">How was it returned?
-                <select className="mt-1 min-h-11 w-full rounded-lg border border-slate-400 bg-white px-3" value={refundMethod} onChange={(event) => setRefundMethod(event.target.value)}><option value="cash">Cash</option><option value="mpesa">M-PESA</option></select>
+                <select className="mt-1 min-h-11 w-full rounded-lg border border-slate-400 bg-white px-3" value={refundMethod} onChange={(event) => { setRefundMethod(event.target.value); setConfirmed(false); }}><option value="cash">Cash</option><option value="mpesa">M-PESA</option></select>
               </label>
               <label className="font-semibold text-slate-800">Date money was returned
-                <input className="mt-1 min-h-11 w-full rounded-lg border border-slate-400 bg-white px-3" type="date" min={selectedPayment?.received_date} max={todayInNairobi()} value={effectiveDate} onChange={(event) => setEffectiveDate(event.target.value)} required />
+                <input className="mt-1 min-h-11 w-full rounded-lg border border-slate-400 bg-white px-3" type="date" min={selectedPayment?.received_date} max={todayInNairobi()} value={effectiveDate} onChange={(event) => { setEffectiveDate(event.target.value); setConfirmed(false); }} required />
               </label>
             </> : null}
             <label className="font-semibold text-slate-800 sm:col-span-2">Reason
-              <textarea className="mt-1 min-h-20 w-full rounded-lg border border-slate-400 bg-white p-3" maxLength={300} value={reason} onChange={(event) => setReason(event.target.value)} required />
+              <textarea className="mt-1 min-h-20 w-full rounded-lg border border-slate-400 bg-white p-3" maxLength={300} value={reason} onChange={(event) => { setReason(event.target.value); setConfirmed(false); }} required />
             </label>
-            <label className="flex items-start gap-2 font-semibold text-slate-800 sm:col-span-2"><input className="mt-1" type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} />{kind === "refund" ? "I confirm the customer received this refund." : "I confirm this was a recording mistake and no money was returned."}</label>
-            <button className="min-h-11 rounded-lg bg-[#005AAB] px-5 font-bold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#005AAB] disabled:opacity-60" type="submit">{save.isSaving || refundSave.isSaving ? "Saving…" : kind === "refund" ? "Save refund" : "Save correction"}</button>
+            {validAmount ? <div className="rounded-lg border border-slate-300 bg-white p-3 text-sm sm:col-span-2" role="status" aria-label="Amounts after this save">
+              <p className="font-bold">{kind === "entry_error" ? "Entry correction: the service charge stays the same." : refundPurpose === "service_refund" ? "Service refund: the service charge decreases." : "Excess payment return: the corrected charge stays the same."}</p>
+              <p className="mt-2">Net charge: {money(previewCharge)} · Money retained: {money(previewRetained)}</p>
+              <p>Customer still owes: {money(Math.max(0, previewCharge - previewRetained))} · Refund still due: {money(Math.max(0, previewRetained - previewCharge))}</p>
+            </div> : null}
+            <label className="flex items-start gap-2 font-semibold text-slate-800 sm:col-span-2"><input className="mt-1" type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} />{kind === "refund" ? `I confirm the customer received this ${validAmount ? money(amount) + " " : ""}${refundPurpose === "service_refund" ? "service refund" : "excess payment return"}.` : "I confirm this amount was never received and no money was returned."}</label>
+            <button className="min-h-11 rounded-lg bg-[#005AAB] px-5 font-bold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#005AAB] disabled:opacity-60" type="submit" disabled={!confirmed || !validAmount}>{save.isSaving || refundSave.isSaving ? "Saving…" : kind === "refund" ? "Save refund" : "Save entry correction"}</button>
+            </> : <p className="text-sm text-slate-700 sm:col-span-2">Choose the action above to enter its amount and confirmation.</p>}
           </fieldset>
           {error ? <p role="alert" className="mt-3 text-sm font-semibold text-red-800">{error}</p> : null}
           {message ? <p role="status" className="mt-3 text-sm font-semibold text-green-800">{message}</p> : null}

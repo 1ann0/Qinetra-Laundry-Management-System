@@ -1,6 +1,6 @@
 # Qinetra pilot handover
 
-Updated 28 September 2026. Start here when continuing in a fresh task.
+Updated 29 September 2026. Start here when continuing in a fresh task.
 
 ## Objective and working rules
 
@@ -14,7 +14,7 @@ Use the current worktree as the source of truth. Preserve unfinished changes. Do
 - Keep Render/Supabase for now. Cloudflare/OpenNext is a separate fictional-data qualification; Railway remains an alternative. No paid resources, framework replacement, database provisioning, push or deployment was performed.
 - S0 is locally verified: Next.js/eslint-config-next 16.3.6, compatible lockfile fixes, 50 tests, lint/build, audit result and browser evidence in [the patch record](security-patch-check.md). Product, architecture, data and security documents exist and explicitly distinguish requirements from implemented controls.
 - Browser smoke initially encountered receipt-load errors in the old shared-connection SQLite fixture. The fresh temporary-file fixture passed employee receipt loading, a KES 100 fictional payment and refresh with one payment/KES 200 balance. Broader old-tab/reauthentication review remains S1c/C3; do not claim it is fixed.
-- Current local fixture: ignored `tmp/security-patch-fixture.py`, port 8000, frontend at 3100. It has QL-NAV-TEST-001 at KES 300 total, KES 100 paid and KES 200 balance. The old receipt was saved as ignored `tmp/fictional-receipt-before-patch-fixture.json` before stopping its disposable API. This fresh helper has no lost-reply injection; use the original helper only for that scenario.
+- Current local fixture: ignored `tmp/refund-fixture.py`, port 8000, frontend at 3100. Receipt 1 preserves the student's entry correction; receipt 3 is the completed explicit-refund developer check. Fresh student receipt **QL-20260929-002**, `/orders/4`, starts at KES 300 charged/retained, Collected. Follow [the current refund steps](refund-check.md#continue-with-the-currently-running-fixture); do not reset the old audit history. Refund-form choice/preview/retry checks passed with 52 frontend tests, lint and build. Expired-session reauthentication needed a receipt refresh and remains a launch-review item.
 - Truthful refunds are implemented locally; use [the refund check record](refund-check.md) for verification status and the new fictional fixture. Student acceptance remains pending. Preserve the existing contact-correction backend draft and isolate its completion separately. The launch security/data/hosting/trial gates are not complete.
 
 ## Completed local increment: recover rejected saves
