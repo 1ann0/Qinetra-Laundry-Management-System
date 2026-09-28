@@ -26,7 +26,7 @@ export default function QuantityCorrection({ order, onUpdated }) {
   const currentLineTotal = Number(line?.line_total ?? order.total_price);
   const estimatedTotal = Number(order.total_price) - currentLineTotal + Number(quantity) * unitPrice - (line ? Number(discount) : 0);
 
-  if ((!kgLines.length && !legacyWash) || ["collected", "cancelled"].includes(order.status)) return null;
+  if ((!kgLines.length && !legacyWash) || order.status === "cancelled") return null;
 
   function finish(updatedOrder) {
     onUpdated(updatedOrder);
@@ -55,8 +55,8 @@ export default function QuantityCorrection({ order, onUpdated }) {
       setError("Enter a discount below the new service subtotal.");
       return;
     }
-    if (!Number.isFinite(estimatedTotal) || estimatedTotal < Number(order.amount_paid)) {
-      setError("The new total is below money already paid. Correct or refund the payment first.");
+    if (!Number.isFinite(estimatedTotal) || estimatedTotal < Number(order.service_refunds)) {
+      setError("The new total cannot be below service refunds already returned.");
       return;
     }
     if (!reason.trim() || !confirmed) {
@@ -91,6 +91,7 @@ export default function QuantityCorrection({ order, onUpdated }) {
       <summary className="cursor-pointer font-bold text-[#005AAB]">Owner: correct billed kg</summary>
       <form className="mt-4" onSubmit={submit}>
         <p className="text-sm text-slate-700">This changes the price using the rate saved on this order. Clothing counts and condition notes stay as recorded. Check them separately if needed.</p>
+        {estimatedTotal - Number(order.service_refunds) < Number(order.amount_paid) ? <p className="mt-2 font-semibold text-amber-900">This correction will leave money due back to the customer. Record Return excess payment after returning it.</p> : null}
         <fieldset disabled={save.isSaving || Boolean(save.pending) || !save.ready} className="mt-4 grid gap-4 sm:grid-cols-2">
           {kgLines.length > 1 ? <label className="font-semibold text-slate-800 sm:col-span-2">Service
             <select className="mt-1 min-h-11 w-full rounded-lg border border-slate-400 bg-white px-3" value={lineId || ""} onChange={(event) => {

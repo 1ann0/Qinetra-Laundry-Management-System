@@ -58,7 +58,7 @@ The live metadata above is a dated read-only observation. Recheck configuration 
 | ID | Small outcome | Start / approval status | Main code or configuration | Exit evidence |
 | --- | --- | --- | --- | --- |
 | S0 | Patch affected frontend dependencies | Locally verified 28 September; not deployed | frontend package manifests/lockfile and patch check record | 50 tests, lint/build and ordinary browser smoke passed; retain the broader session-recovery review |
-| C1 | Truthful owner refunds and payment corrections | Already approved; next product increment | backend models/schemas/routes/logic/migration; receipt, order, Finance/export views | Atomic monetary and custody invariants; replay/concurrency/migration tests; student browser acceptance |
+| C1 | Truthful owner refunds and payment corrections | Locally verified; student acceptance pending; not deployed | backend models/schemas/routes/migration 021; receipt, order, Finance/export views | [Refund evidence and exact checks](docs/refund-check.md); 146 backend and 52 frontend checks, lint/build, refund browser recovery and reporting |
 | C2 | Complete essential customer contact correction | Finish existing draft in its own reviewed unit | migration 020, customer correction routes and owner UI | Shared-number/name-only/stale/retry tests; old orders and attribution preserved |
 | S1a | Login and request protection | Review bounded plan after C1/C2; any urgent security finding may be moved ahead | auth/login, schemas, security tests | Throttling, safe password bounds, generic errors, direct API permissions and disabled-user cases |
 | S1b | Safe exports and private responses | Separate reviewed unit | CSV route, response policy, Next/API configuration | Spreadsheet text stays literal; authenticated responses are not cached publicly; headers do not break the app |
@@ -82,7 +82,7 @@ The live metadata above is a dated read-only observation. Recheck configuration 
 
 S1 is three implementation reviews, not a combined security rewrite. O1a/O1b and R1 likewise split into small changes when implementing. S2 is not silently required to launch: S1c must assess the JavaScript-readable token risk and existing controls; an unacceptable finding changes the release decision explicitly. A1/G1/G2 can be chosen by demonstrated benefit after the pilot; their ordering is not a promise that every growth feature will be built.
 
-## C1: truthful refunds — next approved product work
+## C1: truthful refunds — local implementation and acceptance
 
 - Owner-only partial/full service refunds, including after collection, with original payment, reason, actual returned date/method and confirmation that money really returned.
 - Keep original payment and price history. A service refund reduces charge and retained money. Returning excess payment reduces retained money without reducing the charge again.

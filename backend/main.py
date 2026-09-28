@@ -1775,10 +1775,10 @@ def record_order_payment(
 def prepare_payment(order, payment, current_user):
     """Validate a receipt of money without committing it separately from its order."""
 
-    if order.status in {"collected", "cancelled"}:
+    if order.status == "cancelled" or (order.status == "collected" and current_user.role != "owner"):
         raise HTTPException(
             status_code=400,
-            detail="Payments cannot be added after an order is collected or cancelled",
+            detail="Only the owner can settle a corrected balance after collection; cancelled orders cannot take payments",
         )
 
     if not payment.confirmed:
@@ -1850,8 +1850,10 @@ def adjust_order_payment(
     saved = find_saved_order(db, models.PaymentAdjustment, idempotency_key, fingerprint, current_user.id)
     if saved is not None:
         return saved
-    if order.status in {"collected", "cancelled"}:
-        raise HTTPException(400, "Correct this order's status before changing its payment")
+    if adjustment.kind == "refund":
+        raise HTTPException(400, "Open the current refund form and choose the refund purpose before saving")
+    if order.status == "cancelled":
+        raise HTTPException(400, "A cancelled order's payment cannot be corrected")
 
     payment = db.query(models.Payment).filter(
         models.Payment.id == payment_id,
@@ -1894,6 +1896,58 @@ def adjust_order_payment(
         request_hash=fingerprint,
         confirmed_by_id=current_user.id,
         confirmed_by_username=current_user.username,
+    ))
+    saved = commit_once(db, models.PaymentAdjustment, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+    db.refresh(order)
+    return order
+
+
+@app.post("/orders/{order_id}/refunds", response_model=schemas.OrderOut)
+def refund_order_payment(
+    order_id: int,
+    refund: schemas.RefundCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+    *,
+    idempotency_key: Annotated[UUID, Header()],
+):
+    fingerprint = request_fingerprint(f"refund:{order_id}", refund)
+    lock_save_reference(db, idempotency_key)
+    saved = find_saved_order(db, models.PaymentAdjustment, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+    order = (db.query(models.Order).filter(models.Order.id == order_id)
+             .populate_existing().with_for_update().first())
+    if order is None:
+        raise HTTPException(404, "Order not found")
+    db.expire(order, ["payments", "payment_adjustments"])
+    if not refund.confirmed:
+        raise HTTPException(400, "Confirm that the customer received the money before saving")
+    payment = next((item for item in order.payments if item.id == refund.payment_id), None)
+    if payment is None or payment.payment_method not in {"cash", "mpesa"}:
+        raise HTTPException(404, "Confirmed payment not found for this order")
+    already_adjusted = sum(
+        (Decimal(str(item.amount)) for item in order.payment_adjustments if item.payment_id == payment.id),
+        Decimal("0"),
+    )
+    if refund.amount > Decimal(str(payment.amount)) - already_adjusted:
+        raise HTTPException(400, "Refund exceeds the money remaining on the selected payment")
+    if refund.effective_date < payment.received_date or refund.effective_date > get_nairobi_today():
+        raise HTTPException(400, "Refund date must be between the payment date and today")
+    # A service refund changes the charge; returning an overpayment must not
+    # reduce it a second time. Both leave the clothing's custody unchanged.
+    available = order.net_charge if refund.refund_purpose == "service_refund" else order.refund_due
+    if refund.amount > available:
+        detail = "remaining charge" if refund.refund_purpose == "service_refund" else "refund due"
+        raise HTTPException(400, f"Refund exceeds the {detail} of KES {available}")
+    db.add(models.PaymentAdjustment(
+        order_id=order.id, payment_id=payment.id, kind="refund",
+        refund_purpose=refund.refund_purpose, refund_method=refund.refund_method,
+        amount=refund.amount, reason=refund.reason, effective_date=refund.effective_date,
+        request_key=str(idempotency_key), request_hash=fingerprint,
+        confirmed_by_id=current_user.id, confirmed_by_username=current_user.username,
     ))
     saved = commit_once(db, models.PaymentAdjustment, idempotency_key, fingerprint, current_user.id)
     if saved is not None:
@@ -2032,8 +2086,8 @@ def correct_order_quantity(
     saved = find_saved_order(db, models.OrderCorrection, idempotency_key, fingerprint, current_user.id)
     if saved is not None:
         return saved
-    if order.status in {"collected", "cancelled"}:
-        raise HTTPException(400, "Correct the order stage before changing its quantity")
+    if order.status == "cancelled":
+        raise HTTPException(400, "A cancelled order's quantity cannot be corrected")
     if not correction.confirmed:
         raise HTTPException(400, "Confirm the quantity and new price before saving")
 
@@ -2065,8 +2119,8 @@ def correct_order_quantity(
     if new_discount >= new_subtotal:
         raise HTTPException(400, "Discount must be less than the new service subtotal")
     new_total = logic.money(Decimal(str(order.total_price)) - old_line_total + new_subtotal - new_discount)
-    if new_total < order.amount_paid:
-        raise HTTPException(400, "The new total is below money already paid. Correct or refund the payment first")
+    if new_total < order.service_refunds:
+        raise HTTPException(400, "The new total cannot be below service refunds already returned")
     if new_quantity == old_quantity:
         raise HTTPException(400, "Enter a different kg quantity before saving")
 
@@ -2454,6 +2508,9 @@ def financial_summary(
             (Decimal(str(order.total_price)) for order in orders),
             Decimal("0"),
         ),
+        service_refunds=sum((order.service_refunds for order in orders), Decimal("0")),
+        net_charge=sum((order.net_charge for order in orders), Decimal("0")),
+        refund_due=sum((order.refund_due for order in orders), Decimal("0")),
         cash_received=cash_received,
         mpesa_received=mpesa_received,
         total_received=cash_received + mpesa_received,
@@ -2537,7 +2594,8 @@ def export_orders_csv(db: Session = Depends(get_db), current_user: models.User =
         "Amount Paid", "Entry Corrections", "Refunds Returned",
         "Balance Due", "Payment Status", "Payment Methods",
         "Payment Received Dates", "Status", "Recorded At", "Ready At",
-        "Collected At", "Order Correction History", "Payment Adjustment History"
+        "Collected At", "Order Correction History", "Payment Adjustment History",
+        "Service Refunds", "Net Charge", "Refund Due"
     ])
     for order in orders:
         service_summary = (
@@ -2574,6 +2632,7 @@ def export_orders_csv(db: Session = Depends(get_db), current_user: models.User =
         adjustment_history = "; ".join(
             f"#{item.id} {item.kind}: {format_money(item.amount)} on "
             f"{item.effective_date}; {item.confirmed_by_username}; {item.reason}"
+            + (f"; purpose={item.refund_purpose or 'not recorded'}; method={item.refund_method}" if item.kind == "refund" else "")
             for item in order.payment_adjustments
         )
         writer.writerow([
@@ -2582,7 +2641,7 @@ def export_orders_csv(db: Session = Depends(get_db), current_user: models.User =
             format_money(order.discount_amount), order.discount_reason or "",
             order.discounted_by_username or "",
             format_money(order.total_price),
-            format_money(0 if order.status == "cancelled" else order.total_price),
+            format_money(order.net_charge),
             format_money(order.amount_paid),
             format_money(entry_corrections), format_money(refunds_returned),
             format_money(order.balance_due),
@@ -2590,6 +2649,7 @@ def export_orders_csv(db: Session = Depends(get_db), current_user: models.User =
             order.status,
             order.created_at, order.ready_at, order.collected_at,
             correction_history, adjustment_history,
+            format_money(order.service_refunds), format_money(order.net_charge), format_money(order.refund_due),
         ])
     output.seek(0)
 

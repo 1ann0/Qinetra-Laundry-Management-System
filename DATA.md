@@ -15,7 +15,7 @@ Approved requirements, 28 September 2026. Production provisioning, backup automa
 | Correction/refund | Attributed event, reason and original record; distinguish wrong entry, actual money returned and service-charge reduction |
 | Save reference | Binds an accepted request to its result; retained while an outcome is unknown |
 
-Use decimal money and explicit Nairobi business dates. Booked value and receipts can fall on different dates. Income/cash movement is not a profit calculation. After truthful refunds are implemented: debt = max(net charge - net payments, 0), refund due = max(net payments - net charge, 0). Do not infer the purpose of old refund records.
+Use decimal money and explicit Nairobi business dates. Booked value and receipts can fall on different dates. Income/cash movement is not a profit calculation. The local refund increment derives debt = max(net charge - net payments, 0), refund due = max(net payments - net charge, 0). Service refunds reduce the charge; excess-payment returns do not. Old refunds keep an unknown purpose, with no guessed charge reduction. See [refund meanings and checks](docs/refund-check.md).
 
 ## Environments and access
 

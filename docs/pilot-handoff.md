@@ -15,7 +15,7 @@ Use the current worktree as the source of truth. Preserve unfinished changes. Do
 - S0 is locally verified: Next.js/eslint-config-next 16.3.6, compatible lockfile fixes, 50 tests, lint/build, audit result and browser evidence in [the patch record](security-patch-check.md). Product, architecture, data and security documents exist and explicitly distinguish requirements from implemented controls.
 - Browser smoke initially encountered receipt-load errors in the old shared-connection SQLite fixture. The fresh temporary-file fixture passed employee receipt loading, a KES 100 fictional payment and refresh with one payment/KES 200 balance. Broader old-tab/reauthentication review remains S1c/C3; do not claim it is fixed.
 - Current local fixture: ignored `tmp/security-patch-fixture.py`, port 8000, frontend at 3100. It has QL-NAV-TEST-001 at KES 300 total, KES 100 paid and KES 200 balance. The old receipt was saved as ignored `tmp/fictional-receipt-before-patch-fixture.json` before stopping its disposable API. This fresh helper has no lost-reply injection; use the original helper only for that scenario.
-- Next product increment remains truthful refunds below. Preserve the existing contact-correction backend draft and isolate its completion separately. The launch security/data/hosting/trial gates are not complete.
+- Truthful refunds are implemented locally; use [the refund check record](refund-check.md) for verification status and the new fictional fixture. Student acceptance remains pending. Preserve the existing contact-correction backend draft and isolate its completion separately. The launch security/data/hosting/trial gates are not complete.
 
 ## Completed local increment: recover rejected saves
 
@@ -28,7 +28,7 @@ Use the current worktree as the source of truth. Preserve unfinished changes. Do
 - Save recovery is isolated in local commit `d6559aa`, `Recover rejected saves without losing uncertain requests`. The older contact-correction draft remains unstaged. On 25 September the student confirmed both two-tab rejection/reload/resubmission and lost-reply/refresh/retry. Browser inspection verified one 4 to 5 kg "lost reply test" event, KES 750 and no retry notice; the fault flag was consumed. Explain-back remains pending. No production deployment was performed; the 22 September public Render `/docs` request timed out.
 - The original `backend/venv` points to a removed Python installation. The test runner accepts `-PythonExecutable`; this session uses the working ignored `tmp/test-venv/Scripts/python.exe`. Docker was verified as 29.8.0 after the user started it. Sandbox access to its named pipe required an approved escalation.
 
-## Next approved increment: truthful refunds
+## Current increment: truthful refunds
 
 - Owner only. Support partial/full service refunds after collection without changing physical order status. Require a reason, original payment, method, actual return date and confirmation that money was returned.
 - Keep original payments/prices in history. A service refund reduces the charge as well as retained money; returning excess payment does not reduce the charge again.
@@ -45,7 +45,7 @@ The preceding feature commit was `89f07c2` (wrong customer on a saved ticket); t
 
 ## Remaining release work, in order
 
-1. Complete truthful refunds, customer contact editing and the approved discount policy as separate increments.
+1. Complete student refund acceptance, then customer contact editing and the approved discount policy as separate increments. Refund implementation and agent verification are recorded in refund-check.md.
 2. Close launch security gaps, ordinary session/read recovery and remaining staff/clothing/money scenarios. Reconcile existing Finance/export figures and lookup. Extra work lists/pagination/filtered exports follow the trial unless a concrete failure requires them earlier.
 3. Prepare a separate Supabase project within the free allowance; rehearse full migrations and restricted runtime access, approved catalogue/accounts and opening records. Do not silently reuse the old schema or spend money if no free slot is available.
 4. Prove restore targets, database-aware readiness, alert delivery/recovery, compatible release rollback and the receipt reconciliation procedure. Qualify the frontend and check free-plan/commercial-use limits.
@@ -57,7 +57,7 @@ Subscriptions, Google OAuth, automated M-PESA prompts, multi-business onboarding
 
 ## Browser check for this increment
 
-The agent-run and student browser sequences below are complete as of 25 September. Truthful refunds are the next approved increment; explain-back remains on the learning backlog. Branch: `codex/transaction-save-safety`. Keep the older contact-correction draft separate from the save-recovery commit. Check the development journal and current Git status before continuing. Check server availability before restarting the disposable fixture and frontend. The built frontend uses local API port 8000; the fixture supports `QLMS_REVIEW_PORT=8000` and uses in-memory fictional data. Never substitute the production database for these tests.
+The historical save-recovery browser sequences below are complete as of 25 September; explain-back remains on the learning backlog. Branch: `codex/transaction-save-safety`. The current refund checks use a different temporary-file fixture described in refund-check.md, including its already-tested values. Keep the older contact-correction draft separate. Check the development journal, Git status and server availability before continuing. Never substitute the production database for a disposable test fixture.
 
 Use disposable local data only. Sign in as the fixture owner and open the same received Wash & Fold ticket in two tabs. Save a kg correction in the first tab. Submit a different correction from the older second tab. It must say the change was not saved, show a reload instruction, and leave no stuck Retry previous save notice. Reload, review the new values and save again. Confirm one audit event per accepted correction and no event for the rejection. Separately retain the lost-reply/retry behavior.
 

@@ -18,6 +18,28 @@ function savedOrder(overrides = {}) {
   };
 }
 
+test("service refund receipt preserves custody and distinguishes charge from returned cash", () => {
+  const message = buildOrderReceiptMessage(savedOrder({
+    total_price: 1000, service_refunds: 200, net_charge: 800,
+    amount_paid: 800, balance_due: 0, refund_due: 0, status: "collected",
+    payment_adjustments: [{ kind: "refund", refund_purpose: "service_refund", amount: 200 }],
+  }), "Test customer");
+  assert.match(message, /Total: KES 1,000/);
+  assert.match(message, /Net charge: KES 800/);
+  assert.match(message, /Paid: KES 800/);
+  assert.match(message, /Refund returned: KES 200/);
+  assert.match(message, /Balance: KES 0/);
+  assert.match(message, /Status: Collected/);
+});
+
+test("receipt calls out excess payment owed back instead of implying a customer debt", () => {
+  const message = buildOrderReceiptMessage(savedOrder({
+    total_price: 150, net_charge: 150, amount_paid: 300, balance_due: 0, refund_due: 150,
+  }), "Test customer");
+  assert.match(message, /Refund due to customer: KES 150/);
+  assert.match(message, /Balance: KES 0/);
+});
+
 test("mixed receipt includes saved tally and garment condition details", () => {
   const message = buildOrderReceiptMessage(savedOrder({
     service_lines: [

@@ -21,6 +21,7 @@ export default function PaymentCorrections({ order, isOwner, onUpdated }) {
   );
   const [kind, setKind] = useState("entry_error");
   const [refundMethod, setRefundMethod] = useState("cash");
+  const [refundPurpose, setRefundPurpose] = useState("service_refund");
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
   const [effectiveDate, setEffectiveDate] = useState(todayInNairobi);
@@ -28,12 +29,16 @@ export default function PaymentCorrections({ order, isOwner, onUpdated }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const save = usePendingSave(`/orders/${order.id}/payments/${paymentId}/adjustments`);
+  // Keep the old endpoint available for replay of an accepted pre-upgrade save.
+  const refundSave = usePendingSave(`/orders/${order.id}/refunds`);
   const selectedPayment = order.payments.find((payment) => payment.id === Number(paymentId));
-  const remaining = selectedPayment
+  const paymentRemaining = selectedPayment
     ? Number(selectedPayment.amount) - (order.payment_adjustments || [])
       .filter((item) => item.payment_id === selectedPayment.id)
       .reduce((total, item) => total + Number(item.amount), 0)
     : 0;
+  const remaining = kind === "refund" ? Math.min(paymentRemaining,
+    Number(refundPurpose === "service_refund" ? order.net_charge : order.refund_due)) : paymentRemaining;
 
   if (!isOwner && !(order.payment_adjustments || []).length) return null;
 
@@ -58,23 +63,29 @@ export default function PaymentCorrections({ order, isOwner, onUpdated }) {
       return;
     }
     try {
-      finish(await save.save({
+      finish(await (kind === "refund" ? refundSave.save({
+        payment_id: selectedPayment.id,
+        refund_purpose: refundPurpose,
+        refund_method: refundMethod,
+        amount: Number(amount), reason: reason.trim(), confirmed: true,
+        effective_date: effectiveDate,
+      }) : save.save({
         kind,
-        refund_method: kind === "refund" ? refundMethod : null,
+        refund_method: null,
         amount: Number(amount),
         reason: reason.trim(),
         confirmed: true,
-        effective_date: kind === "refund" ? effectiveDate : selectedPayment.received_date,
-      }));
+        effective_date: selectedPayment.received_date,
+      })));
     } catch (saveError) {
       setError(getUserMessage(saveError, "QLMS could not confirm the correction. Use Retry previous save."));
     }
   }
 
-  async function retry() {
+  async function retry(pendingSave) {
     setError("");
     try {
-      finish(await save.retry());
+      finish(await pendingSave.retry());
     } catch (saveError) {
       setError(getUserMessage(saveError));
     }
@@ -89,6 +100,7 @@ export default function PaymentCorrections({ order, isOwner, onUpdated }) {
             <li className="rounded-xl border border-slate-200 bg-slate-50 p-3" key={item.id}>
               <strong>{item.kind === "refund" ? "Money returned" : "Entry corrected"}: {money(item.amount)}</strong>
               {item.kind === "refund" ? ` via ${item.refund_method === "mpesa" ? "M-PESA" : "cash"}` : ""}
+              {item.kind === "refund" ? <p>{item.refund_purpose === "service_refund" ? "Service refund — charge reduced" : item.refund_purpose === "excess_payment" ? "Excess payment returned — charge unchanged" : "Purpose not recorded on this older refund. Owner review needed."}</p> : null}
               {` · ${item.effective_date} · Payment #${item.payment_id} · ${item.confirmed_by_username}`}
               {isOwner ? <p className="mt-1">Reason: {item.reason}</p> : null}
             </li>
@@ -96,11 +108,15 @@ export default function PaymentCorrections({ order, isOwner, onUpdated }) {
         </ul>
       ) : <p className="mt-2 text-sm text-slate-600">No corrections or refunds recorded.</p>}
 
-      {isOwner && order.payments.some((payment) => payment.payment_method !== "legacy") && !["collected", "cancelled"].includes(order.status) ? (
+      {isOwner ? <>
+        <PendingSaveNotice {...save} onRetry={() => retry(save)} />
+        <PendingSaveNotice {...refundSave} onRetry={() => retry(refundSave)} />
+      </> : null}
+      {isOwner && order.payments.some((payment) => payment.payment_method !== "legacy") && order.status !== "cancelled" ? (
         <form className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-4" onSubmit={submit}>
           <h4 className="font-bold text-slate-900">Owner: correct a payment</h4>
-          <p className="mt-1 text-sm text-slate-700">Use Entry mistake when the recorded amount was wrong. Use Money returned only after the customer receives a refund. The original payment stays in history.</p>
-          <fieldset disabled={save.isSaving || Boolean(save.pending) || !save.ready} className="mt-4 grid gap-4 sm:grid-cols-2">
+          <p className="mt-1 text-sm text-slate-700">Use Entry mistake when the recorded amount was wrong. Use Money returned only after the customer receives a refund. The original payment and clothing stage stay in history.</p>
+          <fieldset disabled={save.isSaving || refundSave.isSaving || Boolean(save.pending) || Boolean(refundSave.pending) || !save.ready || !refundSave.ready} className="mt-4 grid gap-4 sm:grid-cols-2">
             <label className="font-semibold text-slate-800">Payment
               <select className="mt-1 min-h-11 w-full rounded-lg border border-slate-400 bg-white px-3" value={paymentId} onChange={(event) => { setPaymentId(Number(event.target.value)); setAmount(""); }}>
                 {order.payments.filter((payment) => payment.payment_method !== "legacy").map((payment) => (
@@ -114,6 +130,13 @@ export default function PaymentCorrections({ order, isOwner, onUpdated }) {
                 <option value="refund">Money returned to customer</option>
               </select>
             </label>
+            {kind === "refund" ? <label className="font-semibold text-slate-800 sm:col-span-2">Refund purpose
+              <select className="mt-1 min-h-11 w-full rounded-lg border border-slate-400 bg-white px-3" value={refundPurpose} onChange={(event) => { setRefundPurpose(event.target.value); setConfirmed(false); }}>
+                <option value="service_refund">Service refund — reduce the charge</option>
+                <option value="excess_payment">Return excess payment — keep the corrected charge</option>
+              </select>
+              <span className="mt-1 block text-sm font-normal">Charge: {money(order.net_charge)}. Excess payment due back: {money(order.refund_due)}.</span>
+            </label> : null}
             <label className="font-semibold text-slate-800">Amount (up to {money(remaining)})
               <input className="mt-1 min-h-11 w-full rounded-lg border border-slate-400 bg-white px-3" type="number" min="0.01" max={remaining} step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} required />
             </label>
@@ -129,9 +152,8 @@ export default function PaymentCorrections({ order, isOwner, onUpdated }) {
               <textarea className="mt-1 min-h-20 w-full rounded-lg border border-slate-400 bg-white p-3" maxLength={300} value={reason} onChange={(event) => setReason(event.target.value)} required />
             </label>
             <label className="flex items-start gap-2 font-semibold text-slate-800 sm:col-span-2"><input className="mt-1" type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} />{kind === "refund" ? "I confirm the customer received this refund." : "I confirm this was a recording mistake and no money was returned."}</label>
-            <button className="min-h-11 rounded-lg bg-[#005AAB] px-5 font-bold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#005AAB] disabled:opacity-60" type="submit">{save.isSaving ? "Saving…" : "Save correction"}</button>
+            <button className="min-h-11 rounded-lg bg-[#005AAB] px-5 font-bold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#005AAB] disabled:opacity-60" type="submit">{save.isSaving || refundSave.isSaving ? "Saving…" : kind === "refund" ? "Save refund" : "Save correction"}</button>
           </fieldset>
-          <PendingSaveNotice {...save} onRetry={retry} />
           {error ? <p role="alert" className="mt-3 text-sm font-semibold text-red-800">{error}</p> : null}
           {message ? <p role="status" className="mt-3 text-sm font-semibold text-green-800">{message}</p> : null}
         </form>

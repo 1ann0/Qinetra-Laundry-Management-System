@@ -508,11 +508,31 @@ class PaymentAdjustmentCreate(BaseModel):
         return self
 
 
+class RefundCreate(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    payment_id: int = Field(gt=0)
+    refund_purpose: Literal["service_refund", "excess_payment"]
+    refund_method: Literal["cash", "mpesa"]
+    amount: Decimal = Field(gt=0, max_digits=10, decimal_places=2, allow_inf_nan=False)
+    reason: str = Field(min_length=1, max_length=300)
+    effective_date: date
+    confirmed: bool = Field(strict=True)
+
+    @field_validator("reason")
+    @classmethod
+    def clean_reason(cls, value: str):
+        if not value.strip():
+            raise ValueError("Explain why money was returned")
+        return value.strip()
+
+
 class PaymentAdjustmentOut(BaseModel):
     id: int
     payment_id: int
     kind: str
     refund_method: Optional[str]
+    refund_purpose: Optional[str]
     amount: float
     reason: str
     effective_date: date
@@ -662,6 +682,9 @@ class OrderOut(BaseModel):
     collected_at: Optional[datetime]
     service_lines: list[OrderServiceLineOut] = Field(default_factory=list)
     amount_paid: float
+    service_refunds: float
+    net_charge: float
+    refund_due: float
     balance_due: float
     payment_status: str
     payments: list[PaymentOut] = Field(default_factory=list)
@@ -778,6 +801,9 @@ class FinancialSummary(BaseModel):
     gross_order_value: float
     discounts_given: float
     order_value: float
+    service_refunds: float
+    net_charge: float
+    refund_due: float
     cash_received: float
     mpesa_received: float
     total_received: float

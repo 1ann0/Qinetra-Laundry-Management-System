@@ -147,16 +147,36 @@ class Order(Base):
         return payments_total - adjustments_total
 
     @property
-    def balance_due(self):
+    def service_refunds(self):
+        return sum(
+            (Decimal(str(item.amount)) for item in self.payment_adjustments
+             if item.kind == "refund" and item.refund_purpose == "service_refund"),
+            Decimal("0"),
+        )
+
+    @property
+    def net_charge(self):
         if self.status == "cancelled":
             return Decimal("0")
-        balance = Decimal(str(self.total_price)) - self.amount_paid
+        return Decimal(str(self.total_price)) - self.service_refunds
+
+    @property
+    def refund_due(self):
+        return max(self.amount_paid - self.net_charge, Decimal("0"))
+
+    @property
+    def balance_due(self):
+        balance = self.net_charge - self.amount_paid
         return max(balance, Decimal("0"))
 
     @property
     def payment_status(self):
         if self.status == "cancelled":
             return "cancelled"
+        if self.refund_due > 0:
+            return "refund_due"
+        if self.net_charge == 0:
+            return "settled"
         if self.amount_paid <= 0:
             return "unpaid"
         if self.balance_due > 0:
@@ -507,6 +527,11 @@ class PaymentAdjustment(Base):
             "OR (kind = 'refund' AND refund_method IN ('cash', 'mpesa'))",
             name="payment_adjustment_refund_method",
         ),
+        CheckConstraint(
+            "refund_purpose IS NULL OR (kind = 'refund' AND "
+            "refund_purpose IN ('service_refund', 'excess_payment'))",
+            name="payment_adjustment_refund_purpose",
+        ),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -514,6 +539,8 @@ class PaymentAdjustment(Base):
     payment_id = Column(Integer, ForeignKey("payments.id", ondelete="CASCADE"), nullable=False)
     kind = Column(String(20), nullable=False)
     refund_method = Column(String(20), nullable=True)
+    # NULL on older events means unknown; migration must not invent a purpose.
+    refund_purpose = Column(String(20), nullable=True)
     amount = Column(Numeric(10, 2), nullable=False)
     reason = Column(String(300), nullable=False)
     effective_date = Column(Date, nullable=False)

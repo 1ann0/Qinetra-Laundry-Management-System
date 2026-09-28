@@ -243,22 +243,19 @@ class OrderCorrectionTests(unittest.TestCase):
         self.assertEqual(Decimal(order.corrections[0].before_state["discount_amount"]), 50)
         self.assertEqual(Decimal(order.corrections[0].after_state["discount_amount"]), 75)
 
-    def test_quantity_cannot_create_an_overpayment_or_change_a_collected_order(self):
+    def test_quantity_correction_creates_refund_due_without_changing_custody(self):
         self.db.add(models.Payment(
             order_id=self.order.id, payment_method="cash", amount=280,
             received_date=self.order.order_date, confirmed_by_username="employee",
         ))
         self.db.commit()
-        with self.assertRaises(HTTPException) as overpaid:
-            self.correct_quantity(new_quantity=1)
-        self.assertEqual(overpaid.exception.status_code, 400)
-        self.db.rollback()
-        self.assertEqual(self.order.total_price, 300)
         self.order.status = "collected"
         self.db.commit()
-        with self.assertRaises(HTTPException) as collected:
-            self.correct_quantity()
-        self.assertEqual(collected.exception.status_code, 400)
+        order = self.correct_quantity(new_quantity=1)
+        self.assertEqual(order.total_price, 150)
+        self.assertEqual(order.refund_due, 130)
+        self.assertEqual(order.balance_due, 0)
+        self.assertEqual(order.status, "collected")
 
     def test_quantity_retry_and_stale_value_do_not_write_twice(self):
         body = schemas.OrderQuantityCorrectionCreate(

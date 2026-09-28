@@ -69,6 +69,8 @@ function getActionLabel(status) {
 }
 
 function getPaymentLabel(status) {
+  if (status === "settled") return "Settled";
+  if (status === "refund_due") return "Refund due to customer";
   if (status === "part_paid") return "Part paid";
   if (status === "paid") return "Paid";
   return "Not paid";
@@ -195,7 +197,7 @@ function OrderCard({
         <div>
           <p className="text-sm text-slate-500">{order.status === "cancelled" ? "Original order value" : "Order value"}</p>
           <p className="mt-1 font-semibold text-slate-900">
-            {formatKes(order.total_price)}
+            {formatKes(order.status === "cancelled" ? order.total_price : order.net_charge)}
           </p>
         </div>
         <div>

@@ -48,8 +48,13 @@ class PaymentCorrectionTests(unittest.TestCase):
     def correct(self, kind="entry_error", amount=100, **changes):
         body = dict(kind=kind, amount=amount, reason="Verified with shop receipt", confirmed=True)
         if kind == "refund":
-            body["refund_method"] = "mpesa"
+            body.pop("kind")
+            body.update(payment_id=self.payment.id, refund_method="mpesa",
+                        refund_purpose="service_refund", effective_date=main.get_nairobi_today())
         body.update(changes)
+        if kind == "refund":
+            return main.refund_order_payment(self.order.id, schemas.RefundCreate(**body),
+                                            self.db, self.owner, idempotency_key=uuid4())
         return main.adjust_order_payment(
             self.order.id, self.payment.id, schemas.PaymentAdjustmentCreate(**body),
             self.db, self.owner, idempotency_key=uuid4(),
@@ -80,7 +85,7 @@ class PaymentCorrectionTests(unittest.TestCase):
         self.assertEqual(new_day.refunds_sent, 50)
         self.assertEqual(new_day.net_cash_movement, -50)
 
-    def test_cannot_adjust_more_than_payment_or_adjust_after_collection(self):
+    def test_cannot_adjust_more_than_payment_and_collection_stays_truthful(self):
         self.correct(amount=250)
         with self.assertRaises(HTTPException) as excessive:
             self.correct(amount=51)
@@ -88,10 +93,10 @@ class PaymentCorrectionTests(unittest.TestCase):
         self.db.rollback()
         self.order.status = "collected"
         self.db.commit()
-        with self.assertRaises(HTTPException) as collected:
-            self.correct(amount=25)
-        self.assertEqual(collected.exception.status_code, 400)
-        self.assertEqual(self.db.query(models.PaymentAdjustment).count(), 1)
+        order = self.correct(amount=25)
+        self.assertEqual(order.status, "collected")
+        self.assertEqual(order.balance_due, 275)
+        self.assertEqual(self.db.query(models.PaymentAdjustment).count(), 2)
 
     def test_retry_keeps_one_event_and_rejects_changed_details(self):
         body = schemas.PaymentAdjustmentCreate(

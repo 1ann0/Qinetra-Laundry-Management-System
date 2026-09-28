@@ -493,10 +493,12 @@ function FinancialSnapshotContent() {
                   {summary.cancelled_orders} cancelled ticket{summary.cancelled_orders === 1 ? "" : "s"} excluded from order value.
                 </p>
               ) : null}
-              <p className="mt-4 text-sm text-slate-600">Final order value</p>
+              <p className="mt-4 text-sm text-slate-600">Order value before refunds</p>
               <p className="mt-1 text-xl font-bold text-[#005AAB]">
-                {formatKes(summary.order_value)}
+                  {formatKes(summary.order_value)}
               </p>
+              <p className="mt-3 text-sm text-slate-700">Current net charge: <strong>{formatKes(summary.net_charge)}</strong></p>
+              <p className="mt-1 text-sm text-slate-600">Service refunds: {formatKes(summary.service_refunds)}. Applies to orders booked in this period, including later refunds.</p>
               <dl className="mt-4 grid grid-cols-2 gap-4 border-t border-slate-200 pt-4 text-sm">
                 <div>
                   <dt className="text-slate-600">Before discounts</dt>
@@ -552,6 +554,7 @@ function FinancialSnapshotContent() {
                 {summary.outstanding_orders === 1 ? "order has" : "orders have"}{" "}
                 a balance remaining.
               </p>
+              <p className="mt-3 text-sm font-semibold text-amber-900">Refunds still due to these customers: {formatKes(summary.refund_due)}</p>
             </article>
           </div>
         </section>

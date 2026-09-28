@@ -581,7 +581,7 @@ export default function CustomerSearchPage() {
                           {getStatusLabel(order.status)}
                         </span>
                         <p className="mt-2 font-bold text-slate-900">
-                          {formatKes(order.total_price)}
+                          {formatKes(order.net_charge)}
                         </p>
                       </div>
                       <Link

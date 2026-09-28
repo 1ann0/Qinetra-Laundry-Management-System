@@ -312,6 +312,7 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
         adjustments_sql = (migration_directory / "016_add_payment_adjustments.sql").read_text()
         corrections_sql = (migration_directory / "017_add_order_corrections.sql").read_text()
         quantity_sql = (migration_directory / "018_allow_quantity_corrections.sql").read_text()
+        refund_sql = (migration_directory / "021_add_refund_purpose.sql").read_text()
         customer_sql = (migration_directory / "019_allow_order_customer_corrections.sql").read_text()
         with self.engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
             connection.exec_driver_sql(transaction_sql)
@@ -332,6 +333,8 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
             connection.exec_driver_sql(corrections_sql)
             connection.exec_driver_sql(quantity_sql)
             connection.exec_driver_sql(quantity_sql)
+            connection.exec_driver_sql(refund_sql)
+            connection.exec_driver_sql(refund_sql)
             connection.exec_driver_sql(customer_sql)
             connection.exec_driver_sql(customer_sql)
             rls_tables = connection.execute(text("""

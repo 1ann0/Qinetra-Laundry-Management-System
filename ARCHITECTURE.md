@@ -30,7 +30,7 @@ Frontend previews are advisory; the backend calculates accepted prices and autho
 
 Use one database transaction for a business action and its event history. Lock the affected records before concurrent balance/custody checks. Test these semantics against disposable PostgreSQL, not just SQLite. Do not change physical collection status to make a monetary correction possible.
 
-Planned interfaces include owner refund creation with net_charge/refund_due, authenticated discount-policy retrieval with owner-only changes, completed contact-correction history and database-readiness reporting. Existing endpoints remain compatible unless the increment explicitly documents and tests the migration.
+The local refund increment adds owner-only `POST /orders/{order_id}/refunds` and derived `net_charge`/`refund_due`. It preserves accepted legacy adjustment replays but rejects new ambiguous refunds on that older endpoint; see [refund acceptance and release rules](docs/refund-check.md). Planned interfaces still include authenticated discount-policy retrieval with owner-only changes, completed contact-correction history and database-readiness reporting.
 
 ## Deployment and release
 

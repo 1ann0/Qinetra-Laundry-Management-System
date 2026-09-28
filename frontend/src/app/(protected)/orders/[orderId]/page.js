@@ -54,6 +54,8 @@ function getStatusLabel(status) {
 }
 
 function getPaymentLabel(status) {
+  if (status === "settled") return "Settled";
+  if (status === "refund_due") return "Refund due to customer";
   if (status === "cancelled") return "Cancelled";
   if (status === "part_paid") return "Part paid";
   if (status === "paid") return "Paid";
@@ -1003,14 +1005,14 @@ export default function OrderDetailPage() {
           </div>
           <div>
             <p className="text-sm text-slate-500">
-              {order.status === "cancelled" ? "Original order total" : "Final order total"}
+              {order.status === "cancelled" ? "Original order total" : "Order total before refunds"}
             </p>
             <p className="mt-1 text-xl font-bold text-slate-900">
               {formatKes(order.total_price)}
             </p>
           </div>
           <div>
-            <p className="text-sm text-slate-500">Amount paid</p>
+            <p className="text-sm text-slate-500">Money retained</p>
             <p className="mt-1 text-xl font-bold text-slate-900">
               {formatKes(order.amount_paid)}
             </p>
@@ -1030,6 +1032,9 @@ export default function OrderDetailPage() {
               {getPaymentLabel(order.payment_status)}
             </p>
           </div>
+          <div><p className="text-sm text-slate-500">Net charge</p><p className="mt-1 text-xl font-bold text-slate-900">{formatKes(order.net_charge)}</p></div>
+          <div><p className="text-sm text-slate-500">Service refunds</p><p className="mt-1 text-xl font-bold text-slate-900">{formatKes(order.service_refunds)}</p></div>
+          <div><p className="text-sm text-slate-500">Refund due to customer</p><p className="mt-1 text-xl font-bold text-amber-900">{formatKes(order.refund_due)}</p></div>
         </div>
       </section>
 
@@ -1105,7 +1110,7 @@ export default function OrderDetailPage() {
         />
 
         <PendingSaveNotice {...paymentSave} onRetry={retryPayment} />
-        {Number(order.balance_due) > 0 && order.status !== "collected" ? (
+        {Number(order.balance_due) > 0 && (order.status !== "collected" || role === "owner") ? (
           <form
             className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-4 sm:p-5"
             onSubmit={recordPayment}
@@ -1227,9 +1232,13 @@ export default function OrderDetailPage() {
           <p className="mt-5 rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 font-semibold text-slate-800">
             This ticket was cancelled. No balance is due.
           </p>
+        ) : Number(order.refund_due) > 0 ? (
+          <p className="mt-5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 font-semibold text-amber-900">
+            The customer is owed {formatKes(order.refund_due)}. The owner should record the excess payment return after returning the money.
+          </p>
         ) : Number(order.balance_due) === 0 ? (
           <p className="mt-5 rounded-xl border border-green-300 bg-green-50 px-4 py-3 font-semibold text-green-800">
-            Fully paid. This order can be collected when it is ready.
+            {order.status === "collected" ? "No balance due. Clothing already collected." : "No balance due. This order can be collected when it is ready."}
           </p>
         ) : null}
 
