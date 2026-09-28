@@ -304,3 +304,17 @@ Ignored helpers in `tmp/` support the local fixture server, read-only smoke chec
 - All 50 frontend tests and five working-tree signed-token HTTP cases passed again. The isolated commit candidate passed all 134 backend tests against disposable PostgreSQL in 27.795 seconds, with no skips or short-key warning; the runner removed its test container. The earlier 135-test log includes the unfinished contact draft. Local commit subject: `Recover rejected saves without losing uncertain requests`; contact-specific code/migration/tests remain unstaged.
 - Evidence: `docs/diagrams/evidence/41-local-stale-save-rejected.png`, inspected for readable feedback and fictional data. Exact steps and file/commit boundaries are in `docs/save-rejection-check.md`. Initial receipt-load errors recovered on reload; their cause and the password-reentry load behavior need follow-up during staff rehearsal.
 - Student hands-on acceptance and deep learning review remain pending. No production changes. Truthful refunds remain next; customer-contact editing is still an unfinished separate draft.
+
+## 25 September 2026 — Student confirms the stale-save flow
+
+- The student replied "it works" after the two-tab instructions and the request to confirm rejection, reload and resubmission. Mark that sequence as student-reported acceptance.
+- Exact kg values, audit counts and a new screenshot were not supplied; existing image 41 remains developer evidence. The student's lost-reply/refresh/retry check and explain-back are next. No application code or production change.
+- Subsequent lost-reply acceptance: the student confirmed refreshing the same tab, finding Retry previous save still present and clicking it. Read-only browser inspection verified exactly one 4 to 5 kg "lost reply test" correction, KES 750 and no remaining retry notice; three correction events in total. The one-use fault flag was consumed. Both functional scenarios now pass; explain-back remains pending. No new screenshot or deployment.
+
+## 28 September 2026 — Local dependency patch and approved pilot plan
+
+- Next.js/eslint-config-next are 16.3.6 with compatible lockfile fixes. The 26 September checks passed: 50 frontend tests, lint, build and zero npm audit findings. Exact scope and limitations are in `docs/security-patch-check.md`.
+- Browser checks passed owner Finance/receipt, employee route protection and phone lookup. The old shared-connection SQLite fixture showed intermittent receipt-load failures. A fresh temporary-file fixture passed employee receipt first load and one fictional KES 100 payment on KES 300 work; refresh retained one payment and KES 200 balance. Broader interrupted-session review remains open.
+- Preserved the old fictional receipt locally before restarting its disposable API. No real data, deployment or purchase changed. The backend contact-correction draft remains separate.
+- Roadmap/premortem now record zero spending, separate free-allowance real-data project, whole-order employee discount ceiling initially 0%, recovery targets and ten receipt-backed trading days. Added PRD, architecture/essentials, data and security documents; README/handover link their distinct responsibilities.
+- No redundant screenshot for an invisible dependency change. Developer verification is not student hands-on acceptance or production readiness. Truthful refunds remain the next approved product increment.

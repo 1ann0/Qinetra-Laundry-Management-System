@@ -1,430 +1,301 @@
-# QLMS: Qinetra pilot and commercial roadmap
+# QLMS implementation roadmap
 
-Prepared on 9 September; execution plan updated on 15 September 2026 after the business, architecture and dashboard review.
-This is the working plan for future phases. It does not authorize deployment, purchases or all future features at once.
+Updated 28 September 2026. This is the canonical plan for the Qinetra pilot and later development. It replaces the older phase-status summaries in this file. Historical test runs remain in the development journal; current continuation instructions are in [the handover](docs/pilot-handoff.md).
 
-**Phase 3A1 accepted locally.** The shared saved-data formatter, receipt tests and representative disposable catalogue are implemented. On 15 September, all 37 frontend tests, lint and the production build passed. The student created a fictional mixed order and confirmed both WhatsApp drafts match the saved clothing record. [QINETRA_PILOT_START.md](QINETRA_PILOT_START.md) records database/release status. The application has not been switched to the fresh schema or deployed.
+The user approved implementation of the Qinetra-first plan. Work through launch increments independently, recording evidence and preserving unfinished work. Later features remain conditional on their stated gates; this approval does not authorize purchases or an unreviewed production cutover. Truthful refunds retain their earlier approval.
 
-## Confirmed operating decisions and boundaries
+## Approved decisions
 
-- Qinetra handles about 10 orders daily, occasionally 20 on a peak day. Wrong or missing garment records are the primary problem.
-- Staff can use a shared shop screen. Each staff member still needs an individual account for attributable actions.
-- Clothing checks usually happen before washing, after drop-off. Receipts must show when the clothing check is pending; never imply the customer witnessed a later check.
-- Physical separation practices vary. Agree how ticket references follow bags/baskets and how identity survives shared processing. The user accepts simple physical references for outsourced garments, alongside descriptions; agree the actual labelling method with the cleaner.
-- Confirm available care options with the team. Do not offer fragrance/softener choices or make skin-related promises before the process supports them.
-- Retain Next.js, FastAPI, PostgreSQL and the current daily navigation. Split large modules only while making a relevant change. No rewrite, new state library or microservices programme.
-- Treat each milestone below as a reviewed increment, not permission for a combined release. Phase 3A1 already has approval. Later phases require their own bounded implementation review.
+- Qinetra is the family business and first beneficiary. Prove easier daily work before marketing software or focused solutions to other businesses.
+- Spend nothing now. Retain Render for the API and Supabase PostgreSQL while validating the product. Do not migrate to Railway, buy credits or enable paid resources by default.
+- Qualify Cloudflare separately with fictional data; preserve Next.js and current order URLs. An unqualified free deployment is not a production guarantee.
+- Use a separate Supabase project within the available free allowance for Qinetra's real dataset. Do not silently fall back to the old public/demo schema if capacity is unavailable.
+- Employee discounts have an owner-configured whole-order percentage ceiling, initially 0%. The backend enforces the combined discount across lines.
+- Recovery target: daily encrypted exports with an independent copy, up to one day reconstructed from retained receipts, restored operation within four working hours. Prove these targets before claiming them.
+- First trial: ten trading days alongside existing receipts, with daily reconciliation. The shop does not become dependent on free hosting without a further reliability/funding decision.
+- Google sign-in follows a stable pilot and session hardening. It can precede multi-business features and billing.
 
-## Next change: Phase 3A1 implementation contract
+Product intent is in [PRD.md](PRD.md), technical decisions and their short outline in [ARCHITECTURE.md](ARCHITECTURE.md), data/recovery requirements in [DATA.md](DATA.md), and controls/gaps in [SECURITY.md](SECURITY.md). These documents distinguish requirements from implemented behavior.
 
-**Outcome:** The customer's receipt draft contains the same saved clothing record as the order screen. Local implementation, automated checks and student browser acceptance passed on 15 September.
+## Outcome and scope
 
-- Update the disposable local catalogue to expose Quick tally and Individual garment details. Preserve existing test orders; do not invent historical clothing records.
-- Add a small pure formatter in `frontend/src/lib/order-receipt.js`, used by the new-order and saved-order pages. Keep phone handling and opening the draft in the UI; no automatic sending.
-- Build the text from the saved response: customer, ticket, order date, services, counted pieces, garment descriptions, damage/stain notes, total, paid, balance, ready time and current status. Keep existing ready-message behaviour.
-- Show pending checks explicitly. Missing historical detail means not recorded, not zero pieces or confirmed absence of damage. Keep the fallback for older single-service orders.
-- Add focused formatter tests for mixed services, saved conditions, pending checks, old orders and ready status. Run the frontend suite, lint and production build.
-- Browser check: create one fictional mixed order, save, refresh and compare both drafts with its saved clothing details. Do not send either draft. Capture one distinct evidence image only after verification.
+Make the daily loop dependable: find the customer, receive the right laundry, quote correctly, record clothes and money, complete work, return the right clothes and reconcile the day. The owner should find an answer without rebuilding it from paper receipts.
 
-**Files:** shared formatter/test, both order pages and the ignored local fixture. **API/schema change:** none. **Learning point:** reuse one saved record to keep different receipt views consistent. Phase complete locally; no live cutover.
+Start with one laundry and one location. The previously confirmed working volume is about 10 orders daily, occasionally 20 at peak; confirm it during the pilot. Staff may share a screen but use individual accounts. Prioritise correctness and simple recovery over a large feature list.
 
-## The business objective
+Keep a stable released version in use while improvements are developed against fictional data. Do not test on real customer records or deploy an unfinished branch merely because a local feature passes. The first release requires S0, C1/C2, S1a-c, C3, O1a, D1, R1 and P1. S2, O1b and optional growth are separate; bring a specific item forward only when launch checks expose an unacceptable risk or unusable workflow.
 
-Make Qinetra's daily work dependable: receive the right laundry, quote correctly, find each order, record money and complete handover.
-Give the owner figures they can trust without reconstructing the day from receipts and spreadsheets.
+## Evidence and boundaries
 
-The pilot must prove that staff use QLMS and the owner receives enough value to keep using it.
-A larger feature list does not prove demand. Start with one laundry, one location and the existing owner/employee roles.
-
-## What is already built
-
-Source checked: backend models, routes, auth, pricing logic, migrations, frontend pages and the development journal.
-15 September checks: Render still reports live backend commit `5da24e5`; `/docs` and `/openapi.json` respond. The live order contract does not yet require the local branch's save-reference header. Database queries confirmed nine fresh-schema tables and zero users, customers, orders and payments there. These are targeted checks, not a new complete security or operational audit.
-
-| Capability | Current evidence and limit |
-| --- | --- |
-| Customers and search | Customer history and service history exist. Local Phase 3C adds inline registration, phone normalisation, an explicit shared-number choice and unfinished-order recovery; browser acceptance and deployment remain open. |
-| Orders and clothing | Mixed services, item counts and detailed garment condition notes exist. The test fixture hides clothing recording; WhatsApp receipt drafts omit item detail, tally condition capture and outsourced-garment tracking need work. See the clothing review. |
-| Payments | Staff-confirmed payments, deposits and balances exist. This is manual recording, not Safaricom payment verification. |
-| Tracking | Four stages, search, due/late/unpaid filters and collection checks exist. |
-| Owner controls | Finance, order export, service/clothing lists and staff account controls exist. |
-| Navigation and messages | Local commits `094b654` and `01a2fa3` improve daily navigation, stage controls and errors. The student reports the usability review is working; no independent timing data was supplied. |
-| Verification | Prior records show 92 backend and 32 frontend tests passing; student order recovery passed, payment-recovery review was skipped and stale clothing-edit review remains open. No tests were rerun for this planning update. |
-| Customer memory | No preference profile, care-note history or dedicated order/item care instructions exist. Implement Phase 8A after pilot accountability passes. |
-| Platform admin | No separate platform-admin role or dashboard exists. Use hosting tools and monitoring for the pilot; build business administration in Phase 11. |
-| Commercial features | No business/tenant, subscription, allowance, promotion-rule or transport-trip models were found. These remain new work. |
-
-The README describes the original academic scope and is older than several implemented features.
-Use this roadmap for prioritisation and the [development journal](DEVELOPMENT_JOURNAL.md) for completed work and evidence.
-
-## Order of work
-
-| Phase | Outcome | Priority/status |
+| Area | Evidence available on 26 September | Limit |
 | --- | --- | --- |
-| 1 | Accept the current navigation and feedback changes | User reports usability review passed; no uncoached timing data recorded |
-| 2 | Protect orders and payments from duplicate or conflicting saves | Automated checks and student order recovery passed; remaining manual scenarios open |
-| 3A1 | Complete saved clothing receipt drafts | Accepted locally; 37 frontend tests, lint and build pass; student confirmed both drafts match the saved mixed order |
-| 3A2 | Complete pre-wash checks, condition exceptions and history | Required pilot workflow; preserve original observations and block processing with incomplete checks/holds |
-| 3B | Identify and reconcile outsourced dry-cleaning garments | Required before outsourced pilot work; simple references accepted, physical method to confirm |
-| 3C | Complete customer intake without leaving the order | Implemented locally; automated checks pass, staff browser acceptance remains open |
-| 4 | Correct mistakes with an owner-controlled history | Required pilot workflow |
-| 5 | Provide actionable owner oversight, reliable figures and filtered exports | Required pilot acceptance; use supporting records, not invented metrics |
-| 6 | Prepare clean production data, recovery and monitoring | Required before real-data cutover |
-| 7 | Run and measure the Qinetra pilot | Prove value before wider rollout |
-| 8A | Remember customer preferences and surface order instructions | First planned premium-service increment after the core pilot passes |
-| 8B | Add offers and reusable customer messages | After costs and eligibility rules are agreed |
-| 9 | Add Safaricom payment prompts and reconciliation | After merchant access is ready |
-| 10 | Test profitable laundry memberships and trip allowances | After costs and rules are agreed |
-| 11 | Isolate multiple businesses and add platform administration | Mandatory before a second business joins |
-| 12 | Add QLMS software subscriptions, trials and controlled Google login | Commercial onboarding |
-| 13 | Expand only where usage justifies it | Conditional roadmap |
+| Live backend | Render reports live commit `5da24e5` from 10 August; its OpenAPI endpoint responded HTTP 200 during this task | It lacks the newer local correction/recovery routes. Vercel's exact deployed revision is not independently verified |
+| Real-data area | Supabase project is healthy; `qinetra_live` has nine baseline tables and zero users/customers/orders/payments | Schema is behind current models; current code has no explicit schema routing/assertion. A schema is not a separate project or backup |
+| Database protection | All 17 inspected old/fresh application tables have RLS; anon/authenticated SELECT grants are denied. Advisor reports only informational no-policy notices | No QLMS-specific restricted runtime login role was found. Browser denial does not replace FastAPI authorization |
+| Existing product | Customer and service histories, search, mixed orders, pricing snapshots, garment checks/references, outsourcing, holds, manual payments, owner Finance/catalog/staff controls exist in local source | Some staff scenarios remain unaccepted. Existing code must be verified rather than rebuilt from this plan |
+| Save recovery | `d6559aa`: developer and student two-tab and lost-reply/refresh/retry acceptance recorded; isolated commit had 134 PostgreSQL-backed checks, frontend had 50 tests | These are prior results, not tests rerun for every later change. Explain-back remains a learning task, not a new release blocker |
+| Contact editing | Older backend model/schema/routes/tests and migration 020 are uncommitted | No completed owner UI/feature acceptance; preserve and finish separately |
+| Dependencies | Next.js/eslint-config-next 16.3.6; 26 September audit reported zero findings after compatible fixes; 50 tests, lint and build passed | Browser smoke includes passes and an unresolved intermittent receipt-load finding. See [the patch record](docs/security-patch-check.md); no deployment or whole-system security claim |
+| Operations | Render reports Free compute; current root health route checks process liveness only | Restore, database readiness, alerts, exact release pairing and production cutover are not yet proved |
+
+The live metadata above is a dated read-only observation. Recheck configuration at release. Do not copy sample customers or credentials into the new dataset. Preserve old records until the owner identifies which are genuine and approves their treatment.
+
+## Architecture essentials
+
+- Keep Next.js/React/Tailwind, a small fetch helper, FastAPI, SQLAlchemy and PostgreSQL. No new state framework, microservices, empty scaffolding or forced cloud migration.
+- Browser access to data goes through application authorization. Never add a Supabase public key/client merely to follow a generic checklist.
+- FastAPI validates the current active user and role for every protected action. Hiding a frontend button is not authorization.
+- Money uses decimal calculations and saved prices. An original payment, an entry correction, a returned payment and a reduced service charge are different facts.
+- Preserve original observations and attributed corrections. Garment custody is independent of payment corrections.
+- Unknown save outcomes retain the original request/key. Only recognized definite not-saved responses clear that attempt. New proxies, auth flows and integrations must preserve this.
+- Real-data connections select an explicit approved schema and fail closed on a mismatch. Runtime access cannot create/drop schemas or reach unrelated application datasets. Migrations use a separate privileged path.
+- Current authentication is local bcrypt passwords plus 30-minute bearer JWTs stored in sessionStorage. Secure cookie/session changes and Google identities below are proposed work, not current capabilities.
+- Single-shop scope is current. Tenant isolation is mandatory before a second business, not a hidden assumption about today’s records.
+- Prefer additive migrations and compatible API changes. Rehearse upgrade, release order and rollback before applying them to production.
+
+## Execution order and starting conditions
+
+| ID | Small outcome | Start / approval status | Main code or configuration | Exit evidence |
+| --- | --- | --- | --- | --- |
+| S0 | Patch affected frontend dependencies | Locally verified 28 September; not deployed | frontend package manifests/lockfile and patch check record | 50 tests, lint/build and ordinary browser smoke passed; retain the broader session-recovery review |
+| C1 | Truthful owner refunds and payment corrections | Already approved; next product increment | backend models/schemas/routes/logic/migration; receipt, order, Finance/export views | Atomic monetary and custody invariants; replay/concurrency/migration tests; student browser acceptance |
+| C2 | Complete essential customer contact correction | Finish existing draft in its own reviewed unit | migration 020, customer correction routes and owner UI | Shared-number/name-only/stale/retry tests; old orders and attribution preserved |
+| S1a | Login and request protection | Review bounded plan after C1/C2; any urgent security finding may be moved ahead | auth/login, schemas, security tests | Throttling, safe password bounds, generic errors, direct API permissions and disabled-user cases |
+| S1b | Safe exports and private responses | Separate reviewed unit | CSV route, response policy, Next/API configuration | Spreadsheet text stays literal; authenticated responses are not cached publicly; headers do not break the app |
+| S1c | Secret/dependency review and current-session safety | Complete launch controls before real-data cutover | auth/session helpers, scans/CI | Redacted scans, rotation evidence where needed, expiry/revocation/logout/recovery and user-switch tests; explicit residual-risk assessment |
+| C3 | Close daily-work correctness and staff acceptance | Reuse accepted tests; exercise only remaining scenarios and new findings | item/status/outsourcing routes, audit records and relevant screens | Terminal-state matrix, physical labels, collection/returns and final-payment recovery pass |
+| O1a | Trustworthy daily close and usable existing retrieval | Required for launch; bring forward only demonstrated retrieval/privacy failures | existing financial summary/export/query contracts and owner/customer/tracking pages | Hand-calculated fixture matches screens and supported CSV scope; customer/ticket lookup works on the expected pilot dataset |
+| D1 | Prepare Qinetra's real dataset | After release schema and access decisions are known | database config, migrations, provisioning/verification scripts, DATA.md | Explicit schema/restricted role, upgrade rehearsal, approved catalog/accounts/opening records; old data untouched |
+| R1 | Prove recovery and release operation | Before cutover | readiness route, hosting settings, backup/alert/runbooks | Restore, alert and recovery, paired versions, rollback and outage reconciliation demonstrated |
+| P1 | Start controlled daily pilot | Exact cutover approval required after preceding gates | reviewed release pair and signed-off dataset | Train staff, supervised start, daily reconciliation and proposed ten trading-day review |
+| S2 | Secure cookie/session migration | Separate approved increment after the pilot, before A1; move earlier if S1c finds an unacceptable session risk | auth/session helpers and reviewed same-origin server boundary | Cookie/CSRF, expiry, revocation, logout, browser compatibility, identity switching and uncertain-save recovery pass |
+| O1b | Better filters, compact lists and owner work lists | After pilot evidence; specific O1a failures move ahead of launch | query/response models, pagination, filtered exports and Needs attention UI | Screen/export filters agree; larger-data search is bounded; staff can act on useful exceptions |
+| A1 | Optional Google sign-in | After S2 and stable pilot; can precede multibusiness/billing | linked identities, auth routes, login UI and Google project config | Guided setup; unknown/disabled identities denied, safe linking/recovery and shared-device tests |
+| G1 | Customer care/preferences that reach workers | Pilot evidence and supported care options | customer profile/order snapshots/instructions/notes | Current profile and saved order instructions remain distinct; no history rewrite |
+| G2 | Offers and reusable message templates | Approved eligibility, stacking and channel rules | offer rules, saved application records and manual preview UI | Correct eligibility/prices; no wrong-recipient or internal-note disclosure |
+| G3 | Verified M-PESA workflow | Merchant/Daraja access and reconciliation owner ready | payment attempts/callbacks/reconciliation + UI | Failure/unknown/duplicate/late result tests; approved live payment and reconciliation |
+| G4 | Costed laundry memberships/B2B packages and trips | Costs, capacity and rules agreed first | separate benefit/usage ledger, packages/trips | Concurrent consumption/reversal/boundary tests; small viable paid trial |
+| M1 | Multiple businesses, invitations and platform administration | Only when preparing another laundry | business memberships, all scoped data paths and admin UI | Adversarial two-business isolation tests before the second business joins |
+| M2 | QLMS software subscriptions/trials | M1 and commercial rules ready | software plans, trial/entitlement/billing events | Start/convert/renew/expire/reactivate without duplicate billing or trapped records |
+| E1+ | Conditional operating improvements | Repeated measured need; separate increment per item | See future inventory below | Outcome-specific acceptance and owner value, not feature count |
+| L1+ | Docker/AWS learning | Parallel learning using disposable resources and agreed budget | Docker guide; later Dockerfile/Compose/sandbox | Student can explain/run/restore the sandbox; shop deployment unaffected |
+
+S1 is three implementation reviews, not a combined security rewrite. O1a/O1b and R1 likewise split into small changes when implementing. S2 is not silently required to launch: S1c must assess the JavaScript-readable token risk and existing controls; an unacceptable finding changes the release decision explicitly. A1/G1/G2 can be chosen by demonstrated benefit after the pilot; their ordering is not a promise that every growth feature will be built.
+
+## C1: truthful refunds — next approved product work
+
+- Owner-only partial/full service refunds, including after collection, with original payment, reason, actual returned date/method and confirmation that money really returned.
+- Keep original payment and price history. A service refund reduces charge and retained money. Returning excess payment reduces retained money without reducing the charge again.
+- Add `POST /orders/{order_id}/refunds`, refund purpose/charge reduction and `net_charge`/`refund_due`. Preserve older payment-adjustment replays; do not infer historical refund purpose.
+- Debt = max(net charge - net payments, 0); refund owed = max(net payments - net charge, 0). A collected, paid KES 1,000 order with a KES 200 service refund stays Collected, charge/retained money become KES 800 and debt is zero.
+- Allow valid kg corrections to create an excess payment to return. Allow entry corrections after collection without lying about physical custody.
+- Use locks, atomic writes and idempotency; update receipt, Finance, outstanding figures and exports together. Test separate booking/payment/refund dates and Nairobi boundaries.
+- No automatic transfers, store credit or compensation exceeding the service charge in this increment.
+
+## C2/C3: finish corrections and physical accountability
+
+- Finish owner name/phone correction with attributed before/after history; test name-only edits where the phone is already shared. Do not silently merge customers.
+- Retain wrong-customer ticket reassignment, kg correction at saved rates, cancellations and one-step stage reversal. Only reverse Collected when the clothes really remain at the shop.
+- Review every mutation against cancelled/collected states, not only the status endpoint. The current clothing-edit guard names ready/collected but not cancelled: this is a source-review concern requiring a route test.
+- Decide the smallest attribution for normal status/collection actions; current owner corrections have actors, but ordinary stage changes do not have equivalent event history.
+- Item/pair billed-quantity correction remains explicit deferred work: it must preserve garment identity, counted pieces and sent/returned records. Before accepting that workflow, implement the bounded correction or agree a truthful audited restriction. Never instruct staff to delete/recreate paid tickets or invent custody.
+- Complete remaining staff checks for clothing edits, final-payment recovery, holds, outsourced partial returns and reauthentication. Do not repeat already accepted kg checks without a regression reason.
+- Physical labels must stay with bags/garments through processing and cleaner handover. Agree the attachment method with the cleaner; a database reference alone cannot identify an unlabelled garment.
+- Partial collection, credit collection, duplicate-customer merge and a partner portal are not assumed requirements. Record observed need and design each separately.
+
+## S1/S2: security controls fitted to this codebase
+
+- Retain bcrypt and backend-derived roles. Validate login byte/length bounds consistently: bcrypt 5 rejects passwords over 72 bytes and the current login path does not handle that safely. Never silently truncate.
+- Add bounded login throttling using trusted client IP plus account limits; test shared-shop networks, expiry, generic responses and restart/multiple-worker behaviour. Do not introduce Redis solely for a one-instance pilot without evaluating a simpler bounded design.
+- Enforce the approved owner-configured employee discount ceiling, initially 0%, against the combined whole-order discount. Add authenticated policy retrieval and owner-only updates; preserve accepted idempotent replays after policy changes. Current code does not yet enforce this policy. Test direct HTTP requests, split-line bypass, boundary amounts and owner authority.
+- Keep bound SQL parameters. Add finite/range/size limits where missing, including arrays and body/search sizes. Keep field allowlists; never accept browser-supplied actor, role, saved price or permission decisions.
+- Escape spreadsheet formulas separately from CSV quoting. Preserve numeric money columns and legitimate phone text.
+- Add tested CSP and security headers, production HTTPS/TLS settings, explicit CORS, and private/no-store policies. Inspect the deployed response, not just a config file.
+- S2 preferred session direction: HttpOnly/Secure, appropriately scoped cookies through a reviewed same-origin boundary, with CSRF/origin checks. A small Next server proxy may keep the FastAPI token away from browser JavaScript; evaluate deployment/routing and keep business authorization in FastAPI. Do not bolt cookies onto the current cross-origin flow without designing both sides. Until then, explicitly record the residual JavaScript-readable-token risk and launch review outcome; a short token lifetime alone does not remove it.
+- Preserve inactivity lock, server expiry, current-role lookup, account revocation, shared-screen logout/switching and uncertain-save recovery. Test old tabs, identity change and stale responses; do not expose another user's draft.
+- Complete redacted current/history secret scans and Python dependency audit; verify rotation of previously exposed credentials. Rotate/revoke first; coordinated history rewriting is a separate reviewed action. Do not put scan findings containing credentials in commits or screenshots.
+- Add repeatable dependency/secret checks for reviewed changes and regular maintenance. Triage actual reachability; absence of findings is not a penetration-test certificate.
+- No public signup. Do not collect unnecessary personal information. Restrict logs, exports and backups, and agree retention/exit/deletion handling.
+- No current upload feature: when one is approved, define authenticated access, file types/size, generated names, content checking and safe storage before accepting files.
+- CAPTCHA/Turnstile is conditional on abuse after throttling, not a required step for every staff save.
+
+## O1a/O1b: owner insight and customer retrieval
+
+Improve the existing screens. Finance already distinguishes bookings from receipts and has service/customer rankings. O1a requires correct existing figures and usable existing lookup; O1b adds filters/work lists/pagination after pilot feedback unless a concrete O1a failure requires an earlier fix. Additional charts and a new dashboard are not launch requirements.
+
+- Reconcile bookings, discounts, entry corrections, service refunds, overpayment returns, cancellations and outstanding debt. Label whether an outstanding figure covers orders booked in a period or all current debt.
+- Add filtered customer/service/date exports matching the screen's definitions. Show filters and data freshness; do not show a failed load as zero activity.
+- Make a short Needs attention list linking to due/late work, pending checks/holds, overdue collection, outstanding money and missing outsourced returns. Reuse existing filters.
+- Add bounded pagination and compact order/customer list responses; fetch full details on demand. Use a larger fictional dataset and actual staff device to agree retrieval targets; profile queries before adding indexes/caches.
+- Add an explicit daily reconciliation record only if the owner cannot close reliably with existing views.
+- After useful real history exists, compare periods, service mix, repeat-customer activity, on-time work and correction/rewash rates. Define denominators and incomplete history clearly.
+- Income or net cash movement is not profit. Expenses and cost allocation require their own definitions before margin/profit labels.
 
-Phases 8–10 are Qinetra growth options. Select the next one from pilot evidence; they need not all precede phase 11.
-Do not onboard a second business before phase 11 passes its isolation tests.
+## D1/R1/P1: real records, recoverability and first release
 
-## Phase 1 — Close the current usability phase
+1. Rehearse the exact current migrations on both an empty dataset and a representative prior schema. Do not substitute ORM create_all for proving the production migration path.
+2. Configure an explicit production schema/role, fail-closed preflight and schema revision check. Test that the runtime cannot reach old/demo records or perform DDL. Apply migrations separately; RLS policies/grants must actually allow this intended server role.
+3. Keep browser roles denied. Custom FastAPI JWTs do not automatically populate Supabase auth.uid(). Use the approved separate Supabase project within the available free allowance. Confirm allowance before creating it; stop provisioning if this would incur spending. The old protected schema and public records remain preserved, not a silent alternative real-data destination.
+4. Create the real first owner through a safe private process, then individual staff accounts. Use hidden password input and the same validation as normal account management. Set owner-approved prices/clothing lists; no fixture credentials.
+5. Sign off genuine opening orders, clothes in custody, amounts already received and remaining debt. Distinguish historical opening money from today's till receipts; avoid double collection or double-counted income. Preserve and classify legacy data before any import.
+6. Implement daily encrypted exports with an independent copy, retained receipts, a target of at most one day reconstructed and restoration within four working hours. Confirm responsible person, storage destination, retention and key recovery before real-data entry. Restore separately, compare counts/relations/money and prove the restored application works. CSV is not a database backup; targets are not measured results.
+7. Add database-aware readiness without customer data/secrets; keep liveness separate. Configure the requested frontend/API monitoring and prove an alert reaches the agreed person and recovery is reported. Monitoring is not a substitute for reliable hosting or an end-to-end save check.
+8. Maintain the zero-spend constraint. Render Free can sleep and exhaust its shared allowance; Cloudflare does not remove that delay. Check allowances before and during the supervised trial. Qualify the frontend as below; do not use a noncommercial-only hosting tier for Qinetra business operations. Fund dependable hosting before shop dependence.
+9. Review exact frontend/backend revisions, migration version, API URL, CORS, TLS and credentials. Rehearse compatible release order and rollback; rolling code back cannot undo real payments or safely reverse every migration.
+10. Agree a paper outage procedure with temporary references and later reconciliation. Resolve uncertain online saves before re-entering an order. Offline sync is not promised.
+11. Obtain approval for the exact reviewed trial release and real-data setup. Train one operator, retain existing receipts as fallback and reconcile every trading day for ten trading days. Extend observation if key workflows were not exercised. Do not treat this parallel trial as approval to discard manual records.
+12. Record baseline and observed intake/search/closing time, missed garments/instructions, unexplained balances, duplicate saves and staff workarounds. No fabricated percentages. Stop expansion for missing records, cross-user disclosure or unexplained money; fix and verify before growing.
 
-**Value:** Staff can find everyday actions and understand what to do when an action fails.
+Develop later features on fictional data, with separate configuration and reviewed migrations. Keep production stable, label test environments clearly, release small compatible increments and retain a written version/rollback record.
 
-- Use the [existing browser checklist](docs/navigation-usability-check.md) on desktop and a narrow screen.
-- Check New order, Track orders, customer search, saved details, Back, refresh and keyboard focus.
-- Ask an unfamiliar user to select a stage without Page tour or coaching. Record hesitation and wrong selections.
-- Confirm that a load failure shows recovery advice, not an empty-shop result.
-- Confirm employee restrictions by direct links as well as hidden navigation.
-- Fix only failures found in this review. Preserve screenshot 34; add one stage-filter image only if it proves the improvement.
+## A1: Google sign-in — when, why and safe design
 
-**Main files:** app shell, tracking page, shared messages and the browser checklist.
+Add this after secure session/recovery work and a stable single-shop pilot, if staff would benefit. It can precede memberships, multi-business onboarding and software billing; the older plan unnecessarily bundled it with commercialization. It is not a launch prerequisite.
 
-**Exit gate:** Staff complete the three daily navigation tasks and stage filtering without coaching. All reported blockers have a verified fix.
-Passing automated checks alone does not close this phase.
+Use current **Google Identity Services, Sign in with Google**, and its supported FedCM browser experience. This is OpenID Connect identity, not a new “OAuth 3” version. Use official current GIS guidance rather than legacy gapi.auth2 examples.
 
-## Phase 2 — Make saves and ticket numbers dependable
+Benefits: fewer extra passwords/reset requests, convenient identity for staff who use Google, and reuse of Google account protections. Do not claim every Google sign-in proves MFA. It does not grant QLMS roles or automatically integrate Gmail, Drive, Sheets or Calendar.
 
-**Value:** A busy counter or lost connection must not create duplicate orders or payments.
+- Add a small external-identity mapping to existing users: provider, verified issuer/subject, linked user and audit information. Enforce uniqueness and safe concurrent linking.
+- Verify signature, issuer, audience and expiry with a maintained Google verification library; verify nonce/CSRF protections appropriate to the chosen flow. Decoding is not verification.
+- Authorize only an existing owner-approved account through authenticated linking or a narrowly scoped expiring invitation. Do not auto-create staff or auto-link solely by email.
+- Issue the ordinary QLMS session afterward. Continue active-account, current role and token/session-version checks. A disabled employee remains denied even with a valid Google identity.
+- On the shared counter, start with an explicit button/account chooser and automatic selection off. Clearly display the acting staff member. Test account switching and retained Google browser sessions.
+- Preserve a tested owner recovery/local-login route initially. Do not allow unlinking the last usable identity or losing the only owner.
+- No Google API scopes/tokens beyond what sign-in requires. Later integrations need a separate business purpose, consent, minimum scopes and token lifecycle design.
+- Provider console setup remains a guided lesson with the student: authorized origins/redirects, consent configuration, client identifiers/secrets as applicable, identity verification, account linking and recovery. Do not configure it unattended.
 
-**11 September status:** Local implementation and recovery evidence are in [the Phase 2 check record](docs/transaction-safety-check.md). All 92 backend tests passed, including the six PostgreSQL cases. Student order recovery passed; payment-recovery review was skipped and stale clothing-edit review remains open. Nothing has been deployed.
+Acceptance includes unknown Google user, disabled staff, changed role, wrong audience/issuer, expiry, duplicate links, reused invitations, cancellation, blocked scripts, Google outage, lost Google account and shared-device logout. Verify the selected GIS options against current docs at implementation time.
 
-- Replace or protect the count-plus-one ticket calculation. Test two staff creating orders at the same time.
-- Add an idempotency key for each order/payment submission: a repeated request returns the original result instead of saving twice.
-- Keep the key through a retry of the same attempt. Reject reuse with different details. Issue a new key for a new transaction.
-- Preserve the existing payment balance lock. Test concurrent partial payments, not only a full-balance overpayment.
-- Test stale status updates and simultaneous edits. Reject conflicting changes with an instruction to check the current record.
-- Confirm saved service prices remain unchanged when the owner later changes the service list.
-- Test rounding, Nairobi dates, daily ticket boundaries and the sequence after cancelled orders.
-- Keep pending/unknown results visible. Do not turn an uncertain save into a false success or definite failure.
+References: [GIS overview](https://developers.google.com/identity/gsi/web/guides/overview), [backend ID-token verification](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token), [current JS/FedCM options](https://developers.google.com/identity/gsi/web/reference/js-reference).
 
-**Main files:** `backend/logic.py`, order/payment routes in `backend/main.py`, models, migrations, contract tests and order forms.
+## Hosting and Cloudflare qualification
 
-**Exit gate:** Duplicate-request, concurrent-save and interrupted-reply tests pass against isolated PostgreSQL.
-SQLite checks alone are insufficient to prove database locking. No unexplained duplicate ticket or payment remains.
+Provider comparison was checked against official documentation on 27 September 2026. Costs below are planning reference points, not purchases, guaranteed bills or a substitute for checking current allowances at deployment.
 
-## Phase 3A and 3B — Clothing records before customer-intake expansion
+| Component | Benefit | Cost/recovery tradeoff | Approved decision |
+| --- | --- | --- | --- |
+| Cloudflare frontend | Low-cost delivery and scaling | Workers Free has dynamic CPU limits; paid starts at USD 5 plus applicable usage; Next.js needs runtime qualification | Separate fictional-data experiment using OpenNext; no framework replacement |
+| Railway API | Straightforward FastAPI and usage billing | Hobby minimum USD 5 includes USD 5 usage; actual bill may exceed it | Alternative only after representative cost/operation comparison |
+| Render API | Already connected; avoids a migration | Free sleeps and shares 750 monthly runtime hours per workspace; unsuitable for permanent production reliance | Keep for supervised testing; assess funded dependable hosting before shop dependence |
+| Supabase PostgreSQL | Existing code and operational familiarity | Free requires our own off-site export/restore procedure; paid starting cost is higher | Keep; prepare a separate free-allowance real-data project |
+| Neon PostgreSQL | Database focus and scale-to-zero | Free compute/network exhaustion can suspend access; migration/restore work remains | Reconsider only if measured cost warrants it |
+| Railway PostgreSQL | Private access near a Railway API | Standard templates are unmanaged; backup/maintenance/security are our responsibility | Do not move Qinetra's database now |
 
-The student confirmed clothing tallies, garment identification, existing damage and serious stains are essential. Prioritise [the clothing intake review and phased plan](docs/clothing-intake-review.md) before the customer shortcut. The existing tally was hidden by the disposable fixture, not removed from the code. The review identifies real receipt, condition-history and outsourcing gaps; it does not claim the live catalogue was checked.
+The Cloudflare experiment preserves order URLs and the current API boundary. Pin a compatible OpenNext version, verify on Linux and test login, direct receipt links, refresh, images, exports, user switching and uncertain saves. Check worker CPU/bundle limits with representative fictional traffic. Do not auto-create billable caches/buckets. If Free cannot pass, keep local practice and resolve funding before a remote trial; never silently buy a plan or use a noncommercial-only tier for shop operations.
 
-Start with the 3A1 contract above. In 3A2, require an explicit completed check before washing or outsourcing, record author/time and retain corrections. A nonempty partial tally is not proof that the full check is complete. Provide a customer-reply hold for unresolved issues. In 3B, use stable physical references accepted by the user; confirm the safe labelling method with the cleaner. Track physical pieces separately from billed units (for example, a suit jacket and trousers), partial returns, return checks and authorised handover. References must survive edits. Do not mark Ready while required pieces or final checks remain outstanding.
+Cloudflare's current general Next.js guide recommends vinext, but vinext's own compatibility guidance identifies OpenNext as the mature option. This existing application will be tested with OpenNext rather than replacing its framework to reduce hosting cost. No adapter has been installed and no qualification result is claimed yet.
 
-**3A2 progress (15 September 2026):** Per-piece tally exceptions, author/time, revision history, correction reasons, the pre-wash status gate and customer-reply holds are implemented locally. Automated backend/frontend/build checks pass, including 102 tests with no skips against disposable PostgreSQL 17 and repeated migrations. Browser acceptance remains open; do not call 3A2 complete yet.
+Sources: [Railway pricing](https://docs.railway.com/pricing/plans), [Railway database responsibilities](https://docs.railway.com/databases), [Cloudflare Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/), [current Next.js guide](https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/), [vinext status](https://github.com/cloudflare/vinext), [OpenNext](https://opennext.js.org/cloudflare), [Render Free limits](https://render.com/docs/free), [Supabase backups](https://supabase.com/docs/guides/platform/backups), [Neon free limits](https://github.com/neondatabase/website/blob/main/content/faqs/free-plan-limits-and-quotas.md).
 
-**3B reference progress (16 September 2026):** QLMS now prices a detailed service from its charged quantity while recording every physical piece separately. Saved pieces receive permanent ticket references, descriptions are required, corrections preserve existing references and deleted references are never reused. The customer receipt shows the same references. SQLite, frontend, lint and production-build checks pass; migration 014 and locking checks still need the disposable PostgreSQL run after Docker Desktop is started manually. The partner handover/partial-return register remains the next unit.
-
-**3B register progress (17 September 2026):** A staff member can record the partner, expected return, all sent garment references and a separate return check for each piece. Partial returns and unresolved return issues block Ready. The owner can resolve an issue without deleting the original note. New dry-cleaning service lines also require a handover or an owner-attributed in-shop exception before Ready. This is local code only: 111 SQLite tests pass with six PostgreSQL-only skips, 45 frontend tests pass, and lint/build pass. Migrations 014–015, the PostgreSQL locking cases, a representative browser check and the physical attachment method still need verification. No live schema, deployment or customer data changed.
-
-## Phase 3C — Finish the customer intake workflow
-
-**Value:** An employee can serve a new or returning customer without losing an unfinished order.
-
-- Add a small Add customer action inside order entry. Return the saved customer to the open order automatically.
-- Preserve services, clothing details and price choices while adding the customer.
-- Protect an unfinished draft when navigating away; existing uncertain-save recovery only protects a submitted request. Make the saved receipt and starting the next order visually distinct.
-- Normalise supported Kenyan phone formats for search and duplicate checks.
-- Before saving a likely duplicate, show existing customers and a clear choice. Do not silently merge people who share a number.
-- Keep the essential fields first: customer, services, quantities, clothing check, ready time and payment choice.
-- Make unpaid, deposit and full payment easy to distinguish. State that manual M-PESA entries require confirmation of received money.
-- Check that the receipt identifies the customer, laundry, price, paid amount, balance and promised ready time.
-
-**Main files:** new-order and customer pages, customer API/schema, shared clothing entry and receipt views.
-
-**Exit gate:** Staff complete representative new-customer and returning-customer orders without abandoning or re-entering the form.
-Test one mixed-service order with a deposit and pending clothing details. The receipt must match the saved record.
-
-**3C progress (15 September 2026):** A shared customer form now checks one canonical Kenyan mobile value, shows exact matches before saving and requires an explicit choice before a shared number creates a separate record. New order opens this form inline and selects the saved or existing customer without clearing services or clothing. Meaningful order drafts are scoped to the signed-in staff account, survive navigation and clear after a confirmed save. The saved receipt replaces the form until Start next order is selected. One disposable browser smoke test passed the match, explicit shared-number, restore and receipt-handoff paths; it also found and fixed a three-hour promised-time display error. Migration `013_normalize_customer_phones.sql`, 105 SQLite tests, 105 PostgreSQL tests, 44 frontend tests, lint and the production build pass. Representative staff acceptance remains open, so the exit gate is not yet claimed.
-
-## Phase 4 — Handle mistakes without hiding history
-
-**Value:** A wrong customer, amount or status must have a controlled correction path.
-
-- Agree which changes employees may make and which require the owner.
-- Add the smallest useful set of owner corrections: customer details, incorrect order details, cancellation and payment correction.
-- Record who changed what, when and why. Retain the original value and link each correction to its order or payment.
-- Use linked reversals/adjustments for payment mistakes. Distinguish correcting a record from actually returning money to a customer.
-- Prevent edits that would leave impossible balances, duplicate reversals or inconsistent collected orders.
-- Provide an explicit owner path for an accidental stage change. Do not turn the ordinary forward-stage button into unrestricted editing.
-- Keep cancelled tickets in history. Exclude or identify them consistently in active work and reports.
-
-**Main files:** order detail, owner controls, models, migrations, correction routes and contract tests.
-
-**Exit gate:** Correct a wrong quantity, cancel an unpaid test order and reverse an incorrect payment in the test environment.
-The history and reports must explain every change. Employees must not gain owner correction rights through the API.
-
-**Decision before building:** Agree the permitted corrections, refund handling and who approves each one.
-
-**Phase 4 decision (17 September 2026):** Saved-order and payment corrections are owner-only for the Qinetra pilot. A payment entry mistake and money actually returned to a customer are separate events. The first local unit links either event to its original payment, keeps the receipt unchanged, prevents over-correction and repeat saves, and gives a refund its own date and method. Finance shows corrected receipts, refunds sent and the amount after refunds separately; CSV shows correction totals. SQLite, frontend, lint and build checks pass. Migration 016 and browser acceptance remain open because Docker's Linux engine is unavailable. Customer/order detail correction, cancellation and accidental-stage correction are next; the Phase 4 exit gate is not yet met.
-
-**Phase 4 stage/cancellation progress (17 September 2026):** The owner can move an accidental stage back one step with a reason, or cancel a Received order after all items have been returned and net payment is zero. An order marked Collected can move back only with explicit confirmation that it is still in the shop. Before/after stages, timestamps, actor, reason and confirmations stay in an append-only history. Cancelled tickets remain searchable but are excluded from active work, outstanding debt and booked value; Finance counts them separately and CSV shows original versus effective value. The 121-test SQLite run passed with six PostgreSQL-only skips; migration 017 and browser acceptance remain open. Customer and quantity correction are still needed for the Phase 4 exit gate.
-
-**Phase 4 quantity progress (17 September 2026):** The owner can correct billed kg on a saved Wash & Fold line, including one line of a mixed order, using its original saved rate. The new discount amount is explicit; QLMS blocks a total below money already paid. Before/after quantity, subtotal, discount, order total, owner and reason remain in history and the CSV. Legacy single-service Wash & Fold orders are supported. Item/pair quantity correction is intentionally deferred because it must stay consistent with physical garment references and the outside-cleaner register. The 126-test SQLite run passed with six PostgreSQL-only skips; migration 018, browser acceptance and customer corrections remain open.
-
-**Phase 4 wrong-customer progress (17 September 2026):** The owner can reassign a saved ticket to another existing customer with a reason. The original and corrected customer IDs/names stay in correction history and CSV; the ticket and payments themselves remain intact. Customer history search and customer payment attribution follow the corrected link. The UI warns the owner to handle any receipt already sent to the wrong person. Migration 019 and browser acceptance remain open. Editing a customer's own name/phone is the next correction unit; Qinetra pilot release still waits for PostgreSQL verification.
-
-## Phase 5 — Make the owner's daily review trustworthy
-
-**Value:** The owner can explain the day's work, receipts and unpaid balances.
-
-- Check the existing Finance figures against saved orders and payments before adding more charts.
-- Show order value, money received, outstanding balances and cash/M-PESA breakdowns with clear dates.
-- Carry phase 4 cancellations and payment adjustments into every relevant total and export.
-- Make due work, late work and uncollected laundry easy to find from the owner view.
-- Keep Finance as the owner's landing page. Add a compact Needs attention area linking to due/late orders, pending checks, customer holds, missing/late outsourced pieces, failed final checks, uncollected orders and unpaid balances as those supporting workflows are implemented.
-- Clearly separate all outstanding debt from remaining balances on orders booked in the selected period. The current Finance and overview scopes differ; preserve correct definitions in labels and exports.
-- Show the last successful update, provide refresh and reload when returning to the screen. Failed refreshes must not become zero activity; retain stale data only with a clear warning.
-- Add filtered CSV exports for an individual customer, service and date range. Include the filters and column meanings.
-- Define “top services”: quantity, number of orders or booked value. Keep the selected measure visible.
-- Add a small daily reconciliation record if the owner cannot close the day reliably with the existing views.
-- Avoid “profit” labels for receipts minus expenses. A later expense record can support net cash movement; profit needs proper cost definitions.
-
-**Main files:** Finance/Dashboard, customer/service history, financial-summary and export routes, reporting tests.
-
-**Exit gate:** Reconcile a fixed test dataset by hand, including deposits, later payments, discounts and corrections.
-Screen totals and exported totals must match for the same definitions and dates. No unexplained difference is acceptable.
-
-## Phase 6 — Prepare real data, recovery and monitoring
-
-**Value:** Qinetra can trust the records and knows what to do when the service is unavailable.
-
-### 6A. Clean production setup
-
-- Keep current demo records intact. An empty protected qinetra_live schema has now been provisioned in the existing project; it has not been connected to the app. A separate production project remains a stronger future environment boundary, subject to account capacity/cost review.
-- Rehearse schema creation from versioned migrations in a fresh test database first.
-- Seed only owner-approved service/clothing templates. Create real owner/staff accounts through a controlled setup process.
-- Do not copy test customers, orders or payments into production.
-- Identify genuine outstanding laundry at cutover. If any exists, agree a verified opening-record procedure rather than silently omitting it.
-- Keep development, test and production configuration separate. Make the test environment visibly identifiable.
-- Review database permissions, exposed Data API objects, secrets, TLS, CORS and role restrictions.
-- Keep the browser talking to FastAPI. Do not expose database credentials or give the browser direct table access.
-
-The current application uses custom FastAPI authentication and direct SQLAlchemy database access.
-Do not assume that a Supabase `auth.uid()` policy will automatically protect those connections.
-Check the actual database role and Data API exposure. Supabase distinguishes table grants from row-level policies. [Security reference](https://supabase.com/docs/guides/api/securing-your-api)
-
-### 6B. Recovery and support
-
-- Define a backup frequency, retention period, acceptable data loss and recovery time with the owner.
-- Configure the backup method supported by the selected plan. Rehearse a restore into a separate environment and compare records.
-- Treat CSV exports as useful records, not a full database backup. Store backups with restricted access.
-- Agree a real support contact, opening-hours response process and incident log.
-- Write a short paper fallback for an outage, including temporary receipt references and later reconciliation.
-- Preserve the ability to identify what was entered during the outage. Do not promise offline app operation in this phase.
-- Verify actual hosting wake-up time and service limits. If they interrupt counter work, present a measured hosting change and cost for approval.
-
-Backup features depend on the selected service plan; verify them before implementation. [Supabase backup reference](https://supabase.com/docs/guides/platform/backups)
-
-### 6C. UptimeRobot and release checks
-
-- Add a small readiness endpoint that checks database access without returning customer data or credentials.
-- Monitor both the frontend and API readiness. The existing `/` endpoint only reports that the process is running.
-- Set up UptimeRobot notifications to the agreed contact. Confirm that a controlled test alert is received and that recovery is reported.
-- Document that periodic checks can miss brief failures and do not prove an order can be saved.
-- Use existing hosting dashboards for deployment, errors and technical health during the pilot. A custom platform-admin dashboard is not a launch prerequisite. Retain useful error codes and incident records without exposing customer details in monitoring.
-- Rehearse deployment, rollback and configuration checks before switching Qinetra to the new environment.
-
-Verify UptimeRobot's current free-plan terms, check interval and alert options during setup. Use it for basic detection, not an instant-alert guarantee. [Official free-plan guidance](https://help.uptimerobot.com/en/articles/11604710-who-should-use-uptimerobot-s-free-plan)
-
-**Main areas:** migrations, deployment configuration, health route, environment setup, backup/restore and support instructions.
-
-**Exit gate:** Fresh production schema rehearsed; access tests passed; restore proved; alert delivered; rollback documented; opening records agreed.
-Obtain approval for the exact cutover before changing live configuration or collecting real data in the new environment.
-
-## Phase 7 — Run the Qinetra pilot and decide what earns its place
-
-**Value:** Replace assumptions with observed shop use.
-
-- Record a small baseline before cutover: intake time, order-search time, daily reconciliation effort and common corrections.
-- Plan 10 operating days, including a busy day where possible; extend if there are too few orders to cover the workflow.
-- Track intake time/hesitation, garment discrepancies, missed instructions, rewashes, promised-time performance, outstanding outsourced pieces and daily payment differences. Compare with the starting baseline; do not manufacture improvement percentages.
-- Train staff on intake, tracking, payment confirmation, handover, corrections and outage handling.
-- Deploy the approved release and check the exact deployed version. Use authorised real transactions for production acceptance.
-- Review incidents daily during the first week. Fix blockers before adding features.
-- Ask the owner which part they would miss if QLMS were removed and what they would pay to retain.
-
-Suggested acceptance targets below are proposals, not measured results. Agree them before the pilot starts.
-
-| Measure | Proposed gate |
-| --- | --- |
-| Correctness | No missing orders, unexplained balances or duplicate payments in the reviewed records |
-| Daily use | All eligible new orders and payments captured, or listed for reconciliation after an outage |
-| Independence | Staff complete ordinary intake, search and tracking without coaching |
-| Search | Typical customer/order lookup within 30 seconds on the shop's actual device and connection |
-| Daily close | Owner reconciles at least five consecutive trading days without rebuilding the figures in another spreadsheet |
-| Resilience | Restore and alert drills pass; each incident has an owner and recorded resolution |
-| Commercial value | Owner identifies a concrete recurring benefit and discusses willingness to pay; praise alone is not evidence |
-
-**Exit gate:** Owner accepts the workflow and records. Critical defects are closed. Record actual results and a go/fix/stop decision.
-If the pilot fails, repair the cause. Do not use more features to hide the failure.
-
-## Phase 8A — Customer memory that reaches the worker
-
-- Keep one optional current preference profile per customer. Start with team-confirmed presentation/care options; defer unconfirmed fragrance and softener choices.
-- Surface preferences at customer selection; save the agreed values with the order. A later profile edit must not rewrite an existing order, and an order-only override must not silently change the profile.
-- Keep current customer preferences, whole-order instructions, individual item instructions and internal care notes distinct. Item exceptions must not duplicate tally counts or charges.
-- Show applicable instructions on the shared work screen and during final checking. Conflicting or unsupported requests require clarification, not automatic acceptance.
-- Reuse customer order history. Give care notes author/time; retain only service-relevant information and exclude internal notes from customer receipts.
-- Set view/edit/correction permissions in the bounded phase design using existing roles; require an explicit action for permanent preference changes. Do not introduce Google login as a dependency.
-- Use additive, default-safe API/schema changes. Preserve older customers/orders without preferences, existing save protection and migration compatibility.
-
-**Gate:** Test a new customer with no profile, a returning customer, an order-only override, an explicit permanent change, an item instruction and an attributed note. Refresh and verify that the worker sees the saved order instructions, old orders are unchanged, and unauthorised edits are rejected.
-
-## Phase 8B — Offers and reusable customer messages
-
-- Let the owner create a dated bundle, such as load wash plus duvet for 15% off.
-- Show eligible offers in order entry for employees. Require a clear Apply offer action and show the saving before confirmation.
-- Define quantities, exclusions and whether offers can combine with other discounts or memberships.
-- Save the applied offer and price on the order so later rule changes do not rewrite old receipts.
-- Add message templates with checked fields such as customer name, ticket, amount and ready time.
-- Start with a preview and manual copy/share. Add automatic email/SMS/WhatsApp only after a channel, consent process and costs are agreed.
-- Test missing fields, wrong recipients, expired offers and attempts to apply the same benefit twice.
-
-**Gate:** An employee can explain the discounted total, and a message preview contains only the intended customer's information.
-
-## Phase 9 — Safaricom payment prompts
-
-- Confirm Qinetra's merchant/PayBill arrangements and Daraja production access before promising a launch date.
-- Add a Request M-PESA payment action. Prefill the customer's phone and allow a different Safaricom number for that attempt.
-- Keep the saved customer phone unchanged unless a separate customer edit is requested.
-- Distinguish request sent, awaiting confirmation, paid, cancelled, failed and result unknown.
-- Match confirmations to the correct business, order and amount. Deduplicate callbacks and provide a way to resolve missing results.
-- A phone prompt or accepted API request is not proof of payment. Keep manual payment recording clearly separate.
-- Never ask staff to collect a customer's M-PESA PIN.
-
-**Gate:** Sandbox failure paths pass, then approved live acceptance and reconciliation pass. No duplicate or unmatched payment remains.
-Verify the selected M-PESA product and callback/security contract against [Safaricom's official portal](https://developer.safaricom.co.ke/apis) during implementation.
-
-## Phase 10 — Laundry memberships, business packages and transport
-
-This is the laundry selling services to its customers. It is separate from businesses subscribing to QLMS software.
-
-- First estimate laundry cost, likely usage, capacity, pickup cost and delivery cost.
-- Let the owner set the price, included kg, dry-cleaning units, duvet washes, trip allowance, service windows and priority rules.
-- Support individual and business customers. Do not assume a business package has the same allowance or payment terms.
-- Track each allowance independently in a usage history. Do not overwrite a single remaining-balance field without a record.
-- Agree when a benefit is reserved or consumed, and how cancellation or a correction returns it.
-- Count pickup and return as two separate trips. Track external boda trips without building an employed-driver fleet.
-- Treat a laundry bag as a one-time issued benefit when appropriate, not an automatically renewed monthly item.
-- Show remaining benefits and thresholds, including one trip left and exceeded kg. Agree overage prices and whether work can proceed.
-- Add customer notices through the approved message channel. Define renewals, expiry, rollover, pauses and overlapping discounts before sale.
-- Test simultaneous usage, monthly boundaries and reversals. An allowance must not be consumed twice.
-
-The KES 2,500 for 30 kg idea is an example, not an approved package. At full use, it allows about KES 83.33 per kg.
-The code currently lists Wash & Fold at KES 150 per kg; confirm the shop's actual rate and costs before comparing margins.
-Free trips and other benefits reduce the amount available to cover washing costs. Do not sell the package until its economics are acceptable.
-
-**Gate:** Owner-approved costing and rules; accurate usage/reversal tests; a small paid package trial before broad promotion.
-
-## Phase 11 — Add more businesses safely
-
-- Introduce businesses and business memberships for staff. Separate platform administrator, laundry owner and employee permissions.
-- Prefer shared tables with a `business_id` and enforced boundaries over a new set of tables for every business.
-- Derive the business from verified access, not a freely supplied browser ID. Scope reads, writes, exports and linked records consistently.
-- Scope ticket/service uniqueness and foreign-key links to the business. A valid record ID must not allow a cross-business link.
-- Migrate Qinetra into its first business record through a rehearsed, verified migration with a rollback plan.
-- Test two businesses, including guessed IDs, exports, background work and callbacks. Neither business may access the other's records.
-- Add platform views for business status, subscription health and system usage. Do not expose named customer records by default.
-- For support access to shop records, require owner approval, a time limit and an audit record.
-- Offer service templates during onboarding. Each owner can change, disable or add services and prices.
-- Platform template changes must not silently replace a laundry's live prices or change old orders.
-- Provide a clear export/exit procedure and agree retention/deletion rules before onboarding others.
-
-**Gate:** Cross-business tests pass before inviting a second laundry. A hidden menu alone is not isolation.
-
-For the initial pilot, keep Qinetra on its own production dataset. Build tenant isolation only when preparing shared commercial onboarding.
-
-## Phase 12 — QLMS subscriptions, trials and Google login
-
-**Guided learning requirement (10 September 2026):** Set up Google OAuth together with the student. Explain each step before it is done. The student should be able to configure the consent screen, client credentials and allowed redirect URLs, and explain identity verification, account linking, role checks and recovery. Do not complete the provider setup unattended. Use the real implementation for a short explanation and test of success, denied access and failed sign-in. This is a later phase, not permission to add OAuth now.
-
-This is your platform charging laundry businesses for QLMS access.
-
-- Let the platform administrator create a business and grant its first-month trial.
-- Agree whether “one month” means a calendar month or a fixed number of days. Record exact start/end dates.
-- Define the trial's included users, orders, modules or other allowance. The “set number” in the original discussion is still undecided.
-- Define software plans, invoices/payment confirmation, renewal, expiry, reminders, grace periods and suspension.
-- Prevent trial resets through duplicate signups. Test date boundaries and repeated billing events.
-- Protect the business's records when a subscription expires. Agree permitted viewing, export and recovery before enforcing restrictions.
-- Keep platform software prices separate from each owner's laundry service and membership prices.
-- Add Google sign-in for approved staff/admin accounts. Google identity must map to an authorised business role; it must not grant access by itself.
-- Retain a secure recovery route for owners who cannot use Google. Do not create a customer portal as a side effect.
-
-**Gate:** A business can start a trial, convert, renew, expire and regain access without losing or exposing records.
-The first paying businesses must justify the support and hosting effort.
-
-## Phase 13 — Expand from evidence
-
-Consider these only when pilot/commercial use shows a repeated need:
-
-- Expenses, rewash/damage resolution and cost-aware reporting.
-- Business invoicing, approved credit limits and recurring business collection schedules.
-- More detailed transport coordination, consumables or equipment maintenance.
-- Further reporting, scheduled messages and integrations.
-- Multiple branches or a customer portal only as separately scoped products.
-
-Keep one Next.js frontend and one clearly organised FastAPI application for now.
-Use feature modules inside the application; selectable modules do not require separate microservices.
-Extract a service only when independent scaling, failures, deployment or ownership provide a concrete reason.
-An AWS-style platform or infrastructure migration is not a prerequisite for proving Qinetra's value.
-
-## Working agreement for every phase
-
-1. Inspect the current implementation and confirm the phase's business outcome.
-2. Present the files, approach, decisions and acceptance checks. Obtain approval for that phase.
-3. Build the smallest complete change in isolated test data. Do not bundle the next phase into it.
-4. Run relevant contract tests, frontend lint/build and migration/concurrency checks where applicable.
-5. Guide the student through the important browser action and one explanation of how it works.
-6. Record what passed, what remains uncertain, changed files and the commit.
-7. Update this roadmap's status, the development journal, learning/demo notes and evidence index.
-8. Add a screenshot only if it proves a distinct change. Write an optional short hook/change/conclusion post draft.
-9. Stop for review. Deploy only the reviewed release after authorization.
-
-## Decisions to settle at the relevant gate
-
-| When | Decision needed |
-| --- | --- |
-| Before shop acceptance | Volume and primary problem are confirmed above; confirm actual shared device, staff accounts and physical identification procedure |
-| Before customer memory | Which presentation/care choices staff and the external cleaner can reliably honour; who may edit permanent preferences |
-| Before corrections | Who may correct each record; cancellation, refund and collected-order rules |
-| Before cutover | Approved service prices, genuine open orders, production account/budget, backup targets and real support contact |
-| Before payment prompts | Merchant arrangements, Daraja access and who resolves payment exceptions |
-| Before memberships | Costs, allowances, benefit timing, overages, rollover, trip zones/windows and package pricing |
-| Before commercial trials | Software plan prices, trial duration/limits, grace period, suspension and support access rules |
-
-Do not invent these answers. Work that does not depend on them can continue within the approved phase.
-
-## Pre-mortem: why the pilot or business could fail
-
-| Failure | Early sign | Response |
+| Option | Timing and recommendation | Required check |
 | --- | --- | --- |
-| Staff return to paper because intake is awkward | Re-entry, help requests or incomplete digital orders | Observe intake; remove the specific friction before expanding scope |
-| Owner cannot trust money figures | Differences between receipts, payments and reports | Stop rollout; trace records and fix definitions or write logic |
-| Repeated saves create duplicate records | Same customer/order/payment appears twice after a delay | Complete phase 2 before real-data use |
-| Test records contaminate the pilot | Fake customers or unexplained opening balances | Use a clean production dataset and signed-off opening records |
-| Hosting interrupts the counter | Long first request, repeated timeouts or missed alerts | Measure availability, prove alerts/recovery and approve hosting changes if needed |
-| A backup exists but cannot be restored | No completed restore drill | Require a tested restore before cutover |
-| “Free” memberships lose money | Trips and heavy users exceed the package margin | Cost benefits, cap allowances and trial a small cohort |
-| One laundry can access another's data | Inconsistent business filters or export leakage | Block second-business onboarding until isolation tests pass |
-| Support becomes unmanageable | Repeated incidents with no owner or resolution | Set a real support process; fix recurring causes before selling more accounts |
-| More development produces no paying demand | Feature enthusiasm without regular use or commitment | Use the phase 7 value review to choose fix, proceed or stop |
+| DNS/domain management | Optional during R1 domain setup; DNS-only for Vercel initially | Domain ownership/renewal/recovery, correct records and certificates |
+| Proxy/CDN before Vercel | Do not enable by default; Vercel advises against this extra proxy | A demonstrated need and tested caching, traffic visibility, routing and rollback |
+| API WAF/rate rules | Conditional protection for a custom Render API domain after application throttling | Direct-origin bypass, trusted client IP, CORS/cookies, real save/retry paths; verify plan limits/cost |
+| Turnstile | Add if login abuse justifies it; proxying is not required | Server-side Siteverify, action/hostname, expiry/replay, provider outage behaviour and accessible staff flow |
+| Access | Consider for staging or administrative tools, not a default second staff login | Validate Access JWT at the protected origin; do not trust an email header as authorization |
+| Workers frontend qualification | Approved separate cost experiment; production migration remains gated | OpenNext/Linux and the full local workflow first; test real limits without customer data or purchases |
 
-**Next product action:** Plan Phase 3A2 pre-wash checks, condition exceptions and correction history as a separate increment. Phase 3A1 is accepted locally. Student order recovery passed; student final-payment recovery was skipped and stale clothing-edit acceptance remains an open release item. Do not start 3A2 without its short implementation review.
+Do not cache login, authenticated API responses, receipts, Finance or exports publicly. Use explicit no-store/bypass rules and test two identities plus logout. Edge rules must not discard a pending idempotency key after a timeout or HTML error.
 
-## Guided cloud-engineering learning track
+A public Render default domain can bypass custom-domain protection; disable or otherwise protect alternate origins only after custom-domain verification. Do not assume Cloudflare rules cover Vercel deployment URLs. Use verified origin certificates and Full (strict) when proxying is approved; rehearse DNS rollback. Keep backend authentication and rate controls.
 
-The student wants to learn Docker and eventually deploy a containerized QLMS to AWS. Use [the Docker learning guide](docs/docker-learning-guide.md), starting with image/container inspection and one disposable database. Then write the API Dockerfile together, add Compose and frontend packaging, and plan an AWS sandbox with an agreed budget. This learning track does not authorize an unattended application conversion, live data migration or cloud deployment. Google OAuth also remains guided.
+Cloudflare cannot restore lost data, correct financial logic, prevent wrong garments being returned, or wake a sleeping origin instantly. DNS-only provides DNS management, not HTTP WAF/CDN protection.
+
+References: [Vercel guidance](https://vercel.com/kb/guide/cloudflare-with-vercel), [DNS proxy status](https://developers.cloudflare.com/dns/proxy-status/), [Render Cloudflare setup](https://render.com/docs/configure-cloudflare-dns), [Full (strict) TLS](https://developers.cloudflare.com/ssl/origin-configuration/ssl-modes/full-strict/), [Turnstile validation](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/), [Access origin validation](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/).
+
+## G1: customer memory and care instructions
+
+- Optional current preference profile using only care/presentation options the team can actually honour. No unconfirmed fragrance, softener or skin/allergy promises.
+- Show preferences when choosing a customer; snapshot agreed instructions on the order. Later profile edits do not rewrite old work.
+- Separate permanent preference, order-only override, item instruction and attributed internal care note. Changes to a profile must be explicit, with permissions.
+- Show saved instructions to the worker and at final checking. Clarify incompatible requests rather than silently accepting them.
+- Reuse existing history. Exclude internal notes from receipts; retain only information useful to the service.
+- Test no-profile customers, returning customers, overrides, permanent edits, item notes and unchanged historical orders.
+
+## G2: offers and messages
+
+- Owner-managed dated offers/bundles with clear quantities, exclusions, stacking with discretionary discounts and memberships, and an explicit Apply action.
+- Snapshot eligibility/result/price on the order. Do not reprice old receipts when an offer changes.
+- Reusable templates with checked ticket/customer/amount/ready-time fields; preview and manual copy/share first.
+- Automatic email/SMS/WhatsApp only after a channel, consent/opt-out, recipient policy, delivery costs and failure handling are approved.
+- Test expired/boundary/duplicate benefits, unsupported combinations, missing fields, wrong recipients and internal-note exclusion.
+
+## G3: M-PESA automation and reconciliation
+
+- Confirm merchant/PayBill arrangements and Daraja production access. Keep existing staff-confirmed cash/M-PESA records explicitly manual.
+- Persist each payment attempt and distinguish requested, pending, paid, cancelled, failed and unknown. An accepted request or phone prompt is not proof of payment.
+- Allow a different payer number without silently changing the customer profile; never collect a PIN.
+- Verify callbacks according to the actual product contract, bind them to the right business/order/amount and reconcile exceptions. Do not invent a signature mechanism unsupported by the chosen API.
+- Handle duplicate, late, missing and out-of-order results; use unique provider references and atomic ledger writes. Keep an accountable manual resolution path.
+- Pass sandbox failure/replay tests, then separately approved live acceptance and reconciliation. Reference [Safaricom's official portal](https://developer.safaricom.co.ke/apis) during implementation.
+
+## G4: laundry memberships, business customers and transport
+
+This is Qinetra selling laundry services, distinct from M2 where laundries buy QLMS software.
+
+- Cost washing, dry cleaning, capacity, pickup and return before pricing. Earlier package-price examples were ideas, not approved products.
+- Owner sets price, kg, dry-cleaning units, duvet washes, trip allowance, service windows and priority rules. Business packages can have different terms.
+- Keep independent benefit ledgers, reservations/consumption and reversals. Do not overwrite a remaining-balance number without history.
+- Define consumption timing, correction/cancellation returns, overages and whether excess work may proceed.
+- Pickup and return count as two trips. Coordinate external boda trips; do not build a driver fleet without a real need. An issued bag can be a one-time benefit, not a monthly renewal.
+- Define expiry, renewal, rollover, pauses, overlapping offers and permitted notices. Show remaining allowances and warning thresholds.
+- Test concurrent use, month boundaries, returns/reversals and double benefits; trial a small paid cohort before broad promotion.
+
+## M1/M2: commercial platform
+
+Before a second laundry joins a shared deployment, add businesses and explicit business memberships. Prefer shared tables with enforced business scope over duplicated schema sets per customer. For another type of business, establish the specific problem before offering full QLMS or a focused solution; do not build universal configuration in anticipation of unknown customers.
+
+- Derive business scope from verified membership, not a browser-provided ID. Scope queries, writes, exports, jobs, callbacks, uniqueness and linked-record foreign keys.
+- Rehearse migration of Qinetra into the first business record. Adversarially test guessed IDs and cross-business links with two businesses before onboarding others.
+- Separate platform administrator, owner and employee permissions. Add a manager/report-only permission only when needed; financial viewing must not imply full owner power.
+- Platform views show business status, service/subscription health and usage. No default browsing of named customer records. Support access requires owner approval, expiry and an audit.
+- Onboarding service templates are editable per business. Platform template updates cannot overwrite live prices or saved order snapshots.
+- Agree export/exit/retention/deletion rules before others entrust records.
+
+Then add QLMS software plans and trials:
+- Platform admin grants a first-month trial with exact start/end and a decided meaning of “month”; user/order/module allowances are still business decisions.
+- Define plans, payment confirmation/invoices, renewals, reminders, grace, expiry and suspension. Keep software pricing apart from laundry prices and packages.
+- Prevent duplicate trial resets and duplicate billing events. State what read/export/recovery access remains after expiry; never hold records hostage accidentally.
+- Test trial-to-paid, renewal, expiry, reactivation, date boundaries and replay. First paying businesses must justify ongoing support and hosting costs.
+- Optional Google sign-in remains A1 and can precede these commercial features.
+
+## E1+: conditional future inventory
+
+Keep these visible, but start only with a demonstrated need and a bounded design:
+- Expense records, rewash/damage resolution and attributable costs; then defensible cost/margin reporting, not misleading “profit”.
+- Business invoicing, approved credit limits, payment terms, recurring commercial collections and bad-debt handling.
+- More detailed pickup/return scheduling, trip zones, capacity and transport coordination.
+- Consumables/stock and equipment maintenance when omissions cause measurable cost or downtime.
+- Period comparisons, deeper operational reporting and approved external integrations; protect access and data freshness.
+- Audited duplicate-customer merge only if duplicates remain a practical problem after normalized intake/shared-number handling.
+- Additional delegated permissions/invitations when the two roles are insufficient.
+- Multiple branches, customer portal and full offline synchronization are separately scoped products, outside the current pilot; each adds its own privacy, custody and conflict model.
+
+## L1+: guided Docker and AWS learning
+
+Use [the Docker guide](docs/docker-learning-guide.md). Start with images/containers and disposable PostgreSQL, then a guided API Dockerfile, Compose, frontend packaging and repeatable tests. Plan any ECR/ECS/Fargate or other AWS sandbox with current documentation, cost limits, secret handling and teardown. No production migration is implied. Learning can proceed without disrupting the stable shop application.
+
+## Documentation without duplication
+
+- This roadmap owns priorities, scope/status and gates. The [premortem](docs/pilot-premortem.md) owns risks, early signs, acceptance checks and stop/recovery conditions.
+- The handover owns the next concrete task and unfinished work. The journal/check records own dated evidence; README should point to current documents rather than claim the whole backend is “complete”.
+- [PRD.md](PRD.md) defines users/outcomes; [ARCHITECTURE.md](ARCHITECTURE.md) defines current components and boundaries with its essentials at the top. These concise documents exist; do not duplicate them in flow.md or another outline file.
+- [DATA.md](DATA.md) records entity meanings, real/test separation and recovery requirements; D1/R1 must implement and prove them. [SECURITY.md](SECURITY.md) records controls and gaps; S1/S2 must implement the outstanding work. Written requirements are not evidence that controls already exist.
+- Keep AGENTS.md as the instruction entry point and link the engineering guidelines. No duplicate flow.md rules or new scaffold solely for an AI workflow.
+- For each verified increment update learning/presentation notes; capture a screenshot only for distinct meaningful behaviour with fictional data. Do not manufacture a screenshot for an invisible dependency version change.
+
+## Decisions at the relevant gate
+
+| Gate | User/owner decision |
+| --- | --- |
+| C2/C3 | Physical labels; valid item/pair corrections; normal collection attribution and any genuine partial-collection need. Discount authority is decided: owner-configured whole-order percentage, initially 0% |
+| D1 | Actual owner/staff, catalog prices, opening clothes/debt/payments, treatment of legacy records and data retention |
+| R1/P1 | Domain/support contact, backup destination/retention/key recovery and exact release window. Zero spending, daily backup/one-day reconstruction/four-working-hour recovery targets and ten receipt-backed trading days are decided |
+| A1 | Who benefits from Google, account ownership on shared devices, linking and owner recovery |
+| G1/G2 | Supported care choices, who edits preferences, offer stacking and message channel/consent |
+| G3/G4 | Merchant access and exception owner; package costs/allowances/trips/overages/expiry |
+| M1/M2 | Delegated permissions/support access, software prices/trial limits, expiry/export/exit rights |
+
+Ask only decisions needed for the next increment; do not block unrelated approved work on all future answers. For each phase: inspect, explain the bounded files/data flow, resolve decisions, implement after approval, test, let the student do the important action, record evidence and stop before the next feature. Production change still requires the exact reviewed cutover.

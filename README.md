@@ -65,4 +65,13 @@ Open `http://localhost:3000` in a browser.
 
 ## Project status
 
-The backend is complete. Frontend phases 1 to 5 are complete, covering authentication, customers, order entry, pricing, status tracking, overdue orders, the owner dashboard and CSV export.
+The original academic system was deployed. Later pilot improvements are local and have separate automated, browser, staff-acceptance and release gates; local completion is not production readiness.
+
+Start with the [current handover](docs/pilot-handoff.md) and [implementation roadmap](IMPLEMENTATION_ROADMAP.md). The approved direction is zero spending now and a ten-trading-day Qinetra trial alongside existing receipts after security and recovery checks.
+
+- [Product requirements](PRD.md): users, daily outcomes and evidence of value.
+- [Architecture and essentials](ARCHITECTURE.md): current stack, boundaries and future interfaces.
+- [Data and recovery](DATA.md): real/test separation, money meanings and restore requirements.
+- [Security](SECURITY.md): verified controls, gaps and release checks.
+- [Premortem](docs/pilot-premortem.md): failure scenarios and acceptance evidence.
+- [Dependency patch verification](docs/security-patch-check.md): dated checks and remaining limits.
