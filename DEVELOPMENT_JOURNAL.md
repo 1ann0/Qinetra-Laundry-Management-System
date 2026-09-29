@@ -336,3 +336,9 @@ Ignored helpers in `tmp/` support the local fixture server, read-only smoke chec
 
 - Removed default action/purpose, added outcome preview and action-specific confirmation, and reset confirmation on detail changes. Only frontend behavior changed; 52 frontend tests, lint/build and focused browser checks passed, including lost-reply refresh/retry with one refund. Details and student receipt 4 steps: `docs/refund-check.md`. Screenshot 44 records the preview. The contact draft is preserved; no deployment or real money movement.
 - User requested less process overhead: prioritise daily-work value and launch blockers, reuse valid evidence and keep updates concise. Expired-session receipt refresh remains a separate launch check.
+- Student refund repeat passed: receipt 4's one KES 60 service refund and KES 240 charge/retained, zero debt/refund due and Collected status were verified after refresh. Detailed acceptance is in `docs/refund-check.md`; no further save or deployment was performed.
+
+## 29 September 2026 — Customer contact correction
+
+- Completed the existing draft with an owner contact editor/history, name-only shared-phone handling, synchronized phone checks and input-tampering rejection. Customer IDs, order links and money remain unchanged. Contract/file inventory and evidence: `docs/customer-contact-check.md`.
+- 156 backend tests passed including disposable PostgreSQL concurrency/migration checks; 52 frontend tests, lint and production build passed. Browser shared-number review, lost-reply refresh/retry, name-only change, lookup and existing receipt passed. Screenshot 45 records fictional audit history. Student customer #3 is ready; acceptance/deep review pending. No production migration, deployment or real customer data used.

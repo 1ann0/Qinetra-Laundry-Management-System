@@ -4,6 +4,8 @@ Updated 29 September 2026. Local implementation; no production deployment or rea
 
 ## Verification record
 
+- **29 September student repeat passed:** after the student reported completion, browser inspection and an agent refresh of `QL-20260929-002` (`/orders/4`) confirmed one KES 60 cash service refund, reason `single garment not washed`, KES 240 net charge/retained money, zero debt/refund due and unchanged Collected status. Original payment remains KES 300. This completes the requested hands-on service-refund check; explain-back remains on the learning backlog. No production deployment.
+
 - **29 September form follow-up:** `payment-corrections.js` now starts without an action or refund purpose selected, previews the resulting charge/retained money/debt, and clears confirmation when details change. All 52 frontend tests, lint and production build passed. Browser checks on fresh fictional receipt 3 verified blank-choice gating, KES 60 entry-correction versus service-refund previews, confirmation reset, and a lost reply followed by refresh/retry with one KES 60 refund (charge/retained KES 240, zero debt/refund due, still Collected). Backend code was unchanged and its suite was not repeated. Screenshot 44 shows the preview and explicit refund confirmation. Expired-session reauthentication required a receipt refresh; this remains in the separate session-recovery launch review.
 
 - **29 September student check:** the student reported completion. Read-only browser inspection of ticket 1 found the additional KES 100 saved as `entry_error`, with reason `further refund test`, rather than a service refund. Current values: net charge KES 800, retained KES 700, debt KES 100, original service refund KES 200, still Collected. This is consistent with an entry correction but does **not** pass the intended refund acceptance check. Preserve the history; repeat the service-refund check on a fresh fictional receipt. This also exposes a form-selection usability issue to address before shop use. No further financial event was created by the agent.
@@ -14,7 +16,7 @@ Updated 29 September 2026. Local implementation; no production deployment or rea
 - Agent browser acceptance: the fictional KES 200 service refund saved despite a deliberately lost reply. Refresh preserved Retry previous save; retry produced one refund, KES 800 charge/retained money, zero debt/refund due, still Collected. The KES 150 excess return left the corrected charge at KES 150 and cleared refund due. Inactivity reauthentication resumed the second receipt.
 - Finance displayed the hand-calculated combined KES 1,150 booked value, KES 200 service refunds, KES 950 net charge, KES 1,300 receipts, KES 350 returned and zero outstanding/refund due. Authenticated CSV retrieval and both order responses matched, with one refund event each and Collected unchanged.
 - Employee browser check passed: receipt/history showed KES 800 charge and retained money, zero debt and Collected, with no owner correction/refund controls. Direct employee refund requests were rejected in HTTP tests.
-- Screenshots 42 (refund due before return) and 43 (Finance net charge) are local developer evidence in `docs/diagrams/evidence/`. They do not represent student actions or real customers. Student hands-on acceptance and explain-back remain pending.
+- Screenshots 42 (refund due before return) and 43 (Finance net charge) are local developer evidence in `docs/diagrams/evidence/`. They do not represent student actions or real customers. Student service-refund acceptance is recorded above; explain-back remains pending.
 
 ## Files in this increment
 
@@ -59,7 +61,7 @@ Student acceptance and explain-back remain separate from agent checks. Explain w
 
 ### Continue with the currently running fixture
 
-The earlier instruction to refund a further KES 100 on ticket 1 is superseded by the 29 September finding above. Preserve its history. Fresh student receipt **QL-20260929-002**, `/orders/4`, starts Collected with KES 300 charge/retained money and no adjustments. In the local owner session, choose **Money returned to customer → Service refund — reduce the charge**, enter **KES 60**, Cash and a fictional-test reason, read the preview, confirm and save. Expect charge/retained money **KES 240**, debt/refund due **KES 0**, one KES 60 refund and unchanged Collected status after refresh. This student check remains pending. Receipt 3 is the completed agent test; the initial two-receipt Finance totals above are historical and do not include these new receipts.
+The student repeat on **QL-20260929-002**, `/orders/4`, is complete: KES 240 charge/retained money, zero debt/refund due, one KES 60 service refund and Collected. Do not repeat the save on this receipt. Receipt 1 preserves the earlier entry correction; receipt 3 is the completed agent test. The initial two-receipt Finance totals above are historical and do not include these new receipts.
 
 ## Release requirements
 

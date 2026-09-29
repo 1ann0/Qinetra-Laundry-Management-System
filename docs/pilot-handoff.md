@@ -14,8 +14,8 @@ Use the current worktree as the source of truth. Preserve unfinished changes. Do
 - Keep Render/Supabase for now. Cloudflare/OpenNext is a separate fictional-data qualification; Railway remains an alternative. No paid resources, framework replacement, database provisioning, push or deployment was performed.
 - S0 is locally verified: Next.js/eslint-config-next 16.3.6, compatible lockfile fixes, 50 tests, lint/build, audit result and browser evidence in [the patch record](security-patch-check.md). Product, architecture, data and security documents exist and explicitly distinguish requirements from implemented controls.
 - Browser smoke initially encountered receipt-load errors in the old shared-connection SQLite fixture. The fresh temporary-file fixture passed employee receipt loading, a KES 100 fictional payment and refresh with one payment/KES 200 balance. Broader old-tab/reauthentication review remains S1c/C3; do not claim it is fixed.
-- Current local fixture: ignored `tmp/refund-fixture.py`, port 8000, frontend at 3100. Receipt 1 preserves the student's entry correction; receipt 3 is the completed explicit-refund developer check. Fresh student receipt **QL-20260929-002**, `/orders/4`, starts at KES 300 charged/retained, Collected. Follow [the current refund steps](refund-check.md#continue-with-the-currently-running-fixture); do not reset the old audit history. Refund-form choice/preview/retry checks passed with 52 frontend tests, lint and build. Expired-session reauthentication needed a receipt refresh and remains a launch-review item.
-- Truthful refunds are implemented locally; use [the refund check record](refund-check.md) for verification status and the new fictional fixture. Student acceptance remains pending. Preserve the existing contact-correction backend draft and isolate its completion separately. The launch security/data/hosting/trial gates are not complete.
+- Current local fixture: ignored `tmp/contact-fixture.py`, port 8001, frontend at 3100 (ignored `.env.local` updated). Its persistent fictional database is `tmp/contact-fixture.sqlite`. Fresh student customer #3 is **Student contact test**, phone 0733333333; use [the contact acceptance steps](customer-contact-check.md). Customer #1 is the completed developer test. The earlier refund API and accepted receipt history remain separate on port 8000; do not expect old refund receipts in the contact dataset.
+- Refund student acceptance passed; see [the refund check record](refund-check.md). Customer contact correction is now locally implemented and developer-verified (156 backend tests including PostgreSQL, 52 frontend tests, lint/build and focused browser checks). Student contact acceptance remains pending. Expired-session recovery and other security/data/hosting/trial gates remain open.
 
 ## Completed local increment: recover rejected saves
 
@@ -28,7 +28,7 @@ Use the current worktree as the source of truth. Preserve unfinished changes. Do
 - Save recovery is isolated in local commit `d6559aa`, `Recover rejected saves without losing uncertain requests`. The older contact-correction draft remains unstaged. On 25 September the student confirmed both two-tab rejection/reload/resubmission and lost-reply/refresh/retry. Browser inspection verified one 4 to 5 kg "lost reply test" event, KES 750 and no retry notice; the fault flag was consumed. Explain-back remains pending. No production deployment was performed; the 22 September public Render `/docs` request timed out.
 - The original `backend/venv` points to a removed Python installation. The test runner accepts `-PythonExecutable`; this session uses the working ignored `tmp/test-venv/Scripts/python.exe`. Docker was verified as 29.8.0 after the user started it. Sandbox access to its named pipe required an approved escalation.
 
-## Current increment: truthful refunds
+## Completed local increment: truthful refunds
 
 - Owner only. Support partial/full service refunds after collection without changing physical order status. Require a reason, original payment, method, actual return date and confirmation that money was returned.
 - Keep original payments/prices in history. A service refund reduces the charge as well as retained money; returning excess payment does not reduce the charge again.
@@ -37,15 +37,15 @@ Use the current worktree as the source of truth. Preserve unfinished changes. Do
 - Let a valid kg correction create excess payment to return. Permit owner payment-entry corrections after collection without falsely changing garment custody. Update receipts, Finance, exports and outstanding totals consistently.
 - New forward migration; do not guess the purpose of historical refunds. No automatic money transfer, store credit or compensation beyond the service charge in this increment.
 
-## Existing unfinished work
+## Current increment: customer contact correction
 
-Customer contact correction was already uncommitted before this increment: model, schema, routes, migration 020 and migration-test integration. Some rejection behavior now has HTTP coverage, but there is no owner UI or complete feature acceptance. Do not call it finished or deploy it accidentally. Review the existing shared-phone case when changing only a name.
+The older draft is completed locally with an owner editor/history, existing migration 020, direct permissions/validation/replay tests and PostgreSQL race checks. Name-only edits do not need renewed shared-phone approval; changed phones require explicit confirmation when a match exists. No customer merging or order reassignment occurs. See [customer-contact-check.md](customer-contact-check.md) for files, contract, developer evidence and the pending student check. No production migration/deployment occurred.
 
 The preceding feature commit was `89f07c2` (wrong customer on a saved ticket); the save-recovery follow-up is titled `Recover rejected saves without losing uncertain requests`. Existing local features include garment references/outsourcing, clothing checks/holds, inline customer intake and owner corrections. Several still require representative staff/browser checks.
 
 ## Remaining release work, in order
 
-1. Complete student refund acceptance, then customer contact editing and the approved discount policy as separate increments. Refund implementation and agent verification are recorded in refund-check.md.
+1. Complete student contact acceptance, then implement the approved whole-order discount policy as its own increment. Contact implementation is locally verified; the student service-refund repeat passed.
 2. Close launch security gaps, ordinary session/read recovery and remaining staff/clothing/money scenarios. Reconcile existing Finance/export figures and lookup. Extra work lists/pagination/filtered exports follow the trial unless a concrete failure requires them earlier.
 3. Prepare a separate Supabase project within the free allowance; rehearse full migrations and restricted runtime access, approved catalogue/accounts and opening records. Do not silently reuse the old schema or spend money if no free slot is available.
 4. Prove restore targets, database-aware readiness, alert delivery/recovery, compatible release rollback and the receipt reconciliation procedure. Qualify the frontend and check free-plan/commercial-use limits.

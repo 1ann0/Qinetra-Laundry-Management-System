@@ -41,6 +41,31 @@ class Customer(Base):
     phone = Column(String(20), nullable=False)
     phone_normalized = Column(String(12), nullable=True, index=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    corrections = relationship(
+        "CustomerCorrection",
+        back_populates="customer",
+        cascade="all, delete-orphan",
+        order_by="CustomerCorrection.id",
+    )
+
+
+# Name/phone edits keep the old contact values for the owner audit.
+class CustomerCorrection(Base):
+    __tablename__ = "customer_corrections"
+
+    id = Column(Integer, primary_key=True, index=True)
+    customer_id = Column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False)
+    before_state = Column(JSON, nullable=False)
+    after_state = Column(JSON, nullable=False)
+    reason = Column(String(300), nullable=False)
+    shared_phone_confirmed = Column(Boolean, nullable=False, default=False)
+    request_key = Column(String(36), unique=True, nullable=True)
+    request_hash = Column(String(64), nullable=True)
+    confirmed_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    confirmed_by_username = Column(String(50), nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+
+    customer = relationship("Customer", back_populates="corrections")
 
 
 # Laundry services the owner can manage without changing the code.

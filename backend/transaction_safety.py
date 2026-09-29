@@ -46,6 +46,8 @@ def find_saved_order(db, record_type, key, fingerprint, user_id):
     # Return the original order with its current balance and status.
     if record_type is models.Order:
         return saved
+    if record_type is models.CustomerCorrection:
+        return saved.customer
     return saved.order
 
 

@@ -46,7 +46,7 @@ function getServiceSummary(order, services) {
 }
 
 export default function CustomerSearchPage() {
-  const { authenticatedRequest } = useAuth();
+  const { authenticatedRequest, role } = useAuth();
   const historySectionRef = useRef(null);
 
   const [customers, setCustomers] = useState([]);
@@ -402,6 +402,10 @@ export default function CustomerSearchPage() {
                           >
                             Create order
                           </Link>
+                          {role === "owner" ? <Link
+                            className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[#005AAB] px-4 font-bold text-[#005AAB] no-underline hover:bg-blue-50"
+                            href={`/customers/${customer.id}`}
+                          >Contact details</Link> : null}
                         </div>
                       </td>
                     </tr>

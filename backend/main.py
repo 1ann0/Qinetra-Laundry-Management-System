@@ -603,6 +603,8 @@ def create_customer(
     current_user: models.User = Depends(auth.get_current_user),
 ):
     canonical_phone = normalize_kenyan_phone(customer.phone)
+    # Serialize phone checks with contact edits so simultaneous saves see each other.
+    lock_save_reference(db, f"customer-phone:{canonical_phone}")
     existing = db.query(models.Customer).filter(
         models.Customer.phone_normalized == canonical_phone,
     ).first()
@@ -627,6 +629,88 @@ def create_customer(
         warning = "A separate customer was created with a phone number already in use."
 
     return schemas.CustomerCreateResponse(customer=new_customer, duplicate_warning=warning)
+
+
+@app.get("/customers/{customer_id}/corrections", response_model=list[schemas.CustomerCorrectionOut])
+def list_customer_corrections(
+    customer_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+):
+    customer = db.get(models.Customer, customer_id)
+    if not customer:
+        raise HTTPException(404, "Customer not found")
+    return customer.corrections
+
+
+@app.post("/customers/{customer_id}/corrections", response_model=schemas.CustomerOut)
+def correct_customer_details(
+    customer_id: int,
+    correction: schemas.CustomerCorrectionCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+    *,
+    idempotency_key: Annotated[UUID, Header()],
+):
+    fingerprint = request_fingerprint(f"customer-details:{customer_id}", correction)
+    lock_save_reference(db, idempotency_key)
+    saved = find_saved_order(db, models.CustomerCorrection, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+
+    customer = (
+        db.query(models.Customer)
+        .filter(models.Customer.id == customer_id)
+        .populate_existing()
+        .with_for_update()
+        .first()
+    )
+    if not customer:
+        raise HTTPException(404, "Customer not found")
+    saved = find_saved_order(db, models.CustomerCorrection, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+    if not correction.confirmed:
+        raise HTTPException(400, "Confirm the customer's new details before saving")
+    if (customer.name, customer.phone) != (correction.expected_name, correction.expected_phone):
+        raise reject_unsaved_change("QLMS-STALE-RECORD", "Customer details changed. Reload before correcting them")
+    if (customer.name, customer.phone) == (correction.new_name, correction.new_phone):
+        raise HTTPException(400, "Enter a changed name or phone number")
+
+    canonical_phone = normalize_kenyan_phone(correction.new_phone)
+    try:
+        previous_phone = normalize_kenyan_phone(customer.phone)
+    except ValueError:
+        previous_phone = None  # Allow an owner to repair invalid legacy contact data.
+    phone_changed = canonical_phone != previous_phone
+    lock_save_reference(db, f"customer-phone:{canonical_phone}")
+    duplicate = db.query(models.Customer).filter(
+        models.Customer.id != customer.id,
+        models.Customer.phone_normalized == canonical_phone,
+    ).first()
+    if phone_changed and duplicate and not correction.allow_shared_phone:
+        raise reject_unsaved_change("QLMS-PHONE-SHARED", "This phone belongs to another saved customer. Check the match or confirm that they share a number")
+
+    before_state = {"name": customer.name, "phone": customer.phone}
+    customer.name = correction.new_name
+    customer.phone = correction.new_phone
+    customer.phone_normalized = canonical_phone
+    db.add(models.CustomerCorrection(
+        customer_id=customer.id,
+        before_state=before_state,
+        after_state={"name": customer.name, "phone": customer.phone},
+        reason=correction.reason,
+        shared_phone_confirmed=bool(phone_changed and duplicate and correction.allow_shared_phone),
+        request_key=str(idempotency_key),
+        request_hash=fingerprint,
+        confirmed_by_id=current_user.id,
+        confirmed_by_username=current_user.username,
+    ))
+    saved = commit_once(db, models.CustomerCorrection, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+    db.refresh(customer)
+    return customer
 
 
 # Find exact phone matches before staff decide whether this is the same person.
@@ -671,6 +755,18 @@ def list_customers(
         )
 
     return query.order_by(models.Customer.id.desc()).all()
+
+
+@app.get("/customers/{customer_id}", response_model=schemas.CustomerOut)
+def get_customer_details(
+    customer_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+):
+    customer = db.get(models.Customer, customer_id)
+    if not customer:
+        raise HTTPException(404, "Customer not found")
+    return customer
 
 
 # Lists active laundry services for staff, or all services for the owner setup page.

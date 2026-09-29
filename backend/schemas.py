@@ -49,6 +49,52 @@ class CustomerCreateResponse(BaseModel):
     duplicate_warning: Optional[str] = None
 
 
+class CustomerCorrectionCreate(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    expected_name: str = Field(max_length=100)
+    expected_phone: str = Field(max_length=20)
+    new_name: str = Field(min_length=2, max_length=100)
+    new_phone: str
+    allow_shared_phone: bool = False
+    reason: str = Field(min_length=1, max_length=300)
+    confirmed: bool
+
+    @field_validator("new_name")
+    @classmethod
+    def clean_name(cls, value: str):
+        cleaned = " ".join(value.split())
+        if len(cleaned) < 2:
+            raise ValueError("Enter the customer's name")
+        return cleaned
+
+    @field_validator("new_phone")
+    @classmethod
+    def clean_phone(cls, value: str):
+        return display_kenyan_phone(value)
+
+    @field_validator("reason")
+    @classmethod
+    def clean_reason(cls, value: str):
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Explain why the customer record needs correction")
+        return cleaned
+
+
+class CustomerCorrectionOut(BaseModel):
+    id: int
+    before_state: dict
+    after_state: dict
+    reason: str
+    shared_phone_confirmed: bool
+    confirmed_by_username: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 # Data required when the owner adds a laundry service.
 class ServiceCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)

@@ -192,6 +192,58 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
         with ThreadPoolExecutor(max_workers=len(operations)) as pool:
             return list(pool.map(run, operations))
 
+    def contact_body(self, **changes):
+        body = dict(expected_name="Save test", expected_phone="0700000000",
+                    new_name="Corrected name", new_phone="0722222222",
+                    reason="Checked with customer", confirmed=True)
+        body.update(changes)
+        return schemas.CustomerCorrectionCreate(**body)
+
+    def test_concurrent_contact_edits_reject_stale_and_retry_is_single(self):
+        self.user.role = "owner"
+        self.db.commit()
+        body = self.contact_body()
+        operation = lambda db, user: main.correct_customer_details(self.customer_id, body, db, user, idempotency_key=uuid4())
+        outcomes = self.race([operation, operation])
+        self.assertEqual(sorted(status for status, _ in outcomes), [200, 409])
+        self.assertEqual(next(detail for status, detail in outcomes if status == 409)["code"], "QLMS-STALE-RECORD")
+        self.assertEqual(self.db.query(models.CustomerCorrection).count(), 1)
+
+    def test_concurrent_contact_same_key_creates_one_history_event(self):
+        self.user.role = "owner"
+        self.db.commit()
+        body, key = self.contact_body(), uuid4()
+        operation = lambda db, user: main.correct_customer_details(self.customer_id, body, db, user, idempotency_key=key)
+        self.assertEqual(self.race([operation, operation]), [(200, self.customer_id)] * 2)
+        self.assertEqual(self.db.query(models.CustomerCorrection).count(), 1)
+
+    def test_concurrent_contact_edits_cannot_silently_share_new_phone(self):
+        self.user.role = "owner"
+        other = models.Customer(name="Other", phone="0711111111", phone_normalized="254711111111")
+        self.db.add(other)
+        self.db.commit()
+        other_id = other.id
+        body = self.contact_body()
+        second = self.contact_body(expected_name="Other", expected_phone="0711111111")
+        outcomes = self.race([
+            lambda db, user: main.correct_customer_details(self.customer_id, body, db, user, idempotency_key=uuid4()),
+            lambda db, user: main.correct_customer_details(other_id, second, db, user, idempotency_key=uuid4()),
+        ])
+        self.assertEqual(sorted(status for status, _ in outcomes), [200, 409])
+        self.assertEqual(next(detail for status, detail in outcomes if status == 409)["code"], "QLMS-PHONE-SHARED")
+
+    def test_contact_edit_racing_registration_checks_new_phone(self):
+        self.user.role = "owner"
+        self.db.commit()
+        body = self.contact_body()
+        def create(db, user):
+            return main.create_customer(schemas.CustomerCreate(name="New person", phone="0722222222"), db, user).customer
+        outcomes = self.race([
+            lambda db, user: main.correct_customer_details(self.customer_id, body, db, user, idempotency_key=uuid4()),
+            create,
+        ])
+        self.assertEqual(sorted(status for status, _ in outcomes), [200, 409])
+
     def test_simultaneous_orders_have_unique_tickets(self):
         body = self.body()
         outcomes = self.race([lambda db, user: main.create_detailed_order(body, db, user, idempotency_key=uuid4()) for _ in range(6)])
@@ -300,6 +352,7 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
             connection.execute(text("ALTER TABLE payments DROP COLUMN request_key, DROP COLUMN request_hash"))
             connection.execute(text("DROP TABLE payment_adjustments"))
             connection.execute(text("DROP TABLE order_corrections"))
+            connection.execute(text("DROP TABLE customer_corrections"))
             connection.execute(text("ALTER TABLE order_service_lines DROP COLUMN item_revision"))
             connection.execute(text("DROP TABLE ticket_counters"))
         migration_directory = Path(__file__).parents[1] / "migrations"
@@ -314,6 +367,7 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
         quantity_sql = (migration_directory / "018_allow_quantity_corrections.sql").read_text()
         refund_sql = (migration_directory / "021_add_refund_purpose.sql").read_text()
         customer_sql = (migration_directory / "019_allow_order_customer_corrections.sql").read_text()
+        customer_details_sql = (migration_directory / "020_add_customer_corrections.sql").read_text()
         with self.engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
             connection.exec_driver_sql(transaction_sql)
             connection.exec_driver_sql(transaction_sql)
@@ -337,6 +391,8 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
             connection.exec_driver_sql(refund_sql)
             connection.exec_driver_sql(customer_sql)
             connection.exec_driver_sql(customer_sql)
+            connection.exec_driver_sql(customer_details_sql)
+            connection.exec_driver_sql(customer_details_sql)
             rls_tables = connection.execute(text("""
                 SELECT relname
                 FROM pg_class
@@ -349,7 +405,8 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
                       'outsource_handovers',
                       'outsource_handover_items',
                       'payment_adjustments',
-                      'order_corrections'
+                      'order_corrections',
+                      'customer_corrections'
                   )
             """)).scalars().all()
         self.db = self.Session()
@@ -373,6 +430,7 @@ class PostgresSaveTests(SaveFixtures, unittest.TestCase):
                 "outsource_handover_items",
                 "payment_adjustments",
                 "order_corrections",
+                "customer_corrections",
             },
         )
         self.assertTrue(self.create().ticket_number.endswith("-002"))
