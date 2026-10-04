@@ -2,6 +2,14 @@
 
 Start here for the development story, proof and short LinkedIn ideas. Drafts stay here until reviewed; nothing is posted automatically.
 
+## 4 October 2026 — Employee discount authority and consolidated roadmap
+
+- Owner ceiling defaults to 0%, with authenticated read and owner-only setting/history. FastAPI applies the combined whole-order discount using decimal amounts; split lines cannot bypass it. Policy changes and discounted employee acceptance share a PostgreSQL transaction lock. Accepted saves replay before current policy validation.
+- Local verification: 171 backend tests against disposable PostgreSQL, no skips; 55 frontend tests, lint and production build passed. Browser checks covered KES 100.01 rejection/KES 100 acceptance on KES 1,000, lost policy/order replies and accepted retry after the owner reduced the limit. Start next order now refreshes the displayed policy. Details and exact student steps: [discount-policy-check.md](docs/discount-policy-check.md).
+- Screenshots 46–48 are fictional developer evidence. Student discount and contact acceptance remain open; existing promised-time display mismatch and ordinary read recovery remain C3 checks. No production migration/deployment or actual money transfer.
+- Canonical roadmap retains prior launch/later inventory plus Excel/CSV daily control, reviewed aggregate AI assistance, founder-private measured value and monitoring candidates. Data/security/premortem/handoff link requirements without claiming they are implemented. The pre-existing save-rejection note remains untouched.
+- Learning focus: an owner ceiling controls new acceptance; a retry confirms an already accepted transaction. Medium now suits bounded implementation/tests, Low bounded docs; raise effort for money/security/concurrency changes.
+
 - Screenshots: [existing evidence folder](docs/diagrams/evidence/).
 - Build priorities: [Qinetra pilot and commercial roadmap](IMPLEMENTATION_ROADMAP.md).
 - Browser checks: [navigation guide](docs/navigation-usability-check.md).

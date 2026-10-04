@@ -9,6 +9,7 @@ Approved requirements, 28 September 2026. Production provisioning, backup automa
 | Staff user | Individual identity, active flag, role and session version; password hash never appears in API responses |
 | Customer | Name and normalized/display phone; shared numbers need explicit selection and are not automatic identity merges |
 | Catalogue | Owner-managed current prices/options; changing it does not reprice saved work |
+| Discount policy/change | One shop-wide employee ceiling, initially 0%; attributed before/after percentages and revision. Accepted order prices and save references remain valid after a policy change |
 | Order/service line | Ticket, customer link, saved price/quantity/discount and promised work; preserve attributed corrections |
 | Physical item/handling | Counts, references, condition, holds and outsourced handover/return; not interchangeable with billable kg/units |
 | Payment | Staff-confirmed money received, method and receipt date; preserve original entries |
@@ -40,3 +41,7 @@ Stop new trial entry if backups fail or restored money/records disagree. Do not 
 Keep receipts alongside QLMS for the first ten trading days. At close, compare tickets, actual payments/refunds, balances and collections; resolve unknown save outcomes before transcription. Use temporary paper references during an outage and reconcile once.
 
 Agree customer-record retention and access/export/deletion handling before operational dependence; do not implement automatic deletion using an invented retention period. Restrict logs, exports and backups as customer data. Use fictional or anonymized examples for demonstrations and public proof. Future client software expiry must not accidentally block legitimate record export/recovery.
+
+## Retained report and AI requirements
+
+The [roadmap's reporting/AI section](IMPLEMENTATION_ROADMAP.md#retained-pilot-priorities-and-approved-reportingai-additions) owns the approved later work. Excel/CSV downloads are dated review snapshots, not editable database replicas or backups. Booking dates, payment dates, return dates and current debt/queue state have different meanings; preserve them explicitly. A separate reviewed analysis pack excludes contacts, identifiers and free text and must address sparse-group identification before external AI use. No external AI transfer or additional customer-data collection is implemented by the discount increment.

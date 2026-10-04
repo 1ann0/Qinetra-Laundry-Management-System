@@ -14,7 +14,7 @@ Protect customer contacts/history, money records, credentials, exports and backu
 | --- | --- | --- |
 | Authentication | bcrypt; expiring signed JWT; database active-role/version checks | Safe login password bounds, generic errors, throttling, invalid/disabled/revoked-session tests |
 | Sessions | sessionStorage token, inactivity lock and refresh | Review script-readable-token risk; resolve first-load/reauthentication findings; prove logout, old-tab and user-switch behavior |
-| Authorization | Backend owner/staff dependencies | Direct-route/field-tampering tests; approved whole-order employee discount ceiling; trim excess responses |
+| Authorization | Backend owner/staff dependencies; whole-order employee discount ceiling locally verified 4 October | Keep direct-route/field-tampering checks for other actions; trim excess responses; complete student/release acceptance |
 | Queries/input | SQLAlchemy/bound queries and Pydantic | Finite/range/size limits and stale/terminal-state tests; no client-controlled role, actor or saved rate |
 | Money/saves | Transactions, correction history, pending-save references | Truthful refunds and PostgreSQL concurrency/replay acceptance; never auto-repeat an uncertain payment |
 | Browser output/export | React text rendering and CSV writer | Spreadsheet formula neutralization for untrusted text, numeric money preserved; receipt/internal-note separation |
@@ -23,6 +23,8 @@ Protect customer contacts/history, money records, credentials, exports and backu
 | Dependencies/secrets | Local frontend patch evidence | Current/history redacted secret scan, Python audit, credential-rotation evidence and repeatable maintenance checks |
 
 The [dependency patch record](docs/security-patch-check.md) records the exact versions and limits of its audit/browser evidence. Zero dependency findings do not prove all rows above pass.
+
+The [discount check record](docs/discount-policy-check.md) verifies authenticated reads, owner-only changes/history, disabled/revoked accounts, rejected extra policy fields, whole-order decimal limits and PostgreSQL update/order serialization. Migration 022 enables RLS and revokes public/browser-role table and history-sequence access; restricted runtime access still needs D1 qualification. Policy reads request no-store in the frontend; this does not complete the API-wide private-response/header work in S1b. Neither passing these checks nor founder access permits exporting another client's personal data to an AI provider without the separately reviewed purpose/access/privacy safeguards.
 
 ## Credentials and incidents
 

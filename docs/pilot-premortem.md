@@ -1,6 +1,6 @@
 # QLMS premortem and acceptance register
 
-Reviewed 28 September 2026 against the working tree and approved Qinetra-first decisions. This is a planning and verification register, not a claim that every scenario was tested or every risk has been removed. The [implementation roadmap](../IMPLEMENTATION_ROADMAP.md) owns sequencing and status; this file owns failure scenarios, safeguards and exit evidence.
+Updated 4 October 2026 against the working tree and approved Qinetra-first decisions. This is a planning and verification register, not a claim that every scenario was tested or every risk has been removed. The [implementation roadmap](../IMPLEMENTATION_ROADMAP.md) owns sequencing and status; this file owns failure scenarios, safeguards and exit evidence.
 
 ## Confirmed operating boundaries
 
@@ -210,6 +210,26 @@ Reviewed 28 September 2026 against the working tree and approved Qinetra-first d
 - **Prevention/early sign:** Use disposable data, explicit budget/region, least-privilege credentials and cleanup ownership. Package the existing app before considering infrastructure migration; never bake secrets into an image.
 - **Acceptance:** Student explains image/container, ports, volumes and secrets; rebuilds/tests the API and frontend; proves browser-reachable API configuration and readiness. Before AWS, verify budget alerts, teardown and a separate data environment. Any later production move requires migration/restore/rollback proof.
 - **Recovery/stop:** Stop/remove only verified lesson resources, preserve real records and inspect unexpected bills. Follow the [Docker learning guide](docker-learning-guide.md); the shop need not move to AWS to benefit from the lesson.
+
+### 25. Downloaded spreadsheets become a competing record or misleading report
+
+- **Basis/priority:** Approved later O1b report work; launch O1a still needs trustworthy existing totals. L Medium / I High; report gate.
+- **Prevention/early sign:** One calculation contract for screen/XLSX/CSV; distinguish bookings, received/returned money and current attention outside the period. Mark generation time and definitions. Keep identifiers as text, money numeric and untrusted formula-like text literal. Edited downloads do not write to QLMS; CSV is not a backup.
+- **Acceptance/recovery:** Reconcile a hand-calculated multi-date fixture including legacy unknown methods, corrections/refunds and older debt. Open exports in Excel/free reader, exercise large exports and permissions. Suspend a wrong export with records preserved; do not invite staff to correct live data in a spreadsheet.
+
+### 26. AI gives plausible advice from wrong or identifying data
+
+- **Basis/priority:** AI1 is optional reviewed assistance; AI2 remains later funded work. L Medium / I High; privacy/analysis gate.
+- **Prevention/early sign:** Ordinary rules identify known exceptions. A separate approved aggregate pack excludes identifiers/free text and reviews sparse groups. Verify scope/dates/units, treat documents as untrusted data, distinguish facts from hypotheses and check recommendations before an owner acts. Do not turn client consent into blanket customer-data access.
+- **Acceptance/recovery:** Test missing history, misleading aggregates, prompt injection and recommendations outside capacity/cost limits. Compare source figures and record review time/corrections for a brief of at most three actions. No autonomous price, refund, collection or message changes. Stop external analysis on uncertain permissions/disclosure; normal QLMS use remains available.
+
+### 27. Reported value exceeds real savings or support cost consumes the margin
+
+- **Basis/priority:** Founder-private V1 evidence and later commercialization. L Medium / I High; sales/measurement gate.
+- **Prevention/acceptance:** Comparable timed intake/lookup/close samples, recorded errors/workarounds and honest baseline. Keep time released, extrapolated labour value, recovered debt and new sales separate; include onboarding, hosting and support effort. Founder-only access is server-side and tied to the approved account, not every owner. Do not claim causal revenue growth from ten trading days.
+- **Recovery/stop:** Correct unsupported claims and stop an unprofitable optional service before adding automation to conceal its cost. Use anonymized evidence only with appropriate approval.
+
+The 4 October discount check record verifies the whole-order boundary, split-line attempts, concurrent policy changes and accepted retry after reduction. Student acceptance is still open. C3 must also examine the observed order-form versus created-result promised-time display difference; no timezone fix is implied by this discount increment.
 
 ## Business decisions and evidence ownership
 

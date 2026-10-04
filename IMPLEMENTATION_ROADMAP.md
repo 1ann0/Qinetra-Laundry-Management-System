@@ -1,6 +1,6 @@
 # QLMS implementation roadmap
 
-Updated 28 September 2026. This is the canonical plan for the Qinetra pilot and later development. It replaces the older phase-status summaries in this file. Historical test runs remain in the development journal; current continuation instructions are in [the handover](docs/pilot-handoff.md).
+Updated 4 October 2026. This is the canonical plan for the Qinetra pilot and later development. It replaces the older phase-status summaries in this file. Historical test runs remain in the development journal; current continuation instructions are in [the handover](docs/pilot-handoff.md).
 
 The user approved implementation of the Qinetra-first plan. Work through launch increments independently, recording evidence and preserving unfinished work. Later features remain conditional on their stated gates; this approval does not authorize purchases or an unreviewed production cutover. Truthful refunds retain their earlier approval.
 
@@ -14,6 +14,8 @@ The user approved implementation of the Qinetra-first plan. Work through launch 
 - Recovery target: daily encrypted exports with an independent copy, up to one day reconstructed from retained receipts, restored operation within four working hours. Prove these targets before claiming them.
 - First trial: ten trading days alongside existing receipts, with daily reconciliation. The shop does not become dependent on free hosting without a further reliability/funding decision.
 - Google sign-in follows a stable pilot and session hardening. It can precede multi-business features and billing.
+- QLMS becomes Qinetra's main record after the launch gates pass; receipts remain the transition/recovery fallback. Other clients can use fictional-data practice and an agreed parallel-entry period before cutover.
+- Approved report direction: Excel workbook plus CSV, daily control first, and AI-assisted reviews prepared and checked by the founder. These additions do not postpone essential pilot work; see the reporting/AI section below.
 
 Product intent is in [PRD.md](PRD.md), technical decisions and their short outline in [ARCHITECTURE.md](ARCHITECTURE.md), data/recovery requirements in [DATA.md](DATA.md), and controls/gaps in [SECURITY.md](SECURITY.md). These documents distinguish requirements from implemented behavior.
 
@@ -23,20 +25,21 @@ Make the daily loop dependable: find the customer, receive the right laundry, qu
 
 Start with one laundry and one location. The previously confirmed working volume is about 10 orders daily, occasionally 20 at peak; confirm it during the pilot. Staff may share a screen but use individual accounts. Prioritise correctness and simple recovery over a large feature list.
 
-Keep a stable released version in use while improvements are developed against fictional data. Do not test on real customer records or deploy an unfinished branch merely because a local feature passes. The first release requires S0, C1/C2, S1a-c, C3, O1a, D1, R1 and P1. S2, O1b and optional growth are separate; bring a specific item forward only when launch checks expose an unacceptable risk or unusable workflow.
+Keep a stable released version in use while improvements are developed against fictional data. Do not test on real customer records or deploy an unfinished branch merely because a local feature passes. The first release requires S0, C1/C2/C2p, S1a-c, C3, O1a, D1, R1 and P1. S2, O1b and optional growth are separate; bring a specific item forward only when launch checks expose an unacceptable risk or unusable workflow.
 
 After that baseline, release small verified improvements to the pilot without waiting for the later roadmap. Prioritise work that saves staff time, prevents money/data errors or removes a launch blocker. Run checks proportional to the changed behavior; repeat wider suites only for new code, failures or unresolved risks. Keep detailed evidence in the relevant check record and link it from brief handover/learning notes instead of copying it. The 29 September refund-form follow-up addresses an observed wrong-action selection; it is not a reason to expand refund scope.
 
 ## Evidence and boundaries
 
-| Area | Evidence available on 26 September | Limit |
+| Area | Dated evidence (local status updated 4 October) | Limit |
 | --- | --- | --- |
 | Live backend | Render reports live commit `5da24e5` from 10 August; its OpenAPI endpoint responded HTTP 200 during this task | It lacks the newer local correction/recovery routes. Vercel's exact deployed revision is not independently verified |
 | Real-data area | Supabase project is healthy; `qinetra_live` has nine baseline tables and zero users/customers/orders/payments | Schema is behind current models; current code has no explicit schema routing/assertion. A schema is not a separate project or backup |
 | Database protection | All 17 inspected old/fresh application tables have RLS; anon/authenticated SELECT grants are denied. Advisor reports only informational no-policy notices | No QLMS-specific restricted runtime login role was found. Browser denial does not replace FastAPI authorization |
 | Existing product | Customer and service histories, search, mixed orders, pricing snapshots, garment checks/references, outsourcing, holds, manual payments, owner Finance/catalog/staff controls exist in local source | Some staff scenarios remain unaccepted. Existing code must be verified rather than rebuilt from this plan |
 | Save recovery | `d6559aa`: developer and student two-tab and lost-reply/refresh/retry acceptance recorded; isolated commit had 134 PostgreSQL-backed checks, frontend had 50 tests | These are prior results, not tests rerun for every later change. Explain-back remains a learning task, not a new release blocker |
-| Contact editing | Older backend model/schema/routes/tests and migration 020 are uncommitted | No completed owner UI/feature acceptance; preserve and finish separately |
+| Contact editing | Backend, owner editor/history and migration 020 were locally verified on 29 September; see [the contact checks](docs/customer-contact-check.md) | Student acceptance remains pending; no production migration or deployment |
+| Employee discount authority | Locally verified on 4 October; migration 022, owner setting/history, whole-order API ceiling and replay tests | Student acceptance and release remain open; see [the discount checks](docs/discount-policy-check.md) |
 | Dependencies | Next.js/eslint-config-next 16.3.6; 26 September audit reported zero findings after compatible fixes; 50 tests, lint and build passed | Browser smoke includes passes and an unresolved intermittent receipt-load finding. See [the patch record](docs/security-patch-check.md); no deployment or whole-system security claim |
 | Operations | Render reports Free compute; current root health route checks process liveness only | Restore, database readiness, alerts, exact release pairing and production cutover are not yet proved |
 
@@ -60,8 +63,9 @@ The live metadata above is a dated read-only observation. Recheck configuration 
 | ID | Small outcome | Start / approval status | Main code or configuration | Exit evidence |
 | --- | --- | --- | --- | --- |
 | S0 | Patch affected frontend dependencies | Locally verified 28 September; not deployed | frontend package manifests/lockfile and patch check record | 50 tests, lint/build and ordinary browser smoke passed; retain the broader session-recovery review |
-| C1 | Truthful owner refunds and payment corrections | Locally verified; student acceptance pending; not deployed | backend models/schemas/routes/migration 021; receipt, order, Finance/export views | [Refund evidence and exact checks](docs/refund-check.md); 146 backend and 52 frontend checks, lint/build, refund browser recovery and reporting |
+| C1 | Truthful owner refunds and payment corrections | Locally verified; student service-refund repeat passed 29 September; not deployed | backend models/schemas/routes/migration 021; receipt, order, Finance/export views | [Refund evidence and exact checks](docs/refund-check.md); 146 backend and 52 frontend checks, lint/build, refund browser recovery and reporting |
 | C2 | Complete essential customer contact correction | Locally implemented and developer-verified; student check pending | migration 020, customer correction routes and owner UI | 156 backend tests including PostgreSQL, 52 frontend tests, lint/build and browser checks; details in docs/customer-contact-check.md |
+| C2p | Enforce employee discount authority | Locally verified 4 October; student acceptance and release pending | migration 022, backend discount policy, owner setting and order entry | 171 backend tests with no PostgreSQL skips, 55 frontend tests, lint/build and fictional browser checks; docs/discount-policy-check.md |
 | S1a | Login and request protection | Review bounded plan after C1/C2; any urgent security finding may be moved ahead | auth/login, schemas, security tests | Throttling, safe password bounds, generic errors, direct API permissions and disabled-user cases |
 | S1b | Safe exports and private responses | Separate reviewed unit | CSV route, response policy, Next/API configuration | Spreadsheet text stays literal; authenticated responses are not cached publicly; headers do not break the app |
 | S1c | Secret/dependency review and current-session safety | Complete launch controls before real-data cutover | auth/session helpers, scans/CI | Redacted scans, rotation evidence where needed, expiry/revocation/logout/recovery and user-switch tests; explicit residual-risk assessment |
@@ -109,7 +113,7 @@ S1 is three implementation reviews, not a combined security rewrite. O1a/O1b and
 
 - Retain bcrypt and backend-derived roles. Validate login byte/length bounds consistently: bcrypt 5 rejects passwords over 72 bytes and the current login path does not handle that safely. Never silently truncate.
 - Add bounded login throttling using trusted client IP plus account limits; test shared-shop networks, expiry, generic responses and restart/multiple-worker behaviour. Do not introduce Redis solely for a one-instance pilot without evaluating a simpler bounded design.
-- Enforce the approved owner-configured employee discount ceiling, initially 0%, against the combined whole-order discount. Add authenticated policy retrieval and owner-only updates; preserve accepted idempotent replays after policy changes. Current code does not yet enforce this policy. Test direct HTTP requests, split-line bypass, boundary amounts and owner authority.
+- Employee discount ceiling is implemented locally as its own increment: migration 022, authenticated retrieval, attributed owner changes, combined whole-order enforcement and accepted replay before policy validation. See [the discount check record](docs/discount-policy-check.md) for dated checks and pending hands-on/release gates. Do not reimplement it during login hardening.
 - Keep bound SQL parameters. Add finite/range/size limits where missing, including arrays and body/search sizes. Keep field allowlists; never accept browser-supplied actor, role, saved price or permission decisions.
 - Escape spreadsheet formulas separately from CSV quoting. Preserve numeric money columns and legitimate phone text.
 - Add tested CSP and security headers, production HTTPS/TLS settings, explicit CORS, and private/no-store policies. Inspect the deployed response, not just a config file.
@@ -278,6 +282,55 @@ Keep these visible, but start only with a demonstrated need and a bounded design
 ## L1+: guided Docker and AWS learning
 
 Use [the Docker guide](docs/docker-learning-guide.md). Start with images/containers and disposable PostgreSQL, then a guided API Dockerfile, Compose, frontend packaging and repeatable tests. Plan any ECR/ECS/Fargate or other AWS sandbox with current documentation, cost limits, secret handling and teardown. No production migration is implied. Learning can proceed without disrupting the stable shop application.
+
+## Retained pilot priorities and approved reporting/AI additions
+
+This section incorporates the later business/reporting discussion without replacing the earlier inventory or claiming its implementation. Complete each small increment independently and release only compatible, verified changes. Qinetra's working pilot comes first; the retained A1/G1-G4/M1-M2/E1+/L1+ items above stay gated.
+
+### Required before relying on QLMS daily
+
+- Finish contact acceptance and this employee-discount increment, login/request protections, session/read recovery, CSV formula protection and private-response/header checks. Verify the full intake, custody, payment, refund, collection and daily-close loop; reuse valid evidence rather than repeating unrelated tests.
+- Complete the separate real dataset, schema/runtime permissions, approved accounts/catalogue/opening records, independent encrypted daily backups and a timed restore. Keep the one-day reconstruction/four-working-hour recovery targets unproved until demonstrated. CSV is not a database backup.
+- Qualify the frontend/backend release pair, HTTPS, readiness, alert delivery/recovery and rollback. Verify the actual frontend plan's commercial-use eligibility; if unsuitable, qualify Cloudflare/OpenNext on Linux with fictional data. Retain Render/Supabase unless a tested alternative gives a worthwhile advantage. No paid resources or framework rewrite by default.
+- Start the ten trading-day receipt-backed trial after the concrete cutover review, with daily reconciliation and stop conditions. Complete compatible increments may then reach the pilot without waiting for every future feature.
+
+### O1b: useful Excel/CSV reports after the baseline works
+
+Bring forward only a report correctness/retrieval failure that prevents O1a daily closing. The approved first report is Daily control, available for daily/weekly/monthly date ranges from the existing Finance interface. Provide Summary, Money, Orders, Needs attention and Definitions worksheets; CSV sections use stable machine-readable headings and documented types.
+
+- Summary and orders cover the chosen period; payments use received dates and real returns use return dates. Entry corrections restate receipts, rather than becoming new cash movements. Current attention lists include older unpaid/uncollected orders outside the chosen booking period and show their generation time. Do not invent historical debt from today's balance or label receipts/debt recovered as profit/new sales.
+- Split cash/M-Pesa movement, identify unknown legacy refund methods and distinguish recorded money movement from physical cash-up. Owner review still reconciles receipts, counted cash and the M-Pesa statement; costs, floats and withdrawals are not silently inferred.
+- Share one backend calculation/query layer across screen, XLSX and CSV, with a consistent snapshot, bounded queries/size and explicit oversized-export errors. Preserve phones/tickets as text, numeric KES values, filters, frozen headings and dated filenames. Escape formula-like untrusted CSV text; write XLSX text literally with formula/URL auto-conversion disabled. No browser database access or public caches.
+- Proposed owner-only routes: GET /dashboard/reports/daily-control; GET /dashboard/reports/daily-control.xlsx; GET /dashboard/reports/daily-control/{section}.csv, with section orders/money/attention and shared start_date/end_date. Keep the existing export compatible. One pinned XLSX writer is justified when this increment starts; no new spreadsheet dependency is added by the discount increment.
+- Downloads are review snapshots. Workbook edits do not update live records. Imports need a separately scoped validation, preview, permissions and audit workflow. Verify output in Excel and a free spreadsheet reader before promising usability.
+
+### AI1: optional founder-reviewed business analysis
+
+Use the existing/free chatbot allowance manually; the core application must work without it. First implement ordinary rules for debt, overdue clothing, missed promises and missing information. A model does not need to calculate these.
+
+- Produce a separate approved analysis pack containing daily/period aggregates, service quantities with units, current queue/debt counts and data-quality limitations. Exclude customer/staff IDs, contacts, ticket references and free-text histories. Review sparse groups and identifying combinations; removing names alone does not establish anonymity. Do not send the ordinary owner workbook or a database dump to a chatbot.
+- Preserve dependable dates, units, quantities, promises and attributed financial/custody events already recorded. New collection needs a defined decision and lawful purpose, not a speculative desire to collect everything. Add prospective aggregate snapshots when historical queue/debt trends are introduced; do not fabricate missing history. Cost/capacity definitions precede margin or membership recommendations.
+- The weekly brief contains at most three actions, with source figures/period, observed facts versus hypotheses, effort/cost, responsible person and a review measure. The founder checks numbers and recommendations; the owner chooses actions. Record preparation time, corrections, chosen actions and observed outcomes to assess whether the service saves work.
+- Before processing another client's data, agree purpose, provider, permitted exports/access, retention/deletion, controller/processor responsibilities and transfer safeguards. Owner approval does not waive customer privacy rights. Client opt-out must leave normal QLMS use available; no cross-client financial benchmarking or training use by default.
+- Use research as evidence for an experiment, not a laundry ROI promise: [customer-support field study](https://arxiv.org/abs/2304.11771), [BCG decision/productivity study](https://www.hbs.edu/ris/Publication%20Files/dell-acqua-et-al-2026-navigating-the-jagged-technological-frontier_5c589c8c-fbb5-458f-b285-c944746cd717.pdf) and [retail field-experiment preprint](https://arxiv.org/abs/2510.12049). Forum stories inspire ideas but do not prove revenue or savings. Kenya's [ODPC principles](https://www.odpc.go.ke/rights-of-a-data-subject/) apply to personal-data handling.
+
+### AI2: funded agents only after repeatable benefit
+
+Begin with read-only, business-scoped report tools, explicit budgets/limits, provider/data review and audited access. Treat file contents as untrusted data, not instructions. Do not expose arbitrary SQL, secrets or unrestricted database credentials. Prices, refunds, collection records and sent messages remain human-approved actions with permission and idempotency checks. A paid chatbot plan is not an unlimited hosted API budget; verify product eligibility and billing separately. No chatbot UI scraping, borrowed accounts or silent paid fallback.
+
+### V1: private evidence of value; B1: later sales presentation
+
+The founder's value view needs a distinct server-side permission bound to the specifically approved Qinetra account; owner role alone is insufficient. Compare small, comparable timed intake/lookup/closing samples and errors/workarounds. Label extrapolated time or labour value; time released is not automatically cash saved. Separate recovered debt from new sales, and observe longer before claiming revenue/retention effects. Include onboarding/support effort in the service's economics.
+
+Retain owner-editable catalogue names/prices now and owner-editable membership/offer names and rules when those modules are built. Laundry memberships and software subscriptions stay separate. Membership tiers need costs, capacity, allowances, renewal/pause/reversal/overage and trip rules; benefit-led names and optional demographic marketing ideas do not justify collecting sensitive profiling data.
+
+Polish staff lookup/intake/closing for readability, keyboard use, mobile use and reduced motion before decorative work. Learn from existing laundry products' documented workflows, not copied feature lists or vendor revenue promises. A later separate public landing page can use authorized real photos and anonymized measured evidence; preserve staff app entry/direct order links and keep the private value API inaccessible publicly. Do not promise a universal solution before another business's problem is validated.
+
+### Monitoring and efficient delivery choices retained
+
+Qualify UptimeRobot for frontend/API readiness and backup heartbeats, with email as the initial alert preference pending a named recipient. Sentry is the initial error-tracking candidate after compatibility, quota and PII-scrubbing tests. Verify current free commercial-use terms at setup; do not purchase or repackage monitoring. Healthchecks.io is the backup-job alternative; later compare Better Stack or Grafana Cloud against measured support/retention needs and cost. A monitor on the shop laptop cannot be the sole external uptime check. Monitoring cannot fix free hosting sleep or provider allowances.
+
+Use one active agent by default. GPT-6.1 Sol High suits monetary rules, permissions and concurrency; Medium suits routine implementation/testing and Low suits bounded documentation/copy/mechanical work. Raise effort for an unresolved risk, not by habit. Exact fixtures, ownership, acceptance criteria and relevant files belong in prompts; a fresh thread starts from the handoff/current Git state. Do not spawn overlapping writers or repeat a passed full suite without a relevant change or unresolved failure. No new instruction files, empty scaffolding or analytics framework solely for agents.
 
 ## Documentation without duplication
 
