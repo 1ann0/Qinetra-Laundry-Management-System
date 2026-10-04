@@ -1,6 +1,6 @@
 # Employee discount authority check
 
-4 October 2026. Implemented and developer-verified locally. Student acceptance, production migration and deployment remain open. Customer-contact acceptance is still a separate release check.
+4 October 2026. Implemented and developer-verified locally. Student reported completing the discount checks; independent step-by-step counts were not supplied. Production migration/deployment and customer-contact acceptance remain open. The student's stale-page explanation was corrected: accepted replay succeeds because the server finds the original save before evaluating a new policy, including after a fresh policy read. Explain-back remains pending.
 
 ## Contract and data flow
 

@@ -8,12 +8,13 @@ export default function PendingSaveNotice({ pending, storageError, isSaving, onR
   // Bring recovery into view even when staff saved from the bottom of a long form.
   useEffect(() => {
     if (pending && !isSaving) {
-      notice.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+      notice.current?.scrollIntoView({ behavior, block: "start" });
       retryButton.current?.focus({ preventScroll: true });
     }
   }, [pending, isSaving]);
   if (storageError) return <p className="my-4 rounded-xl border border-red-300 bg-red-50 p-4 text-red-800" role="alert">{storageError}</p>;
-  if (!pending) return null;
+  if (!pending || isSaving) return null;
   return (
     <section ref={notice} className="my-4 scroll-mt-24 rounded-xl border border-amber-300 bg-amber-50 p-4" aria-label="Previous save" aria-live="polite">
       <p className="font-semibold text-amber-950">

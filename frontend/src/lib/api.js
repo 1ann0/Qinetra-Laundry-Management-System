@@ -3,6 +3,28 @@ export { ApiError } from "./user-messages.js";
 
 const REQUEST_TIMEOUT_MS = 30_000;
 
+function retryDelay(response, attempt) {
+  const header = response?.headers.get("retry-after");
+  let requestedDelay = null;
+  if (header) {
+    const trimmed = header.trim();
+    const isHttpDate = /^[A-Za-z]{3}, \d{2} [A-Za-z]{3} \d{4} \d{2}:\d{2}:\d{2} GMT$/.test(trimmed);
+    const value = /^\d+$/.test(trimmed) ? Number(trimmed) * 1000 : isHttpDate ? Date.parse(trimmed) - Date.now() : NaN;
+    if (Number.isFinite(value)) requestedDelay = Math.max(0, value);
+  }
+  if (response?.status === 429 && requestedDelay === null) return null;
+  return Math.max(requestedDelay || 0, 500 * 2 ** attempt + Math.random() * 250);
+}
+
+function waitForRetry(delay, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) return reject(new Error("Request aborted"));
+    const abort = () => { clearTimeout(timer); reject(new Error("Request aborted")); };
+    const timer = setTimeout(() => { signal.removeEventListener("abort", abort); resolve(); }, delay);
+    signal.addEventListener("abort", abort, { once: true });
+  });
+}
+
 function getApiBaseUrl() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
 
@@ -31,7 +53,9 @@ export async function apiRequest(path, options = {}) {
       : "The change may have been saved. Check the record before you try again."
     : "Try again in a moment.";
 
-  // Stop waiting after 30 seconds. Never repeat a save automatically.
+  const canRetry = ["GET", "HEAD"].includes((fetchOptions.method || "GET").toUpperCase()) && !path.startsWith("/auth/");
+  const deadline = Date.now() + REQUEST_TIMEOUT_MS;
+  // Fetches, backoff and reply parsing share one deadline. Saves are never repeated here.
   const controller = new AbortController();
   let timedOut = false;
   const timer = setTimeout(() => {
@@ -43,11 +67,25 @@ export async function apiRequest(path, options = {}) {
   signal?.addEventListener("abort", abortRequest, { once: true });
 
   try {
-    const response = await fetch(url, {
-      ...fetchOptions,
-      headers: requestHeaders,
-      signal: controller.signal,
-    });
+    let response;
+    for (let attempt = 0; ; attempt += 1) {
+      if (controller.signal.aborted) throw new Error("Request aborted");
+      try {
+        response = await fetch(url, { ...fetchOptions, headers: requestHeaders, signal: controller.signal });
+      } catch (error) {
+        if (!canRetry || attempt >= 2 || controller.signal.aborted || !(error instanceof TypeError)) throw error;
+        const delay = retryDelay(null, attempt);
+        if (Date.now() + delay >= deadline) throw error;
+        await waitForRetry(delay, controller.signal);
+        continue;
+      }
+      if (!canRetry || attempt >= 2 || ![429, 502, 503, 504].includes(response.status)) break;
+      const delay = retryDelay(response, attempt);
+      if (delay === null || Date.now() + delay >= deadline) break;
+      void response.body?.cancel().catch(() => {});
+      await waitForRetry(delay, controller.signal);
+    }
+    if (controller.signal.aborted) throw new Error("Request aborted");
     const contentType = response.headers.get("content-type") || "";
     let payload;
     try {
@@ -71,6 +109,7 @@ export async function apiRequest(path, options = {}) {
     if (timedOut) {
       throw new ApiError(`QLMS took too long to reply. ${recovery} Contact support if this continues.`, 0, "QLMS-TIMEOUT");
     }
+    if (signal?.aborted) throw new ApiError("The request was cancelled.", 0, "QLMS-CANCELLED");
     throw new ApiError(`QLMS could not connect. Check your internet connection. ${recovery} Contact support if this continues.`, 0, "QLMS-CONNECTION");
   } finally {
     clearTimeout(timer);

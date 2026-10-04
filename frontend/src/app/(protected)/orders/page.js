@@ -3,7 +3,7 @@
 import { getUserMessage } from "@/lib/user-messages";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import CustomerForm from "@/components/customers/customer-form";
 import ServiceItemEntry, {
   createBlankGarment,
@@ -179,19 +179,19 @@ function getOrderError(
   today,
 ) {
   if (!customerId) {
-    return "Select the customer for this order.";
+    return { message: "Select the customer for this order.", targetId: "customer_id" };
   }
 
   if (serviceLines.length === 0) {
-    return "Add at least one laundry service.";
+    return { message: "Add at least one laundry service.", targetId: "service_search" };
   }
 
   if (!orderDate) {
-    return "Select the order date.";
+    return { message: "Select the order date.", targetId: "order_date" };
   }
 
   if (orderDate > today) {
-    return "The order date cannot be in the future.";
+    return { message: "The order date cannot be in the future.", targetId: "order_date" };
   }
 
   let hasDiscount = false;
@@ -199,9 +199,12 @@ function getOrderError(
   for (const serviceLine of serviceLines) {
     const quantity = getServiceQuantity(serviceLine);
     const subtotal = getServiceSubtotal(serviceLine);
+    const quantityTarget = `service-quantity-${serviceLine.service_id}`;
+    const discountTarget = `discount-${serviceLine.service_id}`;
+    const itemsTarget = `service-items-${serviceLine.service_id}`;
 
     if (!Number.isFinite(quantity) || quantity <= 0) {
-      return `Enter a quantity greater than zero for ${serviceLine.service_name}.`;
+      return { message: `Enter a quantity greater than zero for ${serviceLine.service_name}.`, targetId: quantityTarget };
     }
 
     if (serviceLine.discount_enabled) {
@@ -209,11 +212,11 @@ function getOrderError(
       hasDiscount = true;
 
       if (!Number.isFinite(discount) || discount <= 0) {
-        return `Enter a discount greater than zero for ${serviceLine.service_name}.`;
+        return { message: `Enter a discount greater than zero for ${serviceLine.service_name}.`, targetId: discountTarget };
       }
 
       if (discount >= subtotal) {
-        return `The discount for ${serviceLine.service_name} must be less than its ${formatKes(subtotal)} subtotal.`;
+        return { message: `The discount for ${serviceLine.service_name} must be less than its ${formatKes(subtotal)} subtotal.`, targetId: discountTarget };
       }
     }
 
@@ -221,7 +224,7 @@ function getOrderError(
       serviceLine.service_unit !== "kg" &&
       !Number.isInteger(quantity)
     ) {
-      return `${serviceLine.service_name} requires a whole-number quantity.`;
+      return { message: `${serviceLine.service_name} requires a whole-number quantity.`, targetId: quantityTarget };
     }
 
     if (
@@ -229,21 +232,21 @@ function getOrderError(
       serviceLine.item_recording_mode === "tally" &&
       serviceLine.items.length === 0
     ) {
-      return `Record at least one clothing item for ${serviceLine.service_name}.`;
+      return { message: `Record at least one clothing item for ${serviceLine.service_name}.`, targetId: itemsTarget };
     }
 
     if (!serviceLine.defer_items && serviceLine.item_recording_mode === "tally") {
       for (const item of serviceLine.items) {
         for (const [index, exception] of (item.exceptions || []).entries()) {
           if (exception.is_damaged && !exception.damage_note.trim()) {
-            return `Describe the existing damage for condition note ${index + 1}.`;
+            return { message: `Describe the existing damage for condition note ${index + 1}.`, targetId: itemsTarget };
           }
           if (
             !exception.description.trim() &&
             !exception.is_damaged &&
             !exception.stain_note.trim()
           ) {
-            return `Complete or remove condition note ${index + 1}.`;
+            return { message: `Complete or remove condition note ${index + 1}.`, targetId: itemsTarget };
           }
         }
       }
@@ -254,27 +257,27 @@ function getOrderError(
       serviceLine.item_recording_mode === "detailed"
     ) {
       if (serviceLine.items.length < quantity) {
-        return `Record at least ${quantity} physical ${quantity === 1 ? "piece" : "pieces"} for ${serviceLine.service_name}.`;
+        return { message: `Record at least ${quantity} physical ${quantity === 1 ? "piece" : "pieces"} for ${serviceLine.service_name}.`, targetId: itemsTarget };
       }
 
       for (const [index, item] of serviceLine.items.entries()) {
         if (!item.item_type_id) {
-          return `Select the clothing type for garment ${index + 1} in ${serviceLine.service_name}.`;
+          return { message: `Select the clothing type for garment ${index + 1} in ${serviceLine.service_name}.`, targetId: itemsTarget };
         }
 
         if (item.is_damaged === "") {
-          return `Confirm whether garment ${index + 1} in ${serviceLine.service_name} is already damaged.`;
+          return { message: `Confirm whether garment ${index + 1} in ${serviceLine.service_name} is already damaged.`, targetId: itemsTarget };
         }
 
         if (!item.description.trim()) {
-          return `Describe garment ${index + 1} in ${serviceLine.service_name} so it can be identified.`;
+          return { message: `Describe garment ${index + 1} in ${serviceLine.service_name} so it can be identified.`, targetId: itemsTarget };
         }
       }
     }
   }
 
   if (hasDiscount && !discountReason.trim()) {
-    return "Explain why this order was discounted.";
+    return { message: "Explain why this order was discounted.", targetId: "discount_reason" };
   }
 
   return "";
@@ -320,26 +323,26 @@ function getPaymentError(
   }
 
   if (!receivedDate) {
-    return "Select the date the payment was received.";
+    return { message: "Select the date the payment was received.", targetId: "payment_received_date" };
   }
 
   if (receivedDate < orderDate) {
-    return "The payment date cannot be before the order date.";
+    return { message: "The payment date cannot be before the order date.", targetId: "payment_received_date" };
   }
 
   if (receivedDate > today) {
-    return "The payment date cannot be in the future.";
+    return { message: "The payment date cannot be in the future.", targetId: "payment_received_date" };
   }
 
   if (paymentAmountType === "deposit") {
     const amount = Number(depositAmount);
 
     if (!Number.isFinite(amount) || amount <= 0) {
-      return "Enter the deposit amount received.";
+      return { message: "Enter the deposit amount received.", targetId: "deposit_amount" };
     }
 
     if (amount >= total) {
-      return "Use Full payment when the customer has paid the whole amount.";
+      return { message: "Use Full payment when the customer has paid the whole amount.", targetId: "deposit_amount" };
     }
   }
 
@@ -380,7 +383,7 @@ function shareReceipt(order) {
 }
 
 export default function OrderEntryPage() {
-  const { authenticatedRequest, userId, role } = useAuth();
+  const { authenticatedRequest, userId, role, reauthenticationRequired } = useAuth();
   const today = getNairobiToday();
   const draftScope = orderDraftScope(userId);
 
@@ -390,6 +393,9 @@ export default function OrderEntryPage() {
   const [itemTypes, setItemTypes] = useState([]);
   const [isLoadingSetup, setIsLoadingSetup] = useState(true);
   const [discountPolicy, setDiscountPolicy] = useState(null);
+  const [policyError, setPolicyError] = useState("");
+  const policyRequest = useRef(null);
+  const policyController = useRef(null);
 
   // Store the customer choice and the services added to this ticket.
   const [customerSearch, setCustomerSearch] = useState("");
@@ -419,21 +425,90 @@ export default function OrderEntryPage() {
   const orderSave = usePendingSave("/orders/detailed");
   const isSubmitting = orderSave.isSaving;
   const [error, setError] = useState("");
+  const [errorTarget, setErrorTarget] = useState("");
   const [receiptShareError, setReceiptShareError] = useState("");
   const [createdOrder, setCreatedOrder] = useState(null);
   const [draftReady, setDraftReady] = useState(false);
   const [draftFeedback, setDraftFeedback] = useState("");
 
+  const refreshDiscountPolicy = useCallback(() => {
+    if (reauthenticationRequired) return Promise.resolve();
+    if (policyRequest.current) return policyRequest.current;
+    const controller = new AbortController();
+    policyController.current = controller;
+    policyRequest.current = authenticatedRequest("/settings/discount-policy", { cache: "no-store", signal: controller.signal })
+      .then((policy) => {
+        if (!controller.signal.aborted) { setDiscountPolicy(policy); setPolicyError(""); }
+      })
+      .catch((failure) => {
+        if (!controller.signal.aborted) {
+          setDiscountPolicy(null);
+          setPolicyError(getUserMessage(failure, "The employee discount limit could not be loaded."));
+        }
+      })
+      .finally(() => { policyRequest.current = null; });
+    return policyRequest.current;
+  }, [authenticatedRequest, reauthenticationRequired]);
+
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible" && !isLoadingSetup && !createdOrder) void refreshDiscountPolicy();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [refreshDiscountPolicy, isLoadingSetup, createdOrder]);
+
+  // Cancel on leaving the screen, not when Start next order changes its display.
+  useEffect(() => () => policyController.current?.abort(), []);
+
+  function focusOrderField(targetId) {
+    requestAnimationFrame(() => {
+      const target = document.getElementById(targetId) || document.getElementById("order-save-error");
+      const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+      target?.scrollIntoView({ behavior, block: "center" });
+      target?.focus({ preventScroll: true });
+    });
+  }
+
+  function showOrderError(message, targetId) {
+    setError(message);
+    setErrorTarget(targetId);
+    focusOrderField(targetId);
+  }
+
+  function fieldErrorProps(targetId) {
+    return error && errorTarget === targetId
+      ? { "aria-invalid": true, "aria-describedby": `${targetId}-error` }
+      : {};
+  }
+
+  function fieldError(targetId) {
+    return error && errorTarget === targetId
+      ? <p id={`${targetId}-error`} className="mt-2 text-sm font-semibold text-red-800">{error}</p>
+      : null;
+  }
+
   // Load customers and active catalogue choices together.
   useEffect(() => {
+    if (reauthenticationRequired) return;
     async function loadOrderSetup() {
+      setIsLoadingSetup(true);
+      setError("");
+      setPolicyError("");
       try {
         const [customerResponse, serviceResponse, itemResponse, policyResponse] =
           await Promise.all([
             authenticatedRequest("/customers"),
             authenticatedRequest("/catalog/services"),
             authenticatedRequest("/catalog/item-types?include_inactive=true"),
-            authenticatedRequest("/settings/discount-policy", { cache: "no-store" }),
+            authenticatedRequest("/settings/discount-policy", { cache: "no-store" }).catch((failure) => {
+              setPolicyError(getUserMessage(failure, "The employee discount limit could not be loaded."));
+              return null;
+            }),
           ]);
 
         const requestedCustomerId = new URLSearchParams(
@@ -497,7 +572,7 @@ export default function OrderEntryPage() {
     }
 
     loadOrderSetup();
-  }, [authenticatedRequest, draftScope, today, userId]);
+  }, [authenticatedRequest, draftScope, today, userId, reauthenticationRequired]);
 
   const hasUnfinishedOrder = hasMeaningfulOrderDraft({
     selectedCustomerId,
@@ -571,7 +646,7 @@ export default function OrderEntryPage() {
   useEffect(() => {
     if (createdOrder) {
       document.getElementById("created-order-result")?.scrollIntoView({
-        behavior: "smooth",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
         block: "start",
       });
     }
@@ -625,6 +700,12 @@ export default function OrderEntryPage() {
     (total, serviceLine) => total + getServiceDiscount(serviceLine),
     0,
   );
+  const employeeAllowance = discountPolicy ? getEmployeeDiscountAllowance(estimatedSubtotal, discountPolicy.employee_max_discount_percent) : 0;
+  const liveDiscountError = orderSave.pending ? "" : getDiscountPolicyError(role, discountPolicy, estimatedSubtotal, estimatedDiscount);
+  const discountGuidance = discountPolicy
+    ? `Employee limit ${discountPolicy.employee_max_discount_percent}% for the whole order. Maximum ${formatKes(employeeAllowance)}; remaining ${formatKes(Math.max(0, employeeAllowance - estimatedDiscount))}.`
+    : policyError ? "Employee discount limit unavailable. You can save without a discount; return to this page to check again."
+      : "Loading the employee discount limit…";
   const estimatedTotal = selectedServices.reduce(
     (total, serviceLine) => total + getServiceTotal(serviceLine),
     0,
@@ -659,6 +740,7 @@ export default function OrderEntryPage() {
 
   // Change one selected service while leaving the others untouched.
   function updateServiceLine(serviceId, changes) {
+    setError("");
     setSelectedServices((currentServices) =>
       currentServices.map((serviceLine) =>
         serviceLine.service_id === serviceId
@@ -796,19 +878,21 @@ export default function OrderEntryPage() {
       orderDate,
       today,
     );
+    const policyMessage = getDiscountPolicyError(role, discountPolicy, estimatedSubtotal, estimatedDiscount);
+    const discountTarget = `discount-${selectedServices.find((service) => service.discount_enabled)?.service_id}`;
     const validationError =
       orderError ||
-      getDiscountPolicyError(role, discountPolicy, estimatedSubtotal, estimatedDiscount) ||
-      promisedTimeError ||
+      (policyMessage && { message: policyMessage, targetId: discountTarget }) ||
+      (promisedTimeError && { message: promisedTimeError, targetId: "promised_ready_at" }) ||
       paymentError ||
       (paymentChoice !== "unpaid" && !paymentConfirmed
-        ? paymentChoice === "cash"
+        ? { message: paymentChoice === "cash"
           ? "Confirm that the cash was received."
-          : "Confirm the M-PESA message on the official business phone."
+          : "Confirm the M-PESA message on the official business phone.", targetId: "payment_confirmed" }
         : "");
 
     if (validationError) {
-      setError(validationError);
+      showOrderError(validationError.message, validationError.targetId);
       return;
     }
 
@@ -818,7 +902,14 @@ export default function OrderEntryPage() {
     try {
       finishCreatedOrder(await orderSave.save(buildOrderPayload(customerId)));
     } catch (orderError) {
-      setError(getUserMessage(orderError, "QLMS could not confirm the save. Use Retry previous save."));
+      const message = getUserMessage(orderError, "QLMS could not confirm the save. Use Retry previous save.");
+      if (orderError.code === "QLMS-DISCOUNT-LIMIT") {
+        showOrderError(message, discountTarget);
+        void refreshDiscountPolicy();
+      } else {
+        setError(message);
+        setErrorTarget("");
+      }
     }
   }
 
@@ -848,13 +939,9 @@ export default function OrderEntryPage() {
     setReceiptShareError("");
     setDraftFeedback("");
     setDiscountPolicy(null);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
     // The owner may have changed authority while the last ticket was saved.
-    try {
-      setDiscountPolicy(await authenticatedRequest("/settings/discount-policy", { cache: "no-store" }));
-    } catch (policyError) {
-      setError(getUserMessage(policyError, "The employee discount limit could not be loaded."));
-    }
+    await refreshDiscountPolicy();
   }
 
   // The order and any initial payment are now saved together.
@@ -971,8 +1058,10 @@ export default function OrderEntryPage() {
         <fieldset className="contents" disabled={isSubmitting || Boolean(orderSave.pending) || !orderSave.ready}>
         <div className="space-y-6">
           <p className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950" role="status">
-            {role === "owner" ? "Owner: you can authorize discounts. The employee limit does not restrict your orders." : discountPolicy ? `Employee limit: ${discountPolicy.employee_max_discount_percent}% across the whole order (currently up to ${formatKes(getEmployeeDiscountAllowance(estimatedSubtotal, discountPolicy.employee_max_discount_percent))}). The backend checks the latest policy when saving.` : "Loading the employee discount limit…"}
+            {role === "owner" ? "Owner: you can authorize discounts. The employee limit does not restrict your orders." : discountGuidance}
+            {role !== "owner" ? orderSave.pending ? " Retry confirms the original save using its original details." : " The latest policy is checked again when saving." : null}
           </p>
+          {policyError ? <p className="text-sm text-red-800" role="alert">{policyError}</p> : null}
           <section
             className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
             id="order-customer-step"
@@ -1026,8 +1115,9 @@ export default function OrderEntryPage() {
             <select
               className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
               id="customer_id"
+                      {...fieldErrorProps("customer_id")}
               value={selectedCustomerId}
-              onChange={(event) => setSelectedCustomerId(event.target.value)}
+              onChange={(event) => { setSelectedCustomerId(event.target.value); setError(""); }}
               disabled={isLoadingSetup || isSubmitting}
             >
               <option value="">
@@ -1043,6 +1133,7 @@ export default function OrderEntryPage() {
                 </option>
               ))}
             </select>
+                    {fieldError("customer_id")}
 
             <label className="mt-5 flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 font-semibold text-slate-800">
               <input
@@ -1077,6 +1168,7 @@ export default function OrderEntryPage() {
                 <input
                   className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100 sm:max-w-xs"
                   id="order_date"
+                      {...fieldErrorProps("order_date")}
                   type="date"
                   max={today}
                   value={orderDate}
@@ -1087,6 +1179,7 @@ export default function OrderEntryPage() {
                     setError("");
                   }}
                 />
+                    {fieldError("order_date")}
                 <p className="mt-2 text-sm text-slate-600">
                   The receipt will keep this business date. QLMS still records
                   when the entry was actually created.
@@ -1144,6 +1237,7 @@ export default function OrderEntryPage() {
             <input
               className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
               id="service_search"
+                      {...fieldErrorProps("service_search")}
               key={serviceCategoryToAdd}
               type="search"
               value={serviceSearch}
@@ -1155,6 +1249,7 @@ export default function OrderEntryPage() {
               }
               onChange={(event) => setServiceSearch(event.target.value)}
             />
+                    {fieldError("service_search")}
 
             {isLoadingSetup ? (
               <p className="mt-4 rounded-xl bg-slate-50 px-4 py-5 text-center text-sm text-slate-600">
@@ -1315,6 +1410,7 @@ export default function OrderEntryPage() {
                       <input
                         className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
                         id={`service-quantity-${serviceLine.service_id}`}
+                      {...fieldErrorProps(`service-quantity-${serviceLine.service_id}`)}
                         type="number"
                         min={serviceLine.service_unit === "kg" ? "0.1" : "1"}
                         step={serviceLine.service_unit === "kg" ? "0.1" : "1"}
@@ -1326,6 +1422,7 @@ export default function OrderEntryPage() {
                           })
                         }
                       />
+                    {fieldError(`service-quantity-${serviceLine.service_id}`)}
                       {serviceLine.item_recording_mode === "detailed" &&
                       !serviceLine.defer_items ? (
                         <p className="mt-2 text-sm text-slate-600">
@@ -1333,6 +1430,7 @@ export default function OrderEntryPage() {
                         </p>
                       ) : null}
 
+                      <div id={`service-items-${serviceLine.service_id}`} tabIndex={-1} {...fieldErrorProps(`service-items-${serviceLine.service_id}`)} className="rounded-xl scroll-mt-24">
                       <ServiceItemEntry
                         recordingMode={
                           serviceLine.defer_items
@@ -1357,6 +1455,9 @@ export default function OrderEntryPage() {
                           updateServiceLine(serviceLine.service_id, { items })
                         }
                       />
+
+                      {fieldError(`service-items-${serviceLine.service_id}`)}
+                      </div>
 
                       <div className="mt-4 border-t border-slate-200 pt-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1391,6 +1492,8 @@ export default function OrderEntryPage() {
                             : "Add discount"}
                         </button>
 
+                        {role !== "owner" ? <p className="mt-2 text-sm text-slate-700">{discountGuidance}</p> : null}
+
                         {serviceLine.discount_enabled ? (
                           <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
                             <label
@@ -1402,6 +1505,9 @@ export default function OrderEntryPage() {
                             <input
                               className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100 sm:max-w-xs"
                               id={`discount-${serviceLine.service_id}`}
+                      {...fieldErrorProps(`discount-${serviceLine.service_id}`)}
+                              aria-invalid={Boolean(liveDiscountError) || Boolean(error && errorTarget === `discount-${serviceLine.service_id}`)}
+                              aria-describedby={error && errorTarget === `discount-${serviceLine.service_id}` ? `discount-${serviceLine.service_id}-error` : liveDiscountError ? `discount-limit-${serviceLine.service_id}` : undefined}
                               type="number"
                               min="0.01"
                               max={Math.max(subtotal - 0.01, 0)}
@@ -1416,6 +1522,8 @@ export default function OrderEntryPage() {
                               }}
                               placeholder="Example: 100"
                             />
+                    {fieldError(`discount-${serviceLine.service_id}`)}
+                            {liveDiscountError && !(error && errorTarget === `discount-${serviceLine.service_id}`) ? <p id={`discount-limit-${serviceLine.service_id}`} className="mt-2 text-sm font-semibold text-red-800">{liveDiscountError}</p> : null}
                             <div className="mt-3 flex flex-wrap justify-between gap-2 text-sm">
                               <span className="text-amber-900">
                                 Discount: {formatKes(discount)}
@@ -1442,6 +1550,7 @@ export default function OrderEntryPage() {
                     <input
                       className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100"
                       id="discount_reason"
+                      {...fieldErrorProps("discount_reason")}
                       type="text"
                       maxLength="120"
                       value={discountReason}
@@ -1452,6 +1561,7 @@ export default function OrderEntryPage() {
                       }}
                       placeholder="Example: Regular customer offer"
                     />
+                    {fieldError("discount_reason")}
                     <p className="mt-2 text-sm text-amber-900">
                       The reason and staff username are kept with the order.
                     </p>
@@ -1505,6 +1615,7 @@ export default function OrderEntryPage() {
             <input
               className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100 sm:max-w-md"
               id="promised_ready_at"
+                      {...fieldErrorProps("promised_ready_at")}
               type="datetime-local"
               value={promisedReadyAt}
               disabled={isSubmitting || selectedServices.length === 0}
@@ -1513,6 +1624,7 @@ export default function OrderEntryPage() {
                 setError("");
               }}
             />
+                    {fieldError("promised_ready_at")}
             {selectedServices.length === 0 ? (
               <p className="mt-2 text-sm text-slate-500">
                 Add a service first so the system can suggest a time.
@@ -1616,6 +1728,7 @@ export default function OrderEntryPage() {
                     <input
                       className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100 sm:max-w-xs"
                       id="deposit_amount"
+                      {...fieldErrorProps("deposit_amount")}
                       type="number"
                       min="1"
                       step="1"
@@ -1627,6 +1740,7 @@ export default function OrderEntryPage() {
                       }}
                       placeholder="Example: 500"
                     />
+                    {fieldError("deposit_amount")}
                   </div>
                 ) : (
                   <p className="mt-4 text-sm font-semibold text-slate-700">
@@ -1644,6 +1758,7 @@ export default function OrderEntryPage() {
                   <input
                     className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100 sm:max-w-xs"
                     id="payment_received_date"
+                      {...fieldErrorProps("payment_received_date")}
                     type="date"
                     min={orderDate}
                     max={today}
@@ -1654,6 +1769,7 @@ export default function OrderEntryPage() {
                       setError("");
                     }}
                   />
+                    {fieldError("payment_received_date")}
                   <p className="mt-2 text-sm text-slate-600">
                     Finance reports use this date for cash and M-PESA received.
                   </p>
@@ -1663,6 +1779,8 @@ export default function OrderEntryPage() {
                   <input
                     className="mt-1"
                     type="checkbox"
+                    id="payment_confirmed"
+                    {...fieldErrorProps("payment_confirmed")}
                     checked={paymentConfirmed}
                     disabled={isSubmitting}
                     onChange={(event) => {
@@ -1674,6 +1792,7 @@ export default function OrderEntryPage() {
                     ? "I have received this cash from the customer."
                     : "I have seen the confirmed payment message on Qinetra Laundry’s official business phone."}
                 </label>
+                {fieldError("payment_confirmed")}
               </div>
             ) : (
               <p className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
@@ -1687,6 +1806,8 @@ export default function OrderEntryPage() {
             <p
               className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800"
               role="alert"
+              id="order-save-error"
+              tabIndex={-1}
             >
               {error}
             </p>
@@ -1771,6 +1892,9 @@ export default function OrderEntryPage() {
             </p>
           </div>
 
+          {role !== "owner" ? <p className="mt-4 text-sm font-semibold text-slate-700">{discountGuidance}</p> : null}
+          {error ? <p className="mt-3 text-sm font-semibold text-red-800">{error} {errorTarget ? <button type="button" className="underline" onClick={() => focusOrderField(errorTarget)}>Go to field</button> : null}</p> : null}
+
           <button
             className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[#005AAB] px-6 font-bold text-white hover:bg-[#004782] disabled:cursor-wait disabled:opacity-60"
             type="submit"
@@ -1785,7 +1909,10 @@ export default function OrderEntryPage() {
         </fieldset>
       </form>
 
-        <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-4 border-t border-slate-200 bg-white px-4 py-3 shadow-[0_-8px_25px_rgba(15,23,42,0.12)] lg:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white px-4 py-3 shadow-[0_-8px_25px_rgba(15,23,42,0.12)] lg:hidden">
+          {error ? <p className="mb-2 text-sm font-semibold text-red-800">{error} {errorTarget ? <button type="button" className="underline" onClick={() => focusOrderField(errorTarget)}>Go to field</button> : null}</p> : null}
+          {role !== "owner" ? <p className="mb-2 text-xs text-slate-700">{discountGuidance}</p> : null}
+          <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
               Order estimate
@@ -1802,6 +1929,7 @@ export default function OrderEntryPage() {
           >
             {isSubmitting ? "Creating…" : "Create order"}
           </button>
+          </div>
         </div>
         </>
       ) : null}

@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* Rejected controls stay visible when a long form scrolls to its correction. */
+[aria-invalid="true"] {
+  border-color: #b91c1c;
+  outline: 2px solid #b91c1c;
+  outline-offset: 2px;
+  scroll-margin-block: 7rem;
+}
+
 :root {
   --qinetra-navy: #005aab;
   --qinetra-navy-dark: #004782;

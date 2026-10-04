@@ -16,6 +16,7 @@ import {
   storeSession,
 } from "@/lib/auth-storage";
 import { getJwtExpiry, getJwtIssuedAt } from "@/lib/jwt";
+import { getRequestFeedback, getActiveRequest } from "@/lib/request-feedback";
 
 const AuthContext = createContext(null);
 const VALID_ROLES = new Set(["owner", "employee"]);
@@ -79,6 +80,24 @@ export function AuthProvider({ children }) {
   const activitySaveTimerRef = useRef(null);
   const activitySinceRenewalRef = useRef(false);
   const renewalRequestRef = useRef(null);
+  const requestSequence = useRef(0);
+  const [activeRequests, setActiveRequests] = useState({});
+
+  // Each request owns its entry so concurrent reads cannot hide a pending save.
+  const trackRequest = useCallback(async (path, options, operation) => {
+    const id = ++requestSequence.current;
+    const activity = { id, startedAt: Date.now(), ...getRequestFeedback(path, options.method) };
+    setActiveRequests((previous) => ({ ...previous, [id]: activity }));
+    try {
+      return await operation();
+    } finally {
+      setActiveRequests((previous) => {
+        const next = { ...previous };
+        delete next[id];
+        return next;
+      });
+    }
+  }, []);
 
   const commitSession = useCallback((nextSession) => {
     sessionRef.current = nextSession;
@@ -100,6 +119,7 @@ export function AuthProvider({ children }) {
     renewalRequestRef.current = null;
     setIdleExpiresAt(null);
     setReauthenticationMessage("");
+    setActiveRequests({});
     commitSession(null);
   }, [commitSession]);
 
@@ -383,7 +403,7 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(
     async (username, password) => {
-      const response = await loginRequest(username, password);
+      const response = await trackRequest("/auth/login", { method: "POST" }, () => loginRequest(username, password));
       const now = Date.now();
       const nextSession = getSessionFromLogin(response, now);
 
@@ -394,7 +414,7 @@ export function AuthProvider({ children }) {
       commitSession(nextSession);
       return response.role;
     },
-    [commitSession],
+    [commitSession, trackRequest],
   );
 
   const reauthenticate = useCallback(
@@ -406,7 +426,7 @@ export function AuthProvider({ children }) {
         );
       }
 
-      const response = await loginRequest(currentSession.username, password);
+      const response = await trackRequest("/auth/login", { method: "POST" }, () => loginRequest(currentSession.username, password));
       const now = Date.now();
       const nextSession = getSessionFromLogin(response, now);
 
@@ -420,7 +440,7 @@ export function AuthProvider({ children }) {
       setReauthenticationMessage("");
       commitSession(nextSession);
     },
-    [commitSession],
+    [commitSession, trackRequest],
   );
 
   const authenticatedRequest = useCallback(
@@ -443,10 +463,10 @@ export function AuthProvider({ children }) {
       }
 
       try {
-        return await apiRequest(path, {
+        return await trackRequest(path, options, () => apiRequest(path, {
           ...options,
           token: currentSession.token,
-        });
+        }));
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
           requireReauthentication(INACTIVE_SESSION_MESSAGE);
@@ -454,7 +474,7 @@ export function AuthProvider({ children }) {
         throw error;
       }
     },
-    [checkInactivity, requireReauthentication],
+    [checkInactivity, requireReauthentication, trackRequest],
   );
 
   const value = useMemo(
@@ -473,9 +493,11 @@ export function AuthProvider({ children }) {
       reauthenticate,
       logout,
       authenticatedRequest,
+      requestActivity: getActiveRequest(activeRequests),
     }),
     [
       authenticatedRequest,
+      activeRequests,
       idleExpiresAt,
       isLoading,
       login,
