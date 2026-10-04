@@ -48,6 +48,8 @@ def find_saved_order(db, record_type, key, fingerprint, user_id):
         return saved
     if record_type is models.CustomerCorrection:
         return saved.customer
+    if record_type is models.DiscountPolicyChange:
+        return saved.policy
     return saved.order
 
 

@@ -291,6 +291,9 @@ class DetailedOrderDatabaseTests(unittest.TestCase):
         self.assertEqual(order.next_garment_number, 3)
 
     def test_discount_and_order_date_are_saved_without_changing_catalogue_price(self):
+        # This pricing fixture explicitly grants enough employee authority.
+        self.db.add(models.DiscountPolicy(id=1, employee_max_discount_percent=20))
+        self.db.commit()
         order_date = main.get_nairobi_today() - timedelta(days=2)
         request = schemas.DetailedOrderCreate(
             customer_id=self.customer.id,

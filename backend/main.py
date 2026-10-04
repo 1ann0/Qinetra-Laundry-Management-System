@@ -22,6 +22,7 @@ import schemas
 import logic
 import auth
 from customer_phone import normalize_kenyan_phone, phone_search_digits
+from discount_policy import read_discount_policy, enforce_employee_discount
 from transaction_safety import (
     request_fingerprint, find_saved_order, commit_once,
     lock_save_reference, reject_unsaved_change,
@@ -47,6 +48,59 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Staff may read their ceiling; only an owner can change or inspect its history.
+@app.get("/settings/discount-policy", response_model=schemas.DiscountPolicyOut)
+def get_discount_policy(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    return read_discount_policy(db)
+
+
+@app.get("/settings/discount-policy/history", response_model=list[schemas.DiscountPolicyChangeOut])
+def get_discount_policy_history(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+):
+    return db.query(models.DiscountPolicyChange).order_by(models.DiscountPolicyChange.id.desc()).limit(50).all()
+
+
+@app.post("/settings/discount-policy", response_model=schemas.DiscountPolicyOut)
+def update_discount_policy(
+    change: schemas.DiscountPolicyUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_owner),
+    *,
+    idempotency_key: Annotated[UUID, Header()],
+):
+    fingerprint = request_fingerprint("update_discount_policy", change)
+    lock_save_reference(db, idempotency_key)
+    saved = find_saved_order(db, models.DiscountPolicyChange, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+    policy = read_discount_policy(db, lock=True)
+    if policy.revision != change.expected_revision:
+        raise reject_unsaved_change("QLMS-STALE-RECORD", "The discount policy changed on another screen")
+
+    before_percent = policy.employee_max_discount_percent
+    policy.employee_max_discount_percent = change.employee_max_discount_percent
+    policy.revision += 1
+    policy.updated_at = datetime.now(timezone.utc)
+    db.add(policy)
+    db.flush()
+    db.add(models.DiscountPolicyChange(
+        policy_id=policy.id, before_percent=before_percent,
+        after_percent=policy.employee_max_discount_percent, revision=policy.revision,
+        request_key=str(idempotency_key), request_hash=fingerprint,
+        confirmed_by_id=current_user.id, confirmed_by_username=current_user.username,
+    ))
+    saved = commit_once(db, models.DiscountPolicyChange, idempotency_key, fingerprint, current_user.id)
+    if saved is not None:
+        return saved
+    db.refresh(policy)
+    return policy
 
 
 def get_nairobi_today() -> date:
@@ -1143,6 +1197,8 @@ def create_detailed_order(
             "items": saved_items,
             "item_status": item_status,
         })
+
+    enforce_employee_discount(db, current_user, total_price + total_discount, total_discount)
 
     first_line = prepared_lines[0]
     is_mixed_order = len(prepared_lines) > 1

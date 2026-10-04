@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import OwnerGuard from "@/components/auth/owner-guard";
 import { useAuth } from "@/context/auth-context";
+import DiscountPolicySettings from "@/components/settings/discount-policy-settings";
 
 const UNIT_OPTIONS = [
   { value: "kg", label: "Per kilogram" },
@@ -510,6 +511,8 @@ function ShopSetupContent() {
           will use when recording a customer&apos;s items.
         </p>
       </div>
+
+      <DiscountPolicySettings />
 
       {pageError ? (
         <p

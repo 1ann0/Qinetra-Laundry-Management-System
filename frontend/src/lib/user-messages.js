@@ -108,10 +108,12 @@ const FIELD_NAMES = {
   customer_id: "customer", service_id: "service", item_type_id: "clothing item",
   order_date: "order date", received_date: "payment date", promised_ready_at: "ready time",
   discount_amount: "discount", discount_reason: "discount reason",
+  employee_max_discount_percent: "employee discount limit", expected_revision: "saved policy version",
   service_lines: "services", items: "clothing items", turnaround_minutes: "service time",
 };
 
 const REJECTED_SAVE_MESSAGES = {
+  "QLMS-DISCOUNT-LIMIT": "The total discount is above the employee limit. This order was not saved. Reload to check the latest limit, then reduce the discount or ask an owner to create the order.",
   "QLMS-STALE-RECORD": "These details changed. Your changes were not saved. Reload this page, check the latest details, then enter your correction again.",
   "QLMS-PHONE-SHARED": "This phone number is already saved for another customer. Your changes were not saved. Check the matching customer, or confirm that they share this number.",
 };

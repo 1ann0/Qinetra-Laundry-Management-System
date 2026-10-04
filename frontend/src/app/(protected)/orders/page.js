@@ -13,6 +13,7 @@ import usePendingSave from "@/components/orders/use-pending-save";
 import PendingSaveNotice from "@/components/orders/pending-save-notice";
 import { buildOrderReceiptMessage } from "@/lib/order-receipt";
 import { getServiceQuantity } from "@/lib/order-service";
+import { getDiscountPolicyError, getEmployeeDiscountAllowance, getRoundedServiceSubtotal } from "@/lib/discount-policy";
 import { formatNairobiDateTime } from "@/lib/format-nairobi";
 import {
   clearOrderDraft,
@@ -152,7 +153,7 @@ function getServiceDisplayName(service) {
 function getServiceSubtotal(serviceLine) {
   const quantity = getServiceQuantity(serviceLine);
   return Number.isFinite(quantity) && quantity > 0
-    ? serviceLine.unit_price * quantity
+    ? getRoundedServiceSubtotal(serviceLine.unit_price, quantity)
     : 0;
 }
 
@@ -379,15 +380,16 @@ function shareReceipt(order) {
 }
 
 export default function OrderEntryPage() {
-  const { authenticatedRequest, userId } = useAuth();
+  const { authenticatedRequest, userId, role } = useAuth();
   const today = getNairobiToday();
   const draftScope = orderDraftScope(userId);
 
-  // Load the three lists needed to create a catalogue-based order.
+  // Load catalogue choices and the owner's employee discount policy.
   const [customers, setCustomers] = useState([]);
   const [catalogServices, setCatalogServices] = useState([]);
   const [itemTypes, setItemTypes] = useState([]);
   const [isLoadingSetup, setIsLoadingSetup] = useState(true);
+  const [discountPolicy, setDiscountPolicy] = useState(null);
 
   // Store the customer choice and the services added to this ticket.
   const [customerSearch, setCustomerSearch] = useState("");
@@ -426,11 +428,12 @@ export default function OrderEntryPage() {
   useEffect(() => {
     async function loadOrderSetup() {
       try {
-        const [customerResponse, serviceResponse, itemResponse] =
+        const [customerResponse, serviceResponse, itemResponse, policyResponse] =
           await Promise.all([
             authenticatedRequest("/customers"),
             authenticatedRequest("/catalog/services"),
             authenticatedRequest("/catalog/item-types?include_inactive=true"),
+            authenticatedRequest("/settings/discount-policy", { cache: "no-store" }),
           ]);
 
         const requestedCustomerId = new URLSearchParams(
@@ -443,6 +446,7 @@ export default function OrderEntryPage() {
         setCustomers(customerResponse);
         setCatalogServices(serviceResponse);
         setItemTypes(itemResponse);
+        setDiscountPolicy(policyResponse);
 
         let restoredDraft = null;
         if (userId) {
@@ -794,6 +798,7 @@ export default function OrderEntryPage() {
     );
     const validationError =
       orderError ||
+      getDiscountPolicyError(role, discountPolicy, estimatedSubtotal, estimatedDiscount) ||
       promisedTimeError ||
       paymentError ||
       (paymentChoice !== "unpaid" && !paymentConfirmed
@@ -838,11 +843,18 @@ export default function OrderEntryPage() {
     setError("");
   }
 
-  function startNextOrder() {
+  async function startNextOrder() {
     setCreatedOrder(null);
     setReceiptShareError("");
     setDraftFeedback("");
+    setDiscountPolicy(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
+    // The owner may have changed authority while the last ticket was saved.
+    try {
+      setDiscountPolicy(await authenticatedRequest("/settings/discount-policy", { cache: "no-store" }));
+    } catch (policyError) {
+      setError(getUserMessage(policyError, "The employee discount limit could not be loaded."));
+    }
   }
 
   // The order and any initial payment are now saved together.
@@ -958,6 +970,9 @@ export default function OrderEntryPage() {
       >
         <fieldset className="contents" disabled={isSubmitting || Boolean(orderSave.pending) || !orderSave.ready}>
         <div className="space-y-6">
+          <p className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950" role="status">
+            {role === "owner" ? "Owner: you can authorize discounts. The employee limit does not restrict your orders." : discountPolicy ? `Employee limit: ${discountPolicy.employee_max_discount_percent}% across the whole order (currently up to ${formatKes(getEmployeeDiscountAllowance(estimatedSubtotal, discountPolicy.employee_max_discount_percent))}). The backend checks the latest policy when saving.` : "Loading the employee discount limit…"}
+          </p>
           <section
             className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
             id="order-customer-step"
@@ -1361,7 +1376,7 @@ export default function OrderEntryPage() {
                           }`}
                           type="button"
                           aria-pressed={serviceLine.discount_enabled}
-                          disabled={isSubmitting}
+                          disabled={isSubmitting || (!serviceLine.discount_enabled && role !== "owner" && (!discountPolicy || Number(discountPolicy.employee_max_discount_percent) === 0))}
                           onClick={() => {
                             updateServiceLine(serviceLine.service_id, {
                               discount_enabled:
@@ -1388,9 +1403,9 @@ export default function OrderEntryPage() {
                               className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100 sm:max-w-xs"
                               id={`discount-${serviceLine.service_id}`}
                               type="number"
-                              min="1"
+                              min="0.01"
                               max={Math.max(subtotal - 0.01, 0)}
-                              step="1"
+                              step="0.01"
                               value={serviceLine.discount_amount}
                               disabled={isSubmitting}
                               onChange={(event) => {

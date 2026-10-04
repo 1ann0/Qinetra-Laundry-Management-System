@@ -6,7 +6,8 @@ Staff should report the code, time, page and action. Do not ask for passwords, s
 
 | Code | Meaning for support | First checks |
 | --- | --- | --- |
-| QLMS-STALE-RECORD | A correction used older details; this attempt did not save | Reload the page, check the current details, then enter the correction again. This recognized rejection clears its pending save reference. |
+| QLMS-STALE-RECORD | A correction or discount-policy update used older details; this attempt did not save | Reload the page, check the current details, then enter the correction again. In Shop setup, Reload limit and history refreshes the policy revision. This recognized rejection clears its pending save reference. |
+| QLMS-DISCOUNT-LIMIT | Combined order discount exceeds the current employee percentage; this order did not save | Reload to check the owner's current limit. Reduce the combined discount or ask an owner to create the order. This recognized rejection clears only the unsaved attempt; accepted retries remain valid. |
 | QLMS-PHONE-SHARED | A customer correction needs an explicit shared-number decision; this attempt did not save | Check the matching customer before confirming that the number is shared. The form can be edited again. |
 | QLMS-SAVE-CONFLICT | A reference belongs to different saved details or another actor | Preserve the reference and investigate the saved event. Do not discard it or generate a new reference to bypass the conflict. |
 | QLMS-CONNECTION | Fetch failed before a usable reply | Check the user's connection, then API reachability, TLS and CORS. A browser failure alone cannot identify the cause. |

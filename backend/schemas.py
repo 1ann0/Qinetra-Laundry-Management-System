@@ -13,6 +13,32 @@ def check_quantity_precision(value):
         raise ValueError("Use at most two decimal places for the quantity")
     return value
 
+class DiscountPolicyUpdate(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    employee_max_discount_percent: Decimal = Field(ge=0, le=100, decimal_places=2, allow_inf_nan=False)
+    expected_revision: int = Field(ge=0, strict=True)
+
+
+class DiscountPolicyOut(BaseModel):
+    model_config = {"from_attributes": True}
+
+    employee_max_discount_percent: Decimal
+    revision: int
+    updated_at: Optional[datetime]
+
+
+class DiscountPolicyChangeOut(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: int
+    before_percent: Decimal
+    after_percent: Decimal
+    revision: int
+    confirmed_by_username: str
+    created_at: datetime
+
+
 # Data required to create a customer
 class CustomerCreate(BaseModel):
     name: str = Field(min_length=2, max_length=100)

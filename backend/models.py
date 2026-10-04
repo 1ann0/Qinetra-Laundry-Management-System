@@ -32,6 +32,39 @@ class User(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
 
+# One shop-wide ceiling; individual accepted orders keep their recorded prices.
+class DiscountPolicy(Base):
+    __tablename__ = "discount_policies"
+    __table_args__ = (
+        CheckConstraint("id = 1", name="discount_policy_singleton"),
+        CheckConstraint("employee_max_discount_percent >= 0 AND employee_max_discount_percent <= 100", name="discount_policy_percent_bounds"),
+        CheckConstraint("revision >= 0", name="discount_policy_revision_bounds"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    employee_max_discount_percent = Column(Numeric(5, 2), nullable=False, default=0, server_default="0")
+    revision = Column(Integer, nullable=False, default=0, server_default="0")
+    updated_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+
+# Policy changes are attributed and replayable even after a later owner edit.
+class DiscountPolicyChange(Base):
+    __tablename__ = "discount_policy_changes"
+
+    id = Column(Integer, primary_key=True)
+    policy_id = Column(Integer, ForeignKey("discount_policies.id", ondelete="RESTRICT"), nullable=False)
+    before_percent = Column(Numeric(5, 2), nullable=False)
+    after_percent = Column(Numeric(5, 2), nullable=False)
+    revision = Column(Integer, nullable=False)
+    request_key = Column(String(36), unique=True, nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    confirmed_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    confirmed_by_username = Column(String(50), nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+
+    policy = relationship("DiscountPolicy")
+
+
 # Customer records
 class Customer(Base):
     __tablename__ = "customers"
