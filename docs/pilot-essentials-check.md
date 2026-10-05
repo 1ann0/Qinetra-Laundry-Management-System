@@ -30,11 +30,21 @@ Local implementation and provider setup evidence, not authorization for real-dat
 
 ## Separate pilot project
 
-Created the free-plan `QLMS-Qinetra-Pilot` project in the approved organization: `istweeaqtykwfuhntgik`, Frankfurt. Applied the verified schema-only snapshot and server/backup access policies. All 20 tables have RLS; anon/authenticated schema usage is denied. Staff, customers, orders and services remain zero. Existing projects/records were preserved. Security advisor returned no findings; 16 informational missing-FK-index findings remain for measured query review. Unused indexes in an empty database are not evidence to remove them.
+Created the free-plan `QLMS-Qinetra-Pilot` project in the approved organization: `istweeaqtykwfuhntgik`, Frankfurt. Applied the verified schema-only snapshot and server/backup access policies. All 20 tables have RLS; anon/authenticated schema usage is denied. Initially all catalogue/operational tables were empty. The subsequent owner-confirmed catalogue copy below added 22 services/30 garments; accounts/customers/orders/payments remain zero. Security advisor returned no findings; 16 informational missing-FK-index findings remain for measured query review. Unused indexes in a small database are not evidence to remove them.
 
-`qlms_runtime` and `qlms_backup` are separate restricted NOLOGIN roles, without superuser/create-role/create-database/RLS-bypass privileges. Credentials, actual pooled connections, owner accounts and real catalogue are not configured. The runtime can change ordinary application records; immutable histories cannot be updated, and core records cannot be deleted. Backup access is read-only.
+`qlms_runtime` and `qlms_backup` are separate restricted NOLOGIN roles, without superuser/create-role/create-database/RLS-bypass privileges. Credentials, actual pooled connections and owner accounts are not configured. The runtime can change ordinary application records; immutable histories cannot be updated, and core records cannot be deleted. Backup access is read-only.
 
 Automatic approval review rejected the follow-up `GRANT DELETE ON qlms.order_items, qlms.order_item_exceptions TO qlms_runtime`. The exact permission was tested locally, but **remains unapplied remotely pending explicit user approval**. Do not work around that rejection or enable real clothing corrections before resolving it.
+
+### Owner-confirmed catalogue copy
+
+The owner supplied https://qinetra-laundry-management-system.vercel.app/ and clarified that August prices/garments/setup are real/current; customers, orders and payments are practice records. The live sign-in page opens; its password/login was not tested. The old project's matching supplied owner account is active, but no password/hash was read or copied.
+
+Source `owetwiekmoycshdijmtl` was INACTIVE and its read timed out. After confirming the free allowance (one active project; $0/month organization quote), restored the existing project and verified ACTIVE_HEALTHY. No upgrade or paid resource. Read its `public.services`/`public.clothing_item_types` and copied only those tables into the empty pilot in one guarded transaction. Preserved IDs, prices as decimal text, units, categories, recording modes, fixed garment links, turnaround times, active flags and creation timestamps; adjusted the two new sequences for subsequent catalogue edits. Invalid prices/missing links: zero. Independent source/target reads matched every copied field.
+
+Source remains three accounts, 11 practice customers, 17 practice orders and 10 practice payments; record counts/catalogue were unchanged. Pilot has 22 services/30 garments, zero accounts/customers/orders/payments. There is no August discount-policy table; the pilot's employee ceiling stays at 0%. Subsequent permission check: 20 RLS tables, browser usage denied, both restricted roles still NOLOGIN, rejected clothing grant still unapplied. The ignored catalogue capture SHA-256 is `EB1583F0DDA19F851494809DFE2282B6C5B0363835945329E5EDCF15D5C2FD1E`; no business catalogue data or credentials were added to Git.
+
+Creator requested technical/system administration rather than another shop Owner account. Current schema supports Owner/Employee only. Use private repository/provider dashboards for current operations; the roadmap retains a separate, bounded maintenance interface and platform permissions for later. No new admin role or maintenance console was implemented by this catalogue operation.
 
 ## Cloudflare qualification
 
@@ -42,7 +52,7 @@ An isolated Linux copy built with Next.js 16.3.6, OpenNext 1.20.7 and Wrangler 4
 
 ## Remaining cutover gates
 
-1. Resolve the narrow remote permission approval; privately configure runtime/backup credentials and verify actual connections. Enter the first owner password in a private terminal, then approve/create accounts and the real catalogue.
+1. Resolve the narrow remote permission approval; privately configure runtime/backup credentials and verify actual connections. Enter the first owner password in a private terminal, then approve/create staff accounts. The real catalogue is copied/verified; no re-entry is needed.
 2. Confirm private cloud destination, closing time, retention/key recovery and alert recipient. Verify upload/readback from the cloud, schedule the tested job and demonstrate missed-run/failure alerts. A cloud-synchronized folder or success marker alone is not remote backup evidence.
 3. Complete the remaining clothing/outsourcing/contact/daily-close staff scenarios in one final fictional-data acceptance session. Expired-session, pending-payment recovery and same-account/different-account logout have developer browser evidence; no quiz pause is required.
 4. Qualify commercial frontend hosting, real HTTPS/CORS/trusted proxy behavior, readiness monitoring and alert delivery. Cloudflare has build evidence only; Vercel's actual plan is unverified.

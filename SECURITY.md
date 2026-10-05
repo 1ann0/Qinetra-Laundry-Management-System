@@ -46,3 +46,5 @@ For data or money discrepancies, stop affected writes, preserve audit records an
 - WAF rules cannot replace authorization, backups or money correctness. Qualify Cloudflare with no customer-response caching and preserve uncertain-save handling through proxy failures.
 
 Before multi-business operation, test hostile cross-business IDs, linked records, exports, background jobs and callbacks. Platform support access must be time-limited, approved and audited; it is not default access to all customer records.
+
+The creator requested system administration, not a second shop-owner identity. Current QLMS roles remain Owner/Employee; technical operations use the creator's private provider/repository accounts. A later maintenance interface needs separate server-side authorization, safe operational status, bounded actions and an audit trail. Keep secrets and arbitrary SQL/code execution out of that browser interface. Access to business records requires its own approved scope.

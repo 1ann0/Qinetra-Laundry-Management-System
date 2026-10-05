@@ -1,6 +1,6 @@
 # QLMS data and recovery contract
 
-Updated 5 October 2026. The separate empty pilot project/schema is provisioned; restricted roles remain NOLOGIN. Local encrypted restore is verified, but actual credentials, daily backup/cloud upload, alerts and operational recovery are not completed. See [current evidence](docs/pilot-essentials-check.md), [operations](backend/ops/README.md) and [the roadmap](IMPLEMENTATION_ROADMAP.md) for D1/R1 gates.
+Updated 5 October 2026. The separate pilot project/schema is provisioned with the verified real catalogue: 22 services and 30 garment types. Accounts/customers/orders/payments remain zero and restricted roles remain NOLOGIN. Local encrypted restore is verified, but actual credentials, daily backup/cloud upload, alerts and operational recovery are not completed. See [current evidence](docs/pilot-essentials-check.md), [operations](backend/ops/README.md) and [the roadmap](IMPLEMENTATION_ROADMAP.md) for D1/R1 gates.
 
 ## Data meanings
 
@@ -20,6 +20,7 @@ Use decimal money and explicit Nairobi business dates. Booked value and receipts
 
 ## Environments and access
 
+- Owner clarification, 5 October: August service prices, garments and setup are real/current; customers, orders and payments are practice records. The original dataset is preserved. The verified catalogue was copied without any customer/order/payment or password transfer. Imported service settings include units, item-recording modes, categories, fixed garment links, turnaround times and active flags. The new employee discount ceiling remains 0%; do not invent an August policy that does not exist there.
 - Create a separate Supabase project for genuine Qinetra data only if a free slot is available. A named schema in the old project is not the approved substitute. Preserve old public/qinetra_live records until the owner classifies them.
 - Keep local fixtures, tests, preview URLs, credentials and databases separate. Never point a test runner at a shop connection string. Label trial/demo environments clearly.
 - Browser roles receive no application-table access. FastAPI uses a restricted runtime login; migration/admin credentials stay separate. Verify schema, revision and permissions before startup/cutover.
