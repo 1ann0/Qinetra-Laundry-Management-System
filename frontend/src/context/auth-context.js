@@ -17,9 +17,11 @@ import {
 } from "@/lib/auth-storage";
 import { getJwtExpiry, getJwtIssuedAt } from "@/lib/jwt";
 import { getRequestFeedback, getActiveRequest } from "@/lib/request-feedback";
+import { makeLogoutEvent, appliesToSession } from "@/lib/logout-event";
 
 const AuthContext = createContext(null);
 const VALID_ROLES = new Set(["owner", "employee"]);
+const SESSION_API_URL = (process.env.NEXT_PUBLIC_API_URL || "").trim().replace(/\/$/, "");
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 const TOKEN_RENEWAL_INTERVAL_MS = 5 * 60 * 1000;
 const TOKEN_RENEWAL_CHECK_MS = 15 * 1000;
@@ -74,8 +76,10 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [idleExpiresAt, setIdleExpiresAt] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasOpenedSession, setHasOpenedSession] = useState(false);
   const [reauthenticationMessage, setReauthenticationMessage] = useState("");
   const sessionRef = useRef(null);
+  const logoutChannelRef = useRef(null);
   const lastActivityAtRef = useRef(null);
   const activitySaveTimerRef = useRef(null);
   const activitySinceRenewalRef = useRef(false);
@@ -106,10 +110,17 @@ export function AuthProvider({ children }) {
     } else {
       clearStoredSession();
     }
+    // Mount protected pages only after the first valid sign-in. Later locks keep drafts mounted.
+    if (nextSession?.token) setHasOpenedSession(true);
+    else if (!nextSession) setHasOpenedSession(false);
     setSession(nextSession);
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback((notifyOtherTabs = true) => {
+    const userId = sessionRef.current?.userId;
+    if (notifyOtherTabs !== false && userId) {
+      logoutChannelRef.current?.postMessage(makeLogoutEvent(SESSION_API_URL, userId));
+    }
     if (activitySaveTimerRef.current) {
       window.clearTimeout(activitySaveTimerRef.current);
       activitySaveTimerRef.current = null;
@@ -122,6 +133,16 @@ export function AuthProvider({ children }) {
     setActiveRequests({});
     commitSession(null);
   }, [commitSession]);
+
+  useEffect(() => {
+    if (!window.BroadcastChannel) return;
+    const channel = new window.BroadcastChannel("qlms-logout");
+    logoutChannelRef.current = channel;
+    channel.onmessage = ({data}) => {
+      if (appliesToSession(data, {userId: sessionRef.current?.userId, apiUrl: SESSION_API_URL})) logout(false);
+    };
+    return () => { logoutChannelRef.current = null; channel.close(); };
+  }, [logout]);
 
   const requireReauthentication = useCallback(
     (message) => {
@@ -218,7 +239,7 @@ export function AuthProvider({ children }) {
       activitySinceRenewalRef.current = false;
       commitSession(nextSession);
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
+      if (error instanceof ApiError && error.status === 401 && sessionRef.current?.token === tokenBeingRenewed) {
         requireReauthentication(INACTIVE_SESSION_MESSAGE);
       }
     } finally {
@@ -427,6 +448,10 @@ export function AuthProvider({ children }) {
       }
 
       const response = await trackRequest("/auth/login", { method: "POST" }, () => loginRequest(currentSession.username, password));
+      // A logout in another tab must win over a delayed password response.
+      if (sessionRef.current !== currentSession) {
+        throw new ApiError("Your sign-in changed. Log in again to continue.", 0, "QLMS-ACCOUNT");
+      }
       const now = Date.now();
       const nextSession = getSessionFromLogin(response, now);
 
@@ -463,12 +488,16 @@ export function AuthProvider({ children }) {
       }
 
       try {
-        return await trackRequest(path, options, () => apiRequest(path, {
+        const response = await trackRequest(path, options, () => apiRequest(path, {
           ...options,
           token: currentSession.token,
         }));
+        if (sessionRef.current?.userId !== currentSession.userId) {
+          throw new ApiError("Your sign-in changed. Open this page again under your current account.", 0, "QLMS-ACCOUNT");
+        }
+        return response;
       } catch (error) {
-        if (error instanceof ApiError && error.status === 401) {
+        if (error instanceof ApiError && error.status === 401 && sessionRef.current?.token === currentSession.token) {
           requireReauthentication(INACTIVE_SESSION_MESSAGE);
         }
         throw error;
@@ -487,6 +516,7 @@ export function AuthProvider({ children }) {
       idleExpiresAt,
       isAuthenticated: Boolean(session),
       isLoading,
+      hasOpenedSession,
       reauthenticationRequired: Boolean(reauthenticationMessage),
       reauthenticationMessage,
       login,
@@ -500,6 +530,7 @@ export function AuthProvider({ children }) {
       activeRequests,
       idleExpiresAt,
       isLoading,
+      hasOpenedSession,
       login,
       logout,
       reauthenticate,

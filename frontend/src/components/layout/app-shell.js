@@ -93,7 +93,7 @@ function NavigationIcon({ name }) {
 export default function AppShell({ children }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { role, idleExpiresAt, reauthenticationRequired, logout } = useAuth();
+  const { role, idleExpiresAt, reauthenticationRequired, hasOpenedSession, logout } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [isMobileNavigation, setIsMobileNavigation] = useState(false);
@@ -302,7 +302,7 @@ export default function AppShell({ children }) {
         ) : null}
 
         <main className={`app-main ${isWorkspacePage ? "workspace-main" : ""}`}>
-          {children}
+          {hasOpenedSession ? children : <p role="status">Enter your password to open this page.</p>}
         </main>
       </div>
       {reauthenticationRequired ? <SessionReauthenticationDialog /> : null}

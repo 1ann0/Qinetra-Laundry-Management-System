@@ -3,7 +3,7 @@
 import { getUserMessage } from "@/lib/user-messages";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import ServiceItemEntry, {
   createBlankGarment,
@@ -167,7 +167,8 @@ function getItemError(serviceLine, items) {
 }
 
 export default function OrderDetailPage() {
-  const { authenticatedRequest, role } = useAuth();
+  const { authenticatedRequest, role, reauthenticationRequired } = useAuth();
+  const loadedOrderId = useRef(null);
   const params = useParams();
   const orderId = Number(params.orderId);
 
@@ -202,6 +203,8 @@ export default function OrderDetailPage() {
 
   // Load the receipt and lookup data without requiring customer information in the URL.
   useEffect(() => {
+    if (reauthenticationRequired) return;
+    let ignore = false;
     async function loadOrderDetails() {
       if (!Number.isInteger(orderId) || orderId <= 0) {
         setError("This order link is not valid. Open Track orders and find the order again.");
@@ -216,25 +219,28 @@ export default function OrderDetailPage() {
             authenticatedRequest("/customers"),
             authenticatedRequest("/catalog/item-types?include_inactive=true"),
           ]);
-
+        if (ignore) return;
         setOrder(orderResponse);
         setCustomerOptions(customerResponse);
-        setPaymentAmount(String(orderResponse.balance_due));
+        if (loadedOrderId.current !== orderId) setPaymentAmount(String(orderResponse.balance_due));
+        loadedOrderId.current = orderId;
         setCustomer(
           customerResponse.find(
             (item) => item.id === orderResponse.customer_id,
           ) || null,
         );
         setItemTypes(itemResponse);
+        setError("");
       } catch (loadError) {
-        setError(getUserMessage(loadError, "The order receipt could not be loaded."));
+        if (!ignore) setError(getUserMessage(loadError, "The order receipt could not be loaded."));
       } finally {
-        setIsLoading(false);
+        if (!ignore) setIsLoading(false);
       }
     }
 
     loadOrderDetails();
-  }, [authenticatedRequest, orderId]);
+    return () => { ignore = true; };
+  }, [authenticatedRequest, orderId, reauthenticationRequired]);
 
   // Open the selected service with its current saved clothing records.
   function startItemEdit(serviceLine) {
