@@ -1,0 +1,63 @@
+name: Verify QLMS
+
+on:
+  push:
+    branches: [main, 'codex/**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Checks have no deployment credentials or permission to change the repository.
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend and recovery
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      QLMS_ENV: development
+      QLMS_DB_SCHEMA: public
+      QLMS_DB_USER: ''
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.12'
+      - name: Install backend and private operations dependencies
+        run: python -m pip install --disable-pip-version-check -r backend/requirements-ops.txt
+      - name: Test with disposable PostgreSQL and rehearse recovery
+        shell: pwsh
+        run: ./backend/tests/run-postgres-tests.ps1 -PythonExecutable (Get-Command python).Source
+
+  frontend:
+    name: Frontend tests, lint and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      # A build needs an origin for CSP, but never a live customer API.
+      NEXT_PUBLIC_API_URL: https://api.example.invalid
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint
+      - run: npm run build

@@ -36,6 +36,8 @@ The first coding increment is [Nairobi ready-time correctness](docs/ready-time-c
 
 ## Evidence and boundaries
 
+The [release procedure](docs/pilot-release-runbook.md) records the coordinated deployment and rollback rules. `.github/workflows/verify.yml` adds automatic PostgreSQL/recovery and frontend checks, with read-only permissions and no live credentials. It does not deploy or enforce branch protection; remote CI evidence remains required before release.
+
 | Area | Dated evidence (local status updated 5 October) | Limit |
 | --- | --- | --- |
 | Live backend | Render reports live commit `5da24e5` from 10 August; its OpenAPI endpoint responded HTTP 200 during this task | It lacks the newer local correction/recovery routes. Vercel's exact deployed revision is not independently verified |

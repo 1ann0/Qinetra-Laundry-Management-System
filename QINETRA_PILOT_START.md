@@ -1,5 +1,7 @@
 # Start Qinetra with real business data
 
+Current continuation: [pilot-essentials-check.md](docs/pilot-essentials-check.md) and [release procedure](docs/pilot-release-runbook.md). The separate October pilot project uses `qlms`, with the verified August catalogue copied; the September `qinetra_live` setup below is historical and must not be used as today's cutover instructions.
+
 Status: 15 September 2026. Fresh database prepared and legacy Data API exposure fixed. The student confirmed owner login and an existing receipt work on 11 September. The live application has NOT been switched to the fresh schema. The user prioritises getting Qinetra operational with small, maintainable changes.
 
 Delivery order and acceptance gates now live in [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md). This file tracks setup/release status. Targeted 15 September checks confirmed the old Render backend version and zero users, customers, orders and payments in the nine-table fresh schema; no new full security audit or test run was performed.

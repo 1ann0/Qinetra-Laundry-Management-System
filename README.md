@@ -75,3 +75,4 @@ Start with the [current handover](docs/pilot-handoff.md) and [implementation roa
 - [Security](SECURITY.md): verified controls, gaps and release checks.
 - [Premortem](docs/pilot-premortem.md): failure scenarios and acceptance evidence.
 - [Dependency patch verification](docs/security-patch-check.md): dated checks and remaining limits.
+- [Pilot release procedure](docs/pilot-release-runbook.md): automatic checks, qualified deployment order and recovery boundaries.
