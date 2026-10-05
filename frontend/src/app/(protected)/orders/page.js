@@ -15,6 +15,7 @@ import { buildOrderReceiptMessage } from "@/lib/order-receipt";
 import { getServiceQuantity } from "@/lib/order-service";
 import { getDiscountPolicyError, getEmployeeDiscountAllowance, getRoundedServiceSubtotal } from "@/lib/discount-policy";
 import { formatNairobiDateTime } from "@/lib/format-nairobi";
+import { getPromisedTimeError, getSuggestedReadyInput, nairobiInputToUtc } from "@/lib/promised-ready-time";
 import {
   clearOrderDraft,
   hasMeaningfulOrderDraft,
@@ -56,31 +57,6 @@ function formatDate(value) {
     dateStyle: "medium",
     timeZone: "Africa/Nairobi",
   }).format(new Date(`${value}T12:00:00+03:00`));
-}
-
-// Keep completion times readable on the form, receipt and WhatsApp message.
-// Convert a Date into the local format required by a datetime-local input.
-function formatDateTimeInput(date) {
-  const pad = (value) => String(value).padStart(2, "0");
-  return [
-    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
-    `${pad(date.getHours())}:${pad(date.getMinutes())}`,
-  ].join("T");
-}
-
-// Suggest a completion time from the slowest service on the ticket.
-function getSuggestedReadyInput(serviceLines, isPeakTime) {
-  if (serviceLines.length === 0) return "";
-
-  const turnaroundMinutes = serviceLines.reduce(
-    (longestTime, serviceLine) =>
-      Math.max(longestTime, serviceLine.turnaround_minutes),
-    0,
-  );
-  const peakDelayMinutes = isPeakTime ? 60 : 0;
-  return formatDateTimeInput(
-    new Date(Date.now() + (turnaroundMinutes + peakDelayMinutes) * 60 * 1000),
-  );
 }
 
 // Empty optional text becomes null in the API request.
@@ -278,24 +254,6 @@ function getOrderError(
 
   if (hasDiscount && !discountReason.trim()) {
     return { message: "Explain why this order was discounted.", targetId: "discount_reason" };
-  }
-
-  return "";
-}
-
-// A promised time is required and must still be in the future when submitted.
-function getPromisedTimeError(promisedReadyAt) {
-  if (!promisedReadyAt) {
-    return "Confirm when the order will be ready.";
-  }
-
-  const promisedTime = new Date(promisedReadyAt);
-  if (Number.isNaN(promisedTime.getTime())) {
-    return "Enter a valid promised completion time.";
-  }
-
-  if (promisedTime.getTime() <= Date.now()) {
-    return "The promised completion time must be in the future.";
   }
 
   return "";
@@ -818,7 +776,7 @@ export default function OrderEntryPage() {
       order_date: orderDate,
       discount_reason:
         estimatedDiscount > 0 ? cleanOptionalText(discountReason) : null,
-      promised_ready_at: new Date(promisedReadyAt).toISOString(),
+      promised_ready_at: nairobiInputToUtc(promisedReadyAt),
       peak_delay_minutes: isPeakTime ? 60 : 0,
       services: selectedServices.map((serviceLine) => ({
         service_id: serviceLine.service_id,
@@ -1610,7 +1568,7 @@ export default function OrderEntryPage() {
               className="mt-4 block font-semibold text-slate-800"
               htmlFor="promised_ready_at"
             >
-              Ready by
+              Ready by (Nairobi time)
             </label>
             <input
               className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100 sm:max-w-md"
@@ -1877,7 +1835,7 @@ export default function OrderEntryPage() {
           <div className="mt-5 border-t border-blue-200 pt-4 text-sm">
             <p className="font-semibold text-slate-700">Promised ready</p>
             <p className="mt-1 font-bold text-slate-900">
-              {formatNairobiDateTime(promisedReadyAt, "Not set")}
+              {formatNairobiDateTime(nairobiInputToUtc(promisedReadyAt), "Not set")}
             </p>
           </div>
 

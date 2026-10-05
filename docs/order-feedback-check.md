@@ -2,6 +2,8 @@
 
 4 October 2026. Local implementation and developer verification; student acceptance and production release are separate checks.
 
+5 October: the student reports completing the feedback tests successfully. This records student-reported functional acceptance; no new independent counts, screenshot or per-scenario observations were supplied. Broader session/accessibility and production checks remain separate.
+
 ## Behavior and files
 
 - `frontend/src/app/(protected)/orders/page.js`: shows the whole-order percentage, maximum KES and remaining allowance beside discounts and in the review/phone submit area. An excessive discount is marked immediately. Submit errors identify a control or clothing section, show an inline explanation, and scroll/focus it. The review and phone action area repeat the error with Go to field. Customer, service, quantity, date, clothing, discount reason, promised time and payment checks retain their business rules.
@@ -37,7 +39,9 @@ Use only `http://127.0.0.1:3100` with this fictional fixture. Backend 8001 force
 
 Explain-back: why may QLMS retry a read automatically, while an uncertain order save must keep its original reference? Why does an accepted order still replay after the employee limit is lowered?
 
-Open gates: student checks, independent tab-return activation, manual reduced-motion/screen-reader review, broader session/receipt/user-switch scenarios, pending customer-contact acceptance and the inherited promised-ready display mismatch (form/review/result). This is not deployed and does not close the pilot security, restore, hosting or real-data gates.
+Open gates: independently evidenced tab-return activation, manual reduced-motion/screen-reader review, broader session/receipt/user-switch scenarios and pending customer-contact acceptance. The inherited promised-ready mismatch is fixed and locally verified on 5 October; see [ready-time-check.md](ready-time-check.md) for the separate student repeat. Student-reported feedback acceptance is recorded above. This is not deployed and does not close the pilot security, restore, hosting or real-data gates.
+
+Explain-back teaching, 5 October: reading asks for existing records, so repeating the question does not create an order. Saving can create an order even when its reply is lost. Keeping the same request reference lets FastAPI find and return an already accepted result instead of creating another. If the save was already accepted at 10%, a later 0% policy does not undo that history; new orders use the current policy. Explanation supplied; independent student explanation remains a learning backlog item, not a release gate.
 
 Documentation updates: IMPLEMENTATION_ROADMAP.md, docs/pilot-handoff.md, docs/discount-policy-check.md and DEVELOPMENT_JOURNAL.md. Working notes updated in LEARNING_NOTES.md, PRESENTATION_NOTES.md and docs/evidence-tracker.md (ignored). The pre-existing docs/save-rejection-check.md edit was not changed or staged.
 
