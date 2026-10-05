@@ -14,8 +14,11 @@ import models
 
 load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
+if os.getenv("QLMS_ENV") == "production" and (not SECRET_KEY or len(SECRET_KEY.encode()) < 32):
+    raise ValueError("Production requires a strong SECRET_KEY of at least 32 bytes")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+DUMMY_PASSWORD_HASH = bcrypt.hashpw(b"qlms-login-timing-only", bcrypt.gensalt()).decode()
 
 # Tells FastAPI where the login route lives, for its auto-generated docs
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -23,12 +26,19 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 # Hashes a plain password before storing it in the database
 def hash_password(password: str) -> str:
+    if not password or len(password.encode("utf-8")) > 72:
+        raise ValueError("Password must contain 1 to 72 UTF-8 bytes")
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
 # Checks a plain password against the stored hash at login time
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
+    if not plain_password or len(plain_password.encode("utf-8")) > 72:
+        return False
+    try:
+        return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
+    except (ValueError, TypeError, AttributeError):
+        return False
 
 
 # Creates a signed token containing the user's id, role and current session version.

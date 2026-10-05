@@ -158,6 +158,9 @@ export function responseError(status, payload, path, recovery) {
     );
   }
   if (status === 429) {
+    if (path === "/auth/login") {
+      return new ApiError("Too many sign-in attempts. Wait up to five minutes, then try signing in again.", status, "QLMS-LOGIN-LIMIT");
+    }
     return new ApiError(`QLMS is busy. Wait one minute. ${recovery} Contact support if this continues.`, status, "QLMS-BUSY");
   }
   if (status >= 500) {

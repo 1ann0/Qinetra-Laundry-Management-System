@@ -1,26 +1,30 @@
 # main.py
 # Entry point of the FastAPI backend. All API routes live or are wired up here.
 
-from fastapi import FastAPI, Depends, HTTPException, Header
+from fastapi import FastAPI, Depends, HTTPException, Header, Request
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import and_, or_, inspect, text
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from typing import Optional, Annotated
 from uuid import UUID
 from datetime import date, datetime, timezone, timedelta
 from decimal import Decimal
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 import csv
 import io
 import os
 import re
-from database import get_db
+import logging
+from database import get_db, DATABASE_SCHEMA, EXPECTED_DATABASE_USER
 import models
 import schemas
 import logic
 import auth
+from login_throttle import consume_login_attempt
+from response_security import ResponseSecurityMiddleware, private_headers, safe_csv_text
 from customer_phone import normalize_kenyan_phone, phone_search_digits
 from discount_policy import read_discount_policy, enforce_employee_discount
 from transaction_safety import (
@@ -32,6 +36,7 @@ from transaction_safety import (
 NAIROBI_TIMEZONE = timezone(timedelta(hours=3))
 
 app = FastAPI()
+app.add_middleware(ResponseSecurityMiddleware)
 
 # Allow only the configured frontend addresses to call the API from a browser.
 local_origins = "http://localhost:3000,http://127.0.0.1:3000"
@@ -48,6 +53,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def private_server_error(request: Request, exception: Exception):
+    # Do not put SQL parameters, credentials or customer payloads in logs/errors.
+    logging.getLogger("qlms").error("Request failed: method=%s path=%s type=%s", request.method, request.url.path, type(exception).__name__)
+    return JSONResponse(status_code=500, content={"detail": "QLMS could not complete this request"},
+                        headers=private_headers(request.url.scheme == "https"))
+
+
+@app.exception_handler(RequestValidationError)
+async def private_validation_error(request: Request, exception: RequestValidationError):
+    # Keep field locations/messages useful without echoing passwords or payloads.
+    errors = [{"type": error["type"], "loc": error["loc"], "msg": error["msg"]} for error in exception.errors()]
+    return JSONResponse(status_code=422, content={"detail": errors}, headers=private_headers(request.url.scheme == "https"))
 
 
 # Staff may read their ceiling; only an owner can change or inspect its history.
@@ -455,6 +475,30 @@ def read_root():
     return {"status": "QLMS backend is running"}
 
 
+@app.get("/health/ready")
+def database_ready(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+        if db.get_bind().dialect.name == "postgresql":
+            if db.execute(text("SELECT current_schema()")).scalar() != DATABASE_SCHEMA:
+                raise ValueError("Wrong schema")
+            if EXPECTED_DATABASE_USER and db.execute(text("SELECT current_user")).scalar() != EXPECTED_DATABASE_USER:
+                raise ValueError("Wrong runtime account")
+            rows = db.execute(text("SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = :schema"), {"schema": DATABASE_SCHEMA})
+            columns = {}
+            for table, column in rows:
+                columns.setdefault(table, set()).add(column)
+        else:
+            inspector = inspect(db.get_bind())
+            columns = {table: {column["name"] for column in inspector.get_columns(table)} for table in inspector.get_table_names()}
+        if any(not set(table.columns.keys()).issubset(columns.get(table.name, set())) for table in models.Base.metadata.sorted_tables):
+            raise ValueError("Incomplete schema")
+    except (SQLAlchemyError, ValueError):
+        db.rollback()
+        return JSONResponse(status_code=503, content={"status": "not_ready"})
+    return {"status": "ready"}
+
+
 # Return the same session shape after login or a valid token renewal.
 def build_session_response(user: models.User):
     token = auth.create_access_token(
@@ -473,15 +517,21 @@ def build_session_response(user: models.User):
 
 # Logs a user in: checks username/password, returns a signed JWT with their role
 @app.post("/auth/login", response_model=schemas.Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db), request: Request = None):
     username = form_data.username.strip()
+    try:
+        consume_login_attempt(db, request.client.host if request and request.client else "unknown", username)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=503, detail="Sign-in is temporarily unavailable") from None
+    valid_bounds = (1 <= len(username) <= 50 and not any(ord(char) < 32 or ord(char) == 127 for char in username)
+                    and 1 <= len(form_data.password.encode("utf-8")) <= 72)
+    if not valid_bounds:
+        auth.verify_password("invalid-login-timing", auth.DUMMY_PASSWORD_HASH)
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
     user = db.query(models.User).filter(models.User.username == username).first()
-
-    if (
-        not user
-        or not auth.verify_password(form_data.password, user.password_hash)
-        or not user.is_active
-    ):
+    password_matches = auth.verify_password(form_data.password, user.password_hash if user else auth.DUMMY_PASSWORD_HASH)
+    if not user or not password_matches or not user.is_active:
         raise HTTPException(status_code=401, detail="Incorrect username or password")
 
     return build_session_response(user)
@@ -2789,9 +2839,9 @@ def export_orders_csv(db: Session = Depends(get_db), current_user: models.User =
         )
         writer.writerow([
             order.ticket_number, order.customer_id, order.order_date,
-            service_summary, format_money(order.subtotal_before_discount),
-            format_money(order.discount_amount), order.discount_reason or "",
-            order.discounted_by_username or "",
+            safe_csv_text(service_summary), format_money(order.subtotal_before_discount),
+            format_money(order.discount_amount), safe_csv_text(order.discount_reason or ""),
+            safe_csv_text(order.discounted_by_username or ""),
             format_money(order.total_price),
             format_money(order.net_charge),
             format_money(order.amount_paid),
@@ -2800,7 +2850,7 @@ def export_orders_csv(db: Session = Depends(get_db), current_user: models.User =
             order.payment_status, payment_methods, payment_received_dates,
             order.status,
             order.created_at, order.ready_at, order.collected_at,
-            correction_history, adjustment_history,
+            safe_csv_text(correction_history), safe_csv_text(adjustment_history),
             format_money(order.service_refunds), format_money(order.net_charge), format_money(order.refund_due),
         ])
     output.seek(0)

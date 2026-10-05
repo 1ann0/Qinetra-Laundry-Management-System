@@ -2,6 +2,7 @@
 # Defines our database tables as Python classes.
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     Column,
@@ -30,6 +31,16 @@ class User(Base):
     is_active = Column(Boolean, nullable=False, default=True, server_default="true")
     token_version = Column(Integer, nullable=False, default=1, server_default="1")
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+
+# Shared login limits survive process restarts without storing raw identifiers.
+class LoginAttemptBucket(Base):
+    __tablename__ = "login_attempt_buckets"
+    __table_args__ = (CheckConstraint("attempts > 0", name="login_attempt_positive"),)
+
+    bucket_key = Column(String(64), primary_key=True)
+    window_start = Column(BigInteger, nullable=False, index=True)
+    attempts = Column(Integer, nullable=False)
 
 
 # One shop-wide ceiling; individual accepted orders keep their recorded prices.
