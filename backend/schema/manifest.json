@@ -1,0 +1,98 @@
+{
+  "schema": "qlms",
+  "schema_sha256": "1d83b43b04c5440c2363e06811d21aaa2457e2ae61fa8fe92b549d2a3da3bbec",
+  "migrations": [
+    {
+      "file": "001_add_catalogs.sql",
+      "sha256": "d3a8a3947fa103b104963d26f55574b3628a3b9d4a24b3f0ae7f6edc8e79cfdc"
+    },
+    {
+      "file": "002_add_order_details.sql",
+      "sha256": "fa6cd0c27a3a5de6833f09c2d90df5da796088691ac058f7bf8da728fdd91e1d"
+    },
+    {
+      "file": "003_remove_legacy_service_constraint.sql",
+      "sha256": "5aa3567112be0c79e378ece7b2fcf5844b95bad52c0e45dd7d40cf95c2008de1"
+    },
+    {
+      "file": "004_add_payments.sql",
+      "sha256": "0117a58733f001082cd505fe540732725e7f459114ecb586579a6300d6f882e3"
+    },
+    {
+      "file": "005_group_dry_cleaning_garments.sql",
+      "sha256": "d1303615a11975d71120edd3edc57a76621ae398a7678c007fd185585299d073"
+    },
+    {
+      "file": "006_add_promised_ready_times.sql",
+      "sha256": "01ff5e429954a39905cc0da10a85451eb859c8a3c215ccead3e5cdf68415a201"
+    },
+    {
+      "file": "007_separate_clothing_catalogues.sql",
+      "sha256": "408a59f1efd42f7cd2527fd6e3ef6b47b0ce56bd8495f0a9bbc9ef8271569b98"
+    },
+    {
+      "file": "008_add_discounts_and_business_dates.sql",
+      "sha256": "76edc96302ad3c166e715fcc3ecacfa7fe51752db79be617efb81763623f4781"
+    },
+    {
+      "file": "009_add_user_account_safety.sql",
+      "sha256": "782d3c90ab27a5cc2b1653431fab00887f38d80ec05dbf88268a598d11728051"
+    },
+    {
+      "file": "010_transaction_safety.sql",
+      "sha256": "cb4cb5a5686580a5accbbcf2e95ac839d1d7e28f59a76882d63ebae32ec0e951"
+    },
+    {
+      "file": "011_add_item_condition_history.sql",
+      "sha256": "3bdf3f4e3d960204473105c290181cd4adff222022b663421fff7826d104e343"
+    },
+    {
+      "file": "012_add_customer_reply_holds.sql",
+      "sha256": "398fa8309395c840921c5ecebbc34feb3ec65288e88408ee9291ebedbf13b07f"
+    },
+    {
+      "file": "013_normalize_customer_phones.sql",
+      "sha256": "4e716225b14529f8e3e54f1fd935a38bfad2b6099330418685ee62c3e7ec9c6d"
+    },
+    {
+      "file": "014_add_garment_references.sql",
+      "sha256": "81d1a4e404ed30c292f8b56715af631d0a85311f773ff9d27cb7e27d5935cb75"
+    },
+    {
+      "file": "015_add_outsource_handovers.sql",
+      "sha256": "bf260d6161b034263ede1d5a174e1359d15a61c0da10b826a7005283fe5a30f4"
+    },
+    {
+      "file": "016_add_payment_adjustments.sql",
+      "sha256": "7b7ecda4503be0358742ac8730d7ac111e6f0c049b7c654543df1179a4e91aa1"
+    },
+    {
+      "file": "017_add_order_corrections.sql",
+      "sha256": "e7c4d468da994ab324b1080391f38697fa0c216883bfd1e96b9e751fbece1c5d"
+    },
+    {
+      "file": "018_allow_quantity_corrections.sql",
+      "sha256": "aa045b744d530a5a9b4cddc5228dd4c76101bc8cfde3945e1e4ca50496d431e0"
+    },
+    {
+      "file": "019_allow_order_customer_corrections.sql",
+      "sha256": "a00905fce0a23fba13972909083632d496e9cf305ab5346f3080c52bee8f582a"
+    },
+    {
+      "file": "020_add_customer_corrections.sql",
+      "sha256": "fcc63911f5e2cee395fc2c5226e169cc43c255978d2020b992cd11ad74ab77e0"
+    },
+    {
+      "file": "021_add_refund_purpose.sql",
+      "sha256": "6633412984bbe5d60d98b9c3c63cdfb037de3c85e8dd42534c234f66cdf167bb"
+    },
+    {
+      "file": "022_add_employee_discount_policy.sql",
+      "sha256": "ea1da15b2fcf3ffab155c7448ed04eeddf23204a7dfeae942e308fc4526acda3"
+    },
+    {
+      "file": "023_add_login_throttle.sql",
+      "sha256": "a10fedb3d439f4a207c6c3868e4f62a02294246d560be582652413ee567c8fcd"
+    }
+  ]
+}

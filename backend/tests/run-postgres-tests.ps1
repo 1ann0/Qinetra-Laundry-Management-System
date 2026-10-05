@@ -1,5 +1,5 @@
 # Creates one disposable PostgreSQL container; never uses the project's database URL.
-param([string]$PythonExecutable = '')
+param([string]$PythonExecutable = '', [switch]$OperationsOnly)
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
@@ -34,8 +34,19 @@ try {
     $env:QLMS_TEST_DATABASE_URL = 'postgresql://postgres:qlms-local-test@127.0.0.1:55432/qlms_test'
     Push-Location (Join-Path $repoRoot 'backend')
     try {
-        & $PythonExecutable -m unittest discover -s tests
-        $testExitCode = $LASTEXITCODE
+        if ($OperationsOnly) { $testExitCode = 0 }
+        else {
+            & $PythonExecutable -m unittest discover -s tests
+            $testExitCode = $LASTEXITCODE
+        }
+        if ($testExitCode -eq 0) {
+            & $PythonExecutable -m ops.rehearse_schema --container $containerName
+            $testExitCode = $LASTEXITCODE
+            if ($testExitCode -eq 0) {
+                & $PythonExecutable -m ops.rehearse_recovery --container $containerName
+                $testExitCode = $LASTEXITCODE
+            }
+        }
     } finally { Pop-Location }
 } finally {
     if ($containerCreated) { & docker stop $containerName | Out-Null }
