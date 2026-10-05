@@ -4,6 +4,8 @@ Updated 4 October 2026 against the working tree and approved Qinetra-first decis
 
 ## Confirmed operating boundaries
 
+- 5 October reproduced failures: expired-session receipt did not reopen after password entry; restricted runtime could not replace clothing rows. Both were corrected and verified locally. Session recovery preserves the pending payment without automatically saving it. Narrow clothing deletion leaves audit snapshots immutable; remote permission remains blocked pending explicit approval. Evidence and remaining deployment gates: [pilot-essentials-check.md](pilot-essentials-check.md).
+- A Cloudflare Linux build/dry-run passed but the local first login response took about 85 seconds and browser qualification stalled. Build success alone is not usability/hosting acceptance; no customer data or paid resource was deployed.
 - Spend nothing now; retain Render/Supabase while validating Qinetra. Cloudflare frontend qualification uses fictional data and does not authorize a paid plan or framework replacement. Railway remains an alternative, not a required migration.
 - Use a separate free-allowance Supabase project for real records; do not silently substitute the existing schema when capacity is unavailable.
 - Employee discount ceiling is an owner-configured whole-order percentage, initially 0%; test split-line bypass and accepted replays after a policy change.

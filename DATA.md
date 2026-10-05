@@ -1,6 +1,6 @@
 # QLMS data and recovery contract
 
-Approved requirements, 28 September 2026. Production provisioning, backup automation and restoration are not yet completed. See [the roadmap](IMPLEMENTATION_ROADMAP.md) for D1/R1 gates.
+Updated 5 October 2026. The separate empty pilot project/schema is provisioned; restricted roles remain NOLOGIN. Local encrypted restore is verified, but actual credentials, daily backup/cloud upload, alerts and operational recovery are not completed. See [current evidence](docs/pilot-essentials-check.md), [operations](backend/ops/README.md) and [the roadmap](IMPLEMENTATION_ROADMAP.md) for D1/R1 gates.
 
 ## Data meanings
 

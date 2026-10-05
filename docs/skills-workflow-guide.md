@@ -47,6 +47,8 @@ In another project use its verified Python interpreter. Search results are sugge
 
 ## Efficient workflow
 
+5 October application: systematic debugging reproduced expired-session receipt failure and restricted-role clothing correction failure before fixes; verification-before-completion required fresh test/restore evidence. UI/UX guidance kept password recovery on the current page with the payment draft, and made login-limit instructions name the actual five-minute wait. No design-system replacement or extra UI library was needed. The user's later batching instruction replaces per-feature quiz pauses: complete essentials, then one final acceptance session before release.
+
 The project's `AGENTS.md` owns the QLMS workflow. The approved 5 October plan uses brainstorming for uncertain improvements, systematic debugging for reproduced failures, verification before completion/release, UI/UX guidance for staff interactions, and provider skills for database/hosting changes. It retains one active agent and real-data-pilot-first release gates. These triggers do not make every skill mandatory for every task.
 
 1. Give one goal, actual files or draft, constraints, desired output and passing criteria. State whether you want analysis or implementation.

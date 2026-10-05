@@ -1,6 +1,6 @@
 # QLMS security boundaries and release checks
 
-Reviewed 28 September 2026. This is a control inventory and implementation contract, not a security certification. Findings and tests belong in [the premortem](docs/pilot-premortem.md) and the relevant check record.
+Updated 5 October 2026. This is a control inventory and implementation contract, not a security certification. [Current essentials evidence](docs/pilot-essentials-check.md) records the shared login throttle, safe password/body bounds, generic failures, formula-safe CSV, private API/browser headers, sanitized errors, explicit production schema/role/TLS checks and session recovery. The inventory below retains launch requirements; local implementation does not prove deployed configuration. Findings belong in [the premortem](docs/pilot-premortem.md) and relevant check records.
 
 ## Trust boundaries
 
@@ -12,19 +12,21 @@ Protect customer contacts/history, money records, credentials, exports and backu
 
 | Area | Current evidence | Required before the affected release |
 | --- | --- | --- |
-| Authentication | bcrypt; expiring signed JWT; database active-role/version checks | Safe login password bounds, generic errors, throttling, invalid/disabled/revoked-session tests |
-| Sessions | sessionStorage token, inactivity lock and refresh | Review script-readable-token risk; resolve first-load/reauthentication findings; prove logout, old-tab and user-switch behavior |
+| Authentication | bcrypt/72-byte boundary; expiring JWT; active-role/version checks; generic failures, bounded body and shared PostgreSQL throttling tested locally | Verify deployed trusted peer IP behavior and actual credentials; retain disabled/revoked-session coverage |
+| Sessions | sessionStorage token, inactivity lock/refresh; expired-receipt and pending-payment recovery, same-account logout and different-owner isolation passed locally | Script-readable tokens remain; global token logout and secure cookies are later work; complete final staff acceptance |
 | Authorization | Backend owner/staff dependencies; whole-order employee discount ceiling locally verified 4 October | Keep direct-route/field-tampering checks for other actions; trim excess responses; complete student/release acceptance |
 | Queries/input | SQLAlchemy/bound queries and Pydantic | Finite/range/size limits and stale/terminal-state tests; no client-controlled role, actor or saved rate |
 | Money/saves | Transactions, correction history, pending-save references | Truthful refunds and PostgreSQL concurrency/replay acceptance; never auto-repeat an uncertain payment |
-| Browser output/export | React text rendering and CSV writer | Spreadsheet formula neutralization for untrusted text, numeric money preserved; receipt/internal-note separation |
-| Transport/cache | Configurable API origin and CORS | Verify production TLS/HTTPS, explicit origins, suitable CSP/headers and no public caching of authenticated responses |
-| Database | Dated browser-role denial observations in the handover | Separate real-data project, restricted runtime role, migration separation and verified restore |
-| Dependencies/secrets | Local frontend patch evidence | Current/history redacted secret scan, Python audit, credential-rotation evidence and repeatable maintenance checks |
+| Browser output/export | React text rendering; formula-neutralized text CSV and unchanged numeric money tested locally | Retain receipt/internal-note separation and final staff CSV reconciliation |
+| Transport/cache | Configurable API/CORS; API/browser private cache and security headers locally verified | Verify deployed TLS/HTTPS, explicit origins, proxy handling and no public caching; disable query-string access logs |
+| Database | Separate empty project, 20 RLS tables, denied browser schema usage; restricted runtime/backup NOLOGIN roles; local restore/rights verified | Resolve limited clothing grant approval, actual credentials/connections and operational backup/restore |
+| Dependencies/secrets | Current redacted history/staged scans and Python/production npm audits; unpatched development braces advisory recorded | Confirm old credential rotation, use new pilot credentials and maintain repeatable checks; no whole-system clearance |
 
-The [dependency patch record](docs/security-patch-check.md) records the exact versions and limits of its audit/browser evidence. Zero dependency findings do not prove all rows above pass.
+The [dependency patch record](docs/security-patch-check.md) records historical patch evidence. Current production npm and pinned Python/operations audits report zero findings; full npm has an unpatched development-only braces advisory. A redacted history scan found reviewed test-variable references, without proving prior credential rotation. Never reuse old credentials for the new pilot. Zero findings do not prove every control passes.
 
-The [discount check record](docs/discount-policy-check.md) verifies authenticated reads, owner-only changes/history, disabled/revoked accounts, rejected extra policy fields, whole-order decimal limits and PostgreSQL update/order serialization. Migration 022 enables RLS and revokes public/browser-role table and history-sequence access; restricted runtime access still needs D1 qualification. Policy reads request no-store in the frontend; this does not complete the API-wide private-response/header work in S1b. Neither passing these checks nor founder access permits exporting another client's personal data to an AI provider without the separately reviewed purpose/access/privacy safeguards.
+The [discount check record](docs/discount-policy-check.md) verifies authenticated reads, owner-only changes/history, disabled/revoked accounts, rejected extra policy fields, whole-order decimal limits and PostgreSQL update/order serialization. The new pilot has RLS on all 20 tables and browser schema denial. Restricted-role correction/payment/refund/restore checks passed locally; the remote clothing replacement permission needs explicit approval, and actual connections remain unconfigured. API-wide no-store/header controls now pass locally. Neither passing checks nor founder access permits another client's personal-data transfer to AI without reviewed purpose/access/privacy safeguards.
+
+Same-account logout propagates within supporting browsers without transmitting tokens. It does not revoke server tokens globally; separate devices and browsers without BroadcastChannel need explicit logout. Protected-page initialization and receipt reauthentication preserve drafts; late responses from another identity cannot populate the page. Script-readable session tokens and inline hydration CSP remain residual risks until the separate cookie/nonce increment. Before release, verify trusted proxy IP/HTTPS handling and disable Uvicorn access logs containing query strings (`--no-access-log`).
 
 ## Credentials and incidents
 
