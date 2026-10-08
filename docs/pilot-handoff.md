@@ -1,6 +1,6 @@
 # Qinetra pilot handover
 
-Updated 5 October 2026. Start here when continuing in a fresh task.
+Updated 8 October 2026. Start here when continuing in a fresh task.
 
 ## Objective and working rules
 
@@ -12,6 +12,7 @@ Use the current worktree as the source of truth. Preserve unfinished changes. Do
 
 ## Current continuation
 
+- 8 October: explicit clothing permission approval received and migration `allow_runtime_clothing_replacement` applied. Verification across all 20 tables preserved immutable history, read-only backup access and browser denial; roles remain NOLOGIN and operational counts zero. Do not repeat the resolved approval request. Google Drive/stakeholder email selected; unshared owner-only folder created, but connector did not expose owner identity. Actual address/folder reference are in account-restricted ignored `backend/ops/private/.env.pilot-setup`; do not read/print values or commit them. No archive upload, schedule, key recovery or delivered alerts are qualified. Ask for intended Google account, daily time/awake PC and owner-contact-settings versus creator-console scope. Current essentials/creator guide own details; older entries below are historical.
 - Release verification continuation, 5 October: added read-only automatic GitHub checks for backend/PostgreSQL/recovery and frontend tests/lint/build; official Actions are commit-pinned. Workflow syntax passed actionlint; fresh local checks passed 198 backend tests/no skips, 75 frontend tests, lint/build and restricted-role encrypted recovery (16.5 seconds). Remote jobs are not yet verified. See [release procedure](pilot-release-runbook.md) for coordinated publication and recovery boundaries. Current Render settings auto-deploy `main` commits, log access requests and check `/`; qualify candidate configuration before changing them. Vercel dashboard inspection stalled; actual plan remains unknown. No push, deployment or remote permission/credential change. Preserve the unrelated save-rejection draft.
 - Latest owner clarification, 5 October: live URL is https://qinetra-laundry-management-system.vercel.app/. Supplied owner username matches an active August Owner account; no password was read/entered/copied or login verified. August prices/garments/shop setup are real/current; owner separately confirmed customers/orders/payments are practice records. Creator wants technical/system administration, not a second shop Owner account; see roadmap/security boundaries.
 - Source `owetwiekmoycshdijmtl` was restored from INACTIVE within checked free allowance and is ACTIVE_HEALTHY. Guarded copy/readback passed for all 22 services/30 garment types into new pilot `qlms`; every field matched, including price/links/turnaround/active flags. Source records remain unchanged (three accounts, 11 customers, 17 orders, 10 payments); pilot still has zero accounts/customers/orders/payments. Both restricted roles remain NOLOGIN, 20 RLS tables/browser denial intact, clothing grant unapplied. No paid resource, credential change, push or deployment. Real catalogue entry is no longer an owner input; backup destination/time/alerts, private credentials/accounts and limited grant approval remain open.
@@ -60,7 +61,7 @@ The preceding feature commit was `89f07c2` (wrong customer on a saved ticket); t
 
 ## Remaining release work, in order
 
-1. Resolve the explicit remote clothing-grant approval and missing private configuration/owner decisions. Preserve the unfinished `docs/save-rejection-check.md` change; it is unrelated to this batch.
+1. Clothing approval is resolved as of 8 October. Continue missing private configuration/owner decisions above. Preserve the unfinished `docs/save-rejection-check.md` change; it is unrelated to this batch.
 2. Configure and verify actual restricted runtime/backup connections; owner enters passwords privately and approves catalogue/accounts/opening records. Do not import demonstration data.
 3. Verify actual encrypted backup, independent cloud upload/readback, recoverable key, daily schedule, missed-run/failure alerts and operational restore targets. Local restoration/readiness already passed; do not repeatedly rebuild them without a new concern.
 4. Qualify commercial frontend hosting, HTTPS/CORS/trusted proxy/log privacy, paired versions and compatible rollback. Review accumulated commits. Use a fresh pilot frontend origin or prove dataset isolation for retained browser drafts. Never roll back to August code after new refund/correction records.

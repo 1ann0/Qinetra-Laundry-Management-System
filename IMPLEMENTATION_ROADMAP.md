@@ -1,11 +1,12 @@
 # QLMS implementation roadmap
 
-Updated 5 October 2026. This is the canonical plan for the Qinetra pilot and later development. It replaces the older phase-status summaries in this file. Historical test runs remain in the development journal; current continuation instructions are in [the handover](docs/pilot-handoff.md).
+Updated 8 October 2026. This is the canonical plan for the Qinetra pilot and later development. It replaces the older phase-status summaries in this file. Historical test runs remain in the development journal; current continuation instructions are in [the handover](docs/pilot-handoff.md).
 
 The user approved implementation of the Qinetra-first plan. Their 5 October instruction batches the essential pilot work: build small changes and run developer checks, then hold one final staff acceptance session before deployment. Do not stop for separate quizzes or per-feature approval. Preserve unfinished work; later features remain conditional on their stated gates. No purchases or unqualified cutover are authorized. Truthful refunds retain their earlier approval.
 
 ## Approved decisions
 
+- 8 October: Google Drive selected for independent backup storage. Qinetra stakeholder alert recipient approved/recorded privately; owner-managed contacts and creator-assisted setup requested. Limited current-clothing DELETE permission approved/applied and verified; logins, real backups and delivery remain unconfigured. See [setup scope and permission boundary](docs/creator-operations-guide.md) for the pending timing choice. Never transfer Qinetra's recipient or ownership authority to another business.
 - Qinetra is the family business and first beneficiary. Prove easier daily work before marketing software or focused solutions to other businesses.
 - Spend nothing now. Retain Render for the API and Supabase PostgreSQL while validating the product. Do not migrate to Railway, buy credits or enable paid resources by default.
 - Qualify Cloudflare separately with fictional data; preserve Next.js and current order URLs. An unqualified free deployment is not a production guarantee.

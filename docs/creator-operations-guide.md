@@ -28,3 +28,13 @@ Keep this bounded: deployed versions, service/database readiness, sanitized rece
 Before another business shares the deployment, add separate platform identity/permissions and tested business isolation. Platform maintenance does not automatically grant access to named customers, private notes or money records. Client support access needs a defined purpose, owner approval, expiry and audit. Existing Qinetra ownership is not authorization from future clients.
 
 The master [roadmap](../IMPLEMENTATION_ROADMAP.md) owns priorities. This maintenance view does not delay the essential pilot. Current catalogue copy and remaining backup/credentials/hosting gates are in [the check record](pilot-essentials-check.md).
+
+## Requested setup help — 8 October
+
+The user wants an owner to set their own alert email or receive creator help with account/essential setup. Their stakeholder recipient is approved for Qinetra only and recorded privately. Google Drive is selected; its private folder is prepared, but account/upload/readback need qualification. Actual addresses, folder references, credentials and keys must not enter public source/docs or ordinary staff responses.
+
+Recommended next increment: an owner-only alert-contact setting in Shop setup, validated/authorized by FastAPI, with attributed changes and safe retry/concurrent-edit behavior. Keep a new contact pending until mailbox ownership and a real delivery test succeed; saving an address is not active monitoring. Preserve the Qinetra stakeholder recipient separately so changing the owner contact cannot silently remove the approved technical alert route. Never copy it automatically to another client.
+
+A creator setup console is a separate permission boundary, not another laundry Owner role or privilege inferred from email. Limit it to specifically authorized business setup, verified contact/status information and controlled invitations. Owners choose private passwords; support must not view passwords, provider keys, payment/customer records or arbitrary database commands through this console. Check authorization on every server read/write and record creator, business, approved purpose and change. Delegation needs revocation/expiry and tested business isolation before shared-client use.
+
+Scope choice is pending: owner contacts now with private creator operations for this pilot, or a secure creator console before cutover. The first keeps the pilot sequence; the second requires reviewed platform identity/account bootstrap and expands launch work. No new contact UI, creator permission or console was implemented by the Drive/role setup.

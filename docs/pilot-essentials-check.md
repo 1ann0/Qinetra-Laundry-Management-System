@@ -1,4 +1,4 @@
-# Pilot essentials — 5 October 2026
+# Pilot essentials — 8 October 2026
 
 Local implementation and provider setup evidence, not authorization for real-data entry. The roadmap owns scope and priorities. Finish the approved essentials as one batch, then run one final staff acceptance session before release.
 
@@ -40,7 +40,15 @@ Created the free-plan `QLMS-Qinetra-Pilot` project in the approved organization:
 
 `qlms_runtime` and `qlms_backup` are separate restricted NOLOGIN roles, without superuser/create-role/create-database/RLS-bypass privileges. Credentials, actual pooled connections and owner accounts are not configured. The runtime can change ordinary application records; immutable histories cannot be updated, and core records cannot be deleted. Backup access is read-only.
 
-Automatic approval review rejected the follow-up `GRANT DELETE ON qlms.order_items, qlms.order_item_exceptions TO qlms_runtime`. The exact permission was tested locally, but **remains unapplied remotely pending explicit user approval**. Do not work around that rejection or enable real clothing corrections before resolving it.
+The earlier approval rejection was resolved by the user's explicit approval on 8 October. Applied Supabase migration `allow_runtime_clothing_replacement`: `GRANT DELETE ON qlms.order_items, qlms.order_item_exceptions TO qlms_runtime`. Fresh verification across all 20 tables confirmed DELETE only on those two current clothing tables and the already-approved login-attempt buckets. Correction/payment/clothing histories remain denied UPDATE/DELETE; orders, payments, customers and catalogue cannot be deleted. Backup writes and browser schema usage remain denied; all 20 tables retain RLS, both roles remain restricted NOLOGIN, and operational counts remain zero. No clothing/customer/money records were changed.
+
+### Private backup and alert choices — 8 October
+
+The user chose Google Drive and supplied a Qinetra stakeholder alert address. Created a `QLMS-Qinetra-Backups` folder in the connected Drive; metadata reports `shared=false` and only one owner permission. The connector did not return the owner email, so confirm the intended Google account before uploading any database archive. No archive or encryption key was uploaded; this is folder preparation, not independent backup/recovery proof.
+
+Saved the approved destination reference and alert address in `backend/ops/private/.env.pilot-setup`. Its parent folder ACL allows only the current Windows account; verified the file's inherited access and Git exclusion without printing values. This records choices only: the existing backup runner does not consume these new fields, no delivery provider is configured, and alerts remain disabled. Actual addresses and folder IDs are absent from committed documentation, browser code and test fixtures.
+
+The user requested owner-managed contacts and creator-assisted setup. Current roles remain Owner/Employee; no alert-contact form or creator console exists. Proposed scope is in [creator-operations-guide.md](creator-operations-guide.md); the timing choice is pending. An email must not grant access, and Qinetra's stakeholder approval must not add the creator as a recipient for other businesses.
 
 ### Owner-confirmed catalogue copy
 
@@ -58,8 +66,8 @@ An isolated Linux copy built with Next.js 16.3.6, OpenNext 1.20.7 and Wrangler 4
 
 ## Remaining cutover gates
 
-1. Resolve the narrow remote permission approval; privately configure runtime/backup credentials and verify actual connections. Enter the first owner password in a private terminal, then approve/create staff accounts. The real catalogue is copied/verified; no re-entry is needed.
-2. Confirm private cloud destination, closing time, retention/key recovery and alert recipient. Verify upload/readback from the cloud, schedule the tested job and demonstrate missed-run/failure alerts. A cloud-synchronized folder or success marker alone is not remote backup evidence.
+1. The narrow clothing permission is approved/applied. Privately configure runtime/backup credentials and verify actual connections. Enter the first owner password in a private terminal, then approve/create staff accounts. The real catalogue is copied/verified; no re-entry is needed.
+2. Google Drive and the Qinetra stakeholder recipient are selected privately. Confirm the intended Drive account, daily time/awake computer, owner contact, retention and key recovery. Verify upload/readback, schedule the job and demonstrate missed-run/failure alerts. An empty folder, synchronized copy or success marker alone is not remote backup evidence.
 3. Complete the remaining clothing/outsourcing/contact/daily-close staff scenarios in one final fictional-data acceptance session. Expired-session, pending-payment recovery and same-account/different-account logout have developer browser evidence; no quiz pause is required.
 4. Qualify commercial frontend hosting, real HTTPS/CORS/trusted proxy behavior, readiness monitoring and alert delivery. Cloudflare has build evidence only; Vercel's actual plan is unverified.
 5. Review accumulated commits, exact release pair and compatible rollback. A fresh pilot frontend origin avoids attaching old demonstration drafts/pending references to a new dataset. Reusing an existing origin/API/account-ID combination requires tested dataset isolation before cutover; do not discard an uncertain save as a shortcut. Never roll back to August code after entering new refund/correction records: old Finance ignores their meaning.

@@ -4,7 +4,7 @@ This is the first real-data cutover procedure, not a deployment record. Use [pil
 
 ## Before publishing
 
-1. Finish the narrow clothing permission decision, restricted runtime/backup logins and privately entered first-owner password. Verify the actual TLS connections, selected `qlms` schema and browser denial. The copied 22 services/30 garments are already verified; do not import practice accounts or transactions.
+1. Clothing permission was approved/applied on 8 October. Finish restricted runtime/backup logins and privately entered first-owner password. Verify actual TLS connections, selected `qlms` schema and browser denial. The copied 22 services/30 garments are verified; do not import practice accounts or transactions.
 2. Qualify independent encrypted backup upload/readback, restoration, key recovery, daily schedule and delivered failure/missed-run alerts. Agree the closing time and alert recipient. Local restore timing alone does not qualify the shop's recovery target.
 3. Finish one fictional-data staff acceptance session covering customer lookup/contact correction, intake/garment references, holds, outsourcing, payment/refund, collection and daily close. Match receipts, Finance and CSV to hand-calculated figures.
 4. Qualify the actual commercial frontend plan, HTTPS, CORS, trusted proxy/IP behavior and readiness monitoring. Use a fresh pilot frontend origin so old demonstration drafts cannot attach to matching account IDs in the new database. An existing origin requires tested dataset isolation instead; do not clear an uncertain save to bypass it.
@@ -37,4 +37,4 @@ A local command or workflow syntax check is not a passed GitHub run. Before rele
 
 ## Current blockers
 
-As of 5 October: runtime/backup roles are NOLOGIN, the exact clothing replacement grant is pending, private passwords and backup destination/time/alerts are unanswered, final staff acceptance is open, and no actual cloud backup or operational rollback exercise is qualified. Frontend plan/hosting and the exact deployed pair remain unverified. Render currently auto-deploys every `main` commit, starts without `--no-access-log`, and health-checks `/`; these settings must be coordinated for the candidate, not changed blindly while old code serves the demonstration.
+As of 8 October: clothing permission is approved/applied; Google Drive and a Qinetra stakeholder recipient are selected privately. Runtime/backup roles remain NOLOGIN. Confirm Drive account, daily time, key recovery, owner contact and delivered alerts. Private passwords, final staff acceptance, actual cloud backup and operational rollback remain open; frontend hosting and the exact deployed pair remain unverified. Render inspection on 5 October found automatic deployment of every `main` commit, start without `--no-access-log` and health-check `/`; recheck and coordinate these settings for the candidate, not blindly while old code serves the demonstration.
