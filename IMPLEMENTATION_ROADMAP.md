@@ -6,6 +6,7 @@ The user approved implementation of the Qinetra-first plan. Their 5 October inst
 
 ## Approved decisions
 
+- 8 October backup continuation: 90-day retention, with recovery-key custody for the Qinetra owner and the user as technical maintainer in separate private locations. Actual key recovery and unattended scheduling remain unqualified; PC-off operation is still to confirm. See [storage check](docs/drive-storage-check.md).
 - 8 October: Google Drive selected for independent backup storage. Qinetra stakeholder alert recipient approved/recorded privately; owner-managed contacts and creator-assisted setup requested. Limited current-clothing DELETE permission approved/applied and verified; logins, real backups and delivery remain unconfigured. See [setup scope and permission boundary](docs/creator-operations-guide.md) for the pending timing choice. Never transfer Qinetra's recipient or ownership authority to another business.
 - Qinetra is the family business and first beneficiary. Prove easier daily work before marketing software or focused solutions to other businesses.
 - Spend nothing now. Retain Render for the API and Supabase PostgreSQL while validating the product. Do not migrate to Railway, buy credits or enable paid resources by default.
@@ -36,6 +37,8 @@ After that baseline, release small verified improvements to the pilot without wa
 The first coding increment is [Nairobi ready-time correctness](docs/ready-time-check.md): form, suggestion, validation, review and request conversion share an explicit Nairobi interpretation. Existing UTC/legacy saved times and pending saves retain their contracts. Staff acceptance and all real-data release gates remain separate.
 
 ## Evidence and boundaries
+
+8 October Drive continuation: approved business profile and private replacement folder now resolve through the existing connection. A disposable encrypted probe passed upload, independent download, checksum and authenticated decryption, with owner-only access retained. The private destination is selected; see [storage check](docs/drive-storage-check.md). User chose 90-day retention and separate owner/technical-maintainer key custody. Actual offline key copies, database backup/recovery, unattended execution and alerts still need qualification; PC-off operation remains to confirm. Do not repeat account setup.
 
 8 October owner setup: contact email and editable daily time (initial 22:00 Nairobi) are implemented/verified locally with owner-only API access, attributed history and safe stale/retry behavior. The user deferred the creator console until after the pilot. This does not activate backups or delivery; qualify a hosted schedule if the shop computer cannot remain awake. The [owner settings check record](docs/owner-alert-settings-check.md) owns current acceptance and file details.
 The [release procedure](docs/pilot-release-runbook.md) records the coordinated deployment and rollback rules. `.github/workflows/verify.yml` adds automatic PostgreSQL/recovery and frontend checks, with read-only permissions and no live credentials. It does not deploy or enforce branch protection; remote CI evidence remains required before release.
