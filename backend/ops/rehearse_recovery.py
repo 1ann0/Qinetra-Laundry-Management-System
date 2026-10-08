@@ -16,6 +16,7 @@ import main
 import auth
 import models
 import schemas
+from alert_settings import update_alert_settings
 from customer_phone import normalize_kenyan_phone
 from ops.backup import export_database, restore_database
 from ops.schema_setup import backup_access_sql, runtime_access_sql, verify_schema
@@ -64,6 +65,8 @@ def main_rehearsal(container):
         trouser = models.ClothingItemType(name="Fictional trouser")
         db.add_all([owner, customer, service, shirt, trouser])
         db.commit()
+        update_alert_settings(schemas.AlertSettingsUpdate(owner_email="restore-owner@example.test", backup_time="22:00", expected_revision=0),
+                              db, owner, idempotency_key=uuid4())
         main.correct_customer_details(customer.id, schemas.CustomerCorrectionCreate(expected_name=customer.name, expected_phone=customer.phone,
                  new_name="Corrected fictional customer", new_phone="0711111111", reason="Fictional contact correction", confirmed=True),
                  db, owner, idempotency_key=uuid4())
@@ -89,6 +92,7 @@ def main_rehearsal(container):
         assert (report.total_received, report.refunds_sent, report.net_cash_movement) == (1000, 200, 800)
     must_be_denied(runtime, "DELETE FROM qlms.customers")
     must_be_denied(runtime, "UPDATE qlms.payment_adjustments SET reason='tampered'")
+    must_be_denied(runtime, "UPDATE qlms.alert_settings_changes SET after_email='tampered@example.test'")
     must_be_denied(runtime, "CREATE TABLE qlms.forbidden(id integer)")
     backup_url = url.set(username=backup_name, password=backup_password)
     backup = create_engine(backup_url)
@@ -113,6 +117,9 @@ def main_rehearsal(container):
             assert (order.net_charge, order.amount_paid, order.balance_due) == (Decimal("800"), Decimal("800"), 0)
             assert db.query(models.Customer).count() == db.query(models.Order).count() == db.query(models.Payment).count() == db.query(models.PaymentAdjustment).count() == 1
             assert db.query(models.CustomerCorrection).count() == 1
+            assert db.query(models.AlertSettingsChange).count() == 1
+            assert db.query(models.AlertSettings).one().owner_email == "restore-owner@example.test"
+            assert db.query(models.AlertSettings).one().backup_time == "22:00"
             assert db.query(models.Customer).one().name == "Corrected fictional customer"
             assert order.status == "collected"
             assert order.service_lines[0].item_revision == 1

@@ -76,6 +76,53 @@ class DiscountPolicyChange(Base):
     policy = relationship("DiscountPolicy")
 
 
+# Private shop setup preferences; email is never an authentication permission.
+class AlertSettings(Base):
+    __tablename__ = "alert_settings"
+    __table_args__ = (
+        CheckConstraint("id = 1", name="alert_settings_singleton"),
+        CheckConstraint("backup_minute >= 0 AND backup_minute < 1440", name="alert_backup_minute_bounds"),
+        CheckConstraint("revision >= 0", name="alert_settings_revision_bounds"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    owner_email = Column(String(254), nullable=True)
+    backup_minute = Column(Integer, nullable=False, default=1320, server_default="1320")
+    revision = Column(Integer, nullable=False, default=0, server_default="0")
+    updated_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    @property
+    def backup_time(self):
+        return f"{self.backup_minute // 60:02d}:{self.backup_minute % 60:02d}"
+
+
+# Contacts are private; changing them does not enable a delivery provider or scheduler.
+class AlertSettingsChange(Base):
+    __tablename__ = "alert_settings_changes"
+
+    id = Column(Integer, primary_key=True)
+    settings_id = Column(Integer, ForeignKey("alert_settings.id", ondelete="RESTRICT"), nullable=False)
+    before_email = Column(String(254), nullable=True)
+    after_email = Column(String(254), nullable=False)
+    before_backup_minute = Column(Integer, nullable=False)
+    after_backup_minute = Column(Integer, nullable=False)
+    revision = Column(Integer, nullable=False)
+    request_key = Column(String(36), unique=True, nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    confirmed_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    confirmed_by_username = Column(String(50), nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    settings = relationship("AlertSettings")
+
+    @property
+    def before_backup_time(self):
+        return f"{self.before_backup_minute // 60:02d}:{self.before_backup_minute % 60:02d}"
+
+    @property
+    def after_backup_time(self):
+        return f"{self.after_backup_minute // 60:02d}:{self.after_backup_minute % 60:02d}"
+
+
 # Customer records
 class Customer(Base):
     __tablename__ = "customers"

@@ -37,6 +37,7 @@ The first coding increment is [Nairobi ready-time correctness](docs/ready-time-c
 
 ## Evidence and boundaries
 
+8 October owner setup: contact email and editable daily time (initial 22:00 Nairobi) are implemented/verified locally with owner-only API access, attributed history and safe stale/retry behavior. The user deferred the creator console until after the pilot. This does not activate backups or delivery; qualify a hosted schedule if the shop computer cannot remain awake. The [owner settings check record](docs/owner-alert-settings-check.md) owns current acceptance and file details.
 The [release procedure](docs/pilot-release-runbook.md) records the coordinated deployment and rollback rules. `.github/workflows/verify.yml` adds automatic PostgreSQL/recovery and frontend checks, with read-only permissions and no live credentials. It does not deploy or enforce branch protection; remote CI evidence remains required before release.
 
 | Area | Dated evidence (local status updated 5 October) | Limit |

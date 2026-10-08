@@ -44,11 +44,12 @@ The earlier approval rejection was resolved by the user's explicit approval on 8
 
 ### Private backup and alert choices — 8 October
 
+The owner-settings increment is verified locally: [owner-alert-settings-check.md](owner-alert-settings-check.md). User chose owner settings now/creator console after pilot and initial 22:00 Nairobi; actual initial address/time are recorded privately. Pilot now has two additional protected preference/history tables (22 total/22 RLS), with operational counts/catalogue unchanged. No real address is in the database yet, no active job/delivery, and no archive/key uploaded. The existing Windows task needs an awake/connected/signed-in PC; hosted automation remains to qualify.
 The user chose Google Drive and supplied a Qinetra stakeholder alert address. Created a `QLMS-Qinetra-Backups` folder in the connected Drive; metadata reports `shared=false` and only one owner permission. The connector did not return the owner email, so confirm the intended Google account before uploading any database archive. No archive or encryption key was uploaded; this is folder preparation, not independent backup/recovery proof.
 
 Saved the approved destination reference and alert address in `backend/ops/private/.env.pilot-setup`. Its parent folder ACL allows only the current Windows account; verified the file's inherited access and Git exclusion without printing values. This records choices only: the existing backup runner does not consume these new fields, no delivery provider is configured, and alerts remain disabled. Actual addresses and folder IDs are absent from committed documentation, browser code and test fixtures.
 
-The user requested owner-managed contacts and creator-assisted setup. Current roles remain Owner/Employee; no alert-contact form or creator console exists. Proposed scope is in [creator-operations-guide.md](creator-operations-guide.md); the timing choice is pending. An email must not grant access, and Qinetra's stakeholder approval must not add the creator as a recipient for other businesses.
+Current roles remain Owner/Employee. The owner contact/time form is implemented locally; the user deferred a creator console until after the pilot. See [creator-operations-guide.md](creator-operations-guide.md). An email must not grant access, and Qinetra's stakeholder approval must not add the creator as a recipient for other businesses.
 
 ### Owner-confirmed catalogue copy
 

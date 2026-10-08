@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from datetime import date, datetime
 from typing import Any, Literal, Optional
 from decimal import Decimal
+import re
 from customer_phone import display_kenyan_phone
 
 
@@ -12,6 +13,51 @@ def check_quantity_precision(value):
     if Decimal(str(value)) * 100 != (Decimal(str(value)) * 100).to_integral_value():
         raise ValueError("Use at most two decimal places for the quantity")
     return value
+
+
+class AlertSettingsUpdate(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    owner_email: str = Field(max_length=254)
+    backup_time: str = Field(pattern=r"^([01][0-9]|2[0-3]):[0-5][0-9]$")
+    expected_revision: int = Field(ge=0, strict=True)
+
+    @field_validator("owner_email")
+    @classmethod
+    def validate_alert_email(cls, value):
+        if any(ord(character) < 32 or ord(character) == 127 for character in value):
+            raise ValueError("Enter one email address without control characters")
+        value = value.strip()
+        local, separator, domain = value.rpartition("@")
+        if (not separator or not 1 <= len(local) <= 64 or local.startswith(".") or local.endswith(".")
+                or ".." in local or not re.fullmatch(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+", local)
+                or not re.fullmatch(r"(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}", domain)):
+            raise ValueError("Enter one email address, such as owner@example.com")
+        return local + "@" + domain.lower()
+
+
+class AlertSettingsOut(BaseModel):
+    model_config = {"from_attributes": True}
+
+    owner_email: Optional[str]
+    backup_time: str
+    revision: int
+    updated_at: Optional[datetime]
+    timezone: Literal["Africa/Nairobi"] = "Africa/Nairobi"
+    automation_status: Literal["not_configured"] = "not_configured"
+
+
+class AlertSettingsChangeOut(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: int
+    before_email: Optional[str]
+    after_email: str
+    before_backup_time: str
+    after_backup_time: str
+    revision: int
+    confirmed_by_username: str
+    created_at: datetime
 
 class DiscountPolicyUpdate(BaseModel):
     model_config = {"extra": "forbid"}

@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import OwnerGuard from "@/components/auth/owner-guard";
 import { useAuth } from "@/context/auth-context";
 import DiscountPolicySettings from "@/components/settings/discount-policy-settings";
+import AlertSettings from "@/components/settings/alert-settings";
 
 const UNIT_OPTIONS = [
   { value: "kg", label: "Per kilogram" },
@@ -513,6 +514,7 @@ function ShopSetupContent() {
       </div>
 
       <DiscountPolicySettings />
+      <AlertSettings />
 
       {pageError ? (
         <p

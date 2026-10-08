@@ -25,6 +25,7 @@ import logic
 import auth
 from login_throttle import consume_login_attempt
 from response_security import ResponseSecurityMiddleware, private_headers, safe_csv_text
+from alert_settings import get_alert_settings, get_alert_history, update_alert_settings
 from customer_phone import normalize_kenyan_phone, phone_search_digits
 from discount_policy import read_discount_policy, enforce_employee_discount
 from transaction_safety import (
@@ -36,6 +37,9 @@ from transaction_safety import (
 NAIROBI_TIMEZONE = timezone(timedelta(hours=3))
 
 app = FastAPI()
+app.add_api_route("/settings/alerts", get_alert_settings, methods=["GET"], response_model=schemas.AlertSettingsOut, tags=["Owner setup"])
+app.add_api_route("/settings/alerts/history", get_alert_history, methods=["GET"], response_model=list[schemas.AlertSettingsChangeOut], tags=["Owner setup"])
+app.add_api_route("/settings/alerts", update_alert_settings, methods=["POST"], response_model=schemas.AlertSettingsOut, tags=["Owner setup"])
 app.add_middleware(ResponseSecurityMiddleware)
 
 # Allow only the configured frontend addresses to call the API from a browser.
