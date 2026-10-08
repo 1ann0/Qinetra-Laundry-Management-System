@@ -1,5 +1,7 @@
 # Frontend hosting check — 8 October 2026
 
+9 October continuation: Cloudflare account/Workers Free is verified; the published candidate now passes isolated build/dry-run and local route/header/asset checks. Browser transport and actual cloud CPU/startup remain unqualified. See [cloudflare-qualification-check.md](cloudflare-qualification-check.md), which supersedes account-unknown/no-retained-image observations below. No production cutover or cloud deployment occurred.
+
 Authenticated Vercel inspection is complete. Existing hosting is on Hobby, so it does not qualify for the real shop pilot under Vercel's non-commercial-personal-use rule. No upgrade, purchase, account creation or production promotion was performed.
 
 ## Observed deployments
