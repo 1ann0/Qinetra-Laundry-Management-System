@@ -13,3 +13,11 @@ These are private operations tools, not browser/database access or a public boot
 PostgreSQL client tools must be installed separately for the unattended job. Passwords go through subprocess environment variables, not command arguments or output. The Docker runner provides clients only for its disposable local rehearsal. A restored schema still needs reviewed runtime/backup role setup; do not copy old login passwords into another project.
 
 Keep daily exports and receipts until retention is agreed. No automatic deletion exists. Stop new trial entry on backup failure, mismatched restored records/money or unreliable hosting. The measured local restore time is not the shop's four-working-hour recovery proof.
+
+## Hosted Drive candidate
+
+The user requires execution with the shop PC off. The local candidate in `.github/workflows/pilot-backup.yml` stays disabled until hosted authorization/recovery/alerts qualify. See [hosted-backup-check.md](../../docs/hosted-backup-check.md) for evidence and activation boundaries.
+
+Drive mode uses `hosted-backup.env.example` with `python -m ops.backup_job --config PRIVATE_FILE`, or protected runner secrets with `--environment`. Supply exactly one 32-byte key source: a separate private file or its base64 value in a protected secret. No key is uploaded to Drive. The job checks account/folder privacy before export, then verifies the remote encrypted file and decryption before writing success. Failures preserve the local encrypted archive and older success marker; inspect an unknown upload outcome privately before retrying.
+
+The agreed retention is now 90 days. This is recorded as policy, without automatic deletion; cleanup needs recovery qualification. The selected owner/technical-maintainer offline copies, runtime database/Drive credentials, account quota and real alerts are not created by saving the policy. Interactive plugin access is already verified and must not be reconnected as a workaround for absent unattended credentials.

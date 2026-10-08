@@ -102,9 +102,18 @@ def postgres_environment(url):
     return environment
 
 
-def postgres_command(tool, arguments, url, *, container=None, input_bytes=None):
+def postgres_command(tool, arguments, url, *, container=None, input_bytes=None, client_image=None):
     environment = postgres_environment(url)
-    if container:
+    if container and client_image:
+        raise ValueError("Choose one PostgreSQL client")
+    if client_image:
+        if tool != "pg_dump" or not re.fullmatch(r"postgres:17@sha256:[a-f0-9]{64}", client_image):
+            raise ValueError("Cloud export requires a pinned PostgreSQL 17 client")
+        command = ["docker", "run", "--rm", "--interactive"]
+        for name in ("PGHOST", "PGPORT", "PGDATABASE", "PGUSER", "PGPASSWORD", "PGSSLMODE", "PGCONNECT_TIMEOUT"):
+            command.extend(["--env", name])
+        command.extend([client_image, tool])
+    elif container:
         if not container.startswith("qlms-save-test-"):
             raise ValueError("Only the disposable test container is supported")
         # docker exec receives credentials through its environment, never command arguments.
@@ -122,10 +131,10 @@ def postgres_command(tool, arguments, url, *, container=None, input_bytes=None):
     return result.stdout
 
 
-def export_database(url, schema, key, output_folder, independent_folder=None, container=None):
+def export_database(url, schema, key, output_folder, independent_folder=None, container=None, *, client_image=None):
     if not re.fullmatch(r"[a-z][a-z0-9_]{0,62}", schema):
         raise ValueError("Use a simple schema name")
-    dump = postgres_command("pg_dump", ["--format=custom", f"--schema={schema}", "--no-owner", "--no-privileges", "--enable-row-security"], url, container=container)
+    dump = postgres_command("pg_dump", ["--format=custom", f"--schema={schema}", "--no-owner", "--no-privileges", "--enable-row-security"], url, container=container, client_image=client_image)
     if not dump.startswith(b"PGDMP"):
         raise ValueError("PostgreSQL did not produce a valid archive")
     created = datetime.now(timezone.utc)

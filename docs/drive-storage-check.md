@@ -35,7 +35,7 @@ Optional final-session browser check: open the already-connected approved busine
 ## Next gates
 
 - User selected 90-day retention and separate recovery-key custody for the owner and the user as technical maintainer. These choices are recorded privately; the actual offline key copies and recovery exercise are still pending. Do not enable automatic deletion before recovery is qualified.
-- Confirm whether the shop computer may be off at 22:00 Nairobi, then qualify the appropriate zero-spend schedule. This is an operating choice, not repeated account setup.
+- User confirmed the 22:00 Nairobi job must work with the shop computer off. A disabled cloud candidate is now locally verified; see [hosted-backup-check.md](hosted-backup-check.md). Actual unattended credentials, key recovery, retention handling and delivered alerts remain to qualify. Do not repeat resolved operating choices or account setup.
 - Privately configure and verify the restricted backup connection and actual export. The setup-choice file contains no backup runtime connection; `backup_job.py` still requires its separate database/key/local/independent configuration.
 - The interactive Drive connector is not an unattended backup runner. Qualify a zero-spend execution path, authenticated upload/download, missed-run/failure delivery and restart behavior. A synced local copy alone is insufficient.
 - Restore a real pre-entry export into a separate approved target, verify complete record/role/money behavior and demonstrate recovery-key access. Do not overwrite the pilot or import practice records.

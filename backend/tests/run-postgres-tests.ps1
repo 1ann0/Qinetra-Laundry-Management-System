@@ -1,5 +1,5 @@
 # Creates one disposable PostgreSQL container; never uses the project's database URL.
-param([string]$PythonExecutable = '', [switch]$OperationsOnly)
+param([string]$PythonExecutable = '', [switch]$OperationsOnly, [string]$CloudClientImage = '')
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
@@ -43,7 +43,9 @@ try {
             & $PythonExecutable -m ops.rehearse_schema --container $containerName
             $testExitCode = $LASTEXITCODE
             if ($testExitCode -eq 0) {
-                & $PythonExecutable -m ops.rehearse_recovery --container $containerName
+                $recoveryArguments = @('-m', 'ops.rehearse_recovery', '--container', $containerName)
+                if ($CloudClientImage) { $recoveryArguments += @('--client-image', $CloudClientImage) }
+                & $PythonExecutable @recoveryArguments
                 $testExitCode = $LASTEXITCODE
             }
         }
