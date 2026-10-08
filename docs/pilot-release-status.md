@@ -1,4 +1,4 @@
-# Pilot release status — 8 October 2026
+# Pilot release status — 9 October 2026
 
 9 October update: existing Cloudflare account/Workers Free is verified. The published frontend candidate passed isolated Linux/OpenNext build, dry-run and local private-header/direct-route/asset checks; browser/hosted CPU qualification remains open because tool transport failed. [Qualification evidence](cloudflare-qualification-check.md) owns details. No production cutover, database move or paid resource occurred. Supabase remains the selected pilot database.
 
@@ -11,7 +11,7 @@ The August demonstration is still deployed. The modern pilot candidate is now pu
 - Render was read in the user-confirmed My Workspace. `qlms-backend` still reports a live `5da24e5` deployment, automatic deployment of `main`, root `backend`, request access logs enabled by its start command and health check `/`. It is on the free plan. Candidate-specific log/privacy and readiness configuration must be coordinated with release.
 - Fresh pilot reads found zero staff accounts, customers, orders and payments; 22 services and 30 garment types. Both restricted database roles remain NOLOGIN. The practice records were not imported or changed.
 - The business Drive identity/private folder and encrypted disposable upload/readback are verified. Both existing plugin connections remain intact. User choices are resolved: 90 days, 22:00 Nairobi with the PC off, separate owner/technical-maintainer key copies, 5 GB reported free space. No unattended grant or running backup/alert schedule exists yet.
-- Authenticated Vercel inspection now confirms Hobby. Its non-commercial-personal-use rule does not qualify for the real shop pilot. Production is Ready at `5da24e5`; the approved branch push automatically created a Ready frontend preview at `1bfdf4a`. Preview readiness is not a paired pilot or staff acceptance. No production promotion or purchase occurred. See [frontend-hosting-check.md](frontend-hosting-check.md); continue the approved isolated Cloudflare qualification, with account availability still unverified.
+- Authenticated Vercel inspection confirms Hobby. Its non-commercial-personal-use rule does not qualify for the real shop pilot. Production is Ready at `5da24e5`; the approved branch push automatically created a Ready frontend preview at `1bfdf4a`. Preview readiness is not a paired pilot or staff acceptance. No production promotion or purchase occurred. See [frontend-hosting-check.md](frontend-hosting-check.md). Cloudflare account/Workers Free availability is verified; continue hosted CPU/startup and interactive qualification using [the existing experiment](cloudflare-qualification-check.md). Account setup is complete.
 
 ## Remaining work, in order
 

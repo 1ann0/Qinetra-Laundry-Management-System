@@ -1,4 +1,4 @@
-# Reusable Codex skills — installed 5 October 2026
+# Reusable Codex skills — updated 9 October 2026
 
 Skills are instruction cards and optional tools, not new models or extra usage allowance. These third-party repositories were downloaded at pinned commits; relevant instructions and helper entry points were inspected. Installation is not a comprehensive security audit or proof of business results.
 
@@ -60,7 +60,49 @@ The project's `AGENTS.md` owns the QLMS workflow. The approved 5 October plan us
 
 Medium reasoning suits routine UI integration; Low suits simple labels/docs; High suits payments, permissions and concurrency. Skills do not change the selected reasoning setting automatically or guarantee equal quality at a lower setting.
 
-## Installation provenance
+## Ponytail automatic plugin — 9 October 2026
+
+Ponytail is a reminder to reuse the building blocks already here and finish the smallest complete solution. It does not replace Superpowers debugging/verification, UI/UX checks or QLMS release gates. Full is the default; Ultra requires an explicit request. One active agent remains the default, including when the SubagentStart hook is installed.
+
+The official plugin is installed and enabled globally on this Windows user account: `C:/Users/1ann0/.codex/plugins/cache/ponytail/ponytail/5.1.0`. Its Git HEAD is `9cc65d03aa2da1db7121b912d03596409ee340b8` (5.1.0). The local marketplace at `C:/Users/1ann0/.codex/marketplaces/ponytail-reviewed/.agents/plugins/marketplace.json` pins the **plugin source** to that SHA; upstream's entry uses `main`. No shop dependency, model setting or paid benchmark was added. Existing plugins remain installed.
+
+The only tracked-source adaptation sets `process.env.PONYTAIL_MAP='0'` inside the SessionStart command in `hooks/claude-codex-hooks.json`. This disables the optional repository map; its filesystem fallback does not honour Git ignores. Core hook scripts and skills are unchanged. `installation-provenance.json` alongside the installed plugin records source, adaptation and manifest hash. Reinstallation can replace this cache modification: reapply it, verify its hash and review changed hook definitions before use. No automatic update was configured.
+
+The app's existing Codex CLI 0.160.1 reviewed and individually trusted only this plugin's SessionStart, UserPromptSubmit and SubagentStart hooks through `/hooks`; all three showed active with no review pending. No trust bypass was used. Another older `codex` on the escalated shell PATH is 0.144.1; use the verified app binary when checking this installation.
+
+| Skill | When and why | Codex invocation |
+| --- | --- | --- |
+| Ponytail | Choose the smallest complete change; reuse existing helpers and retain security/accessibility. | `$ponytail:ponytail` |
+| Review | Read a consequential diff and its callers before completion; report only demonstrated problems. | `$ponytail:ponytail-review` |
+| Audit | A bounded, read-only assessment of pilot auth, money/retries, backup and release paths. | `$ponytail:ponytail-audit` |
+| Debt | List documented shortcuts when they affect the next task; keep the master roadmap authoritative. | `$ponytail:ponytail-debt` |
+| Gain | Explain the author's benchmark, with its limits; this does not measure our usage or business value. | `$ponytail:ponytail-gain` |
+| Help | Show the command card. | `$ponytail:ponytail-help` |
+
+Mode prompts: `/ponytail full`, `/ponytail lite`, `/ponytail off`, or the standalone phrase `normal mode`. An off prompt applies to the current session; new sessions default to Full. Review/audit are one-shot reports and must not edit code or change the active mode. Hook mode state can be shared between sessions in the same project; do not assume chat-level isolation. Restart the desktop app if the installed plugin is absent from a new local chat. Installation is not verified for another computer, mobile/web or cloud executors.
+
+Fresh desktop checks confirmed automatically injected **Full** mode and no repository map in QLMS (`01a11dab-422f-78f3-be8d-e233d67eace8`) and the separate local System analysis and design notes project (`01a11daf-fd1d-7323-bafc-2802c73a1084`). All six skills appeared in both projects. Inspection of their recorded developer messages independently confirmed the mode line. An initial second-project chat (`01a11dac-0b94-7fe0-b4fd-1c1f043a36c1`) saw the skills but received no activation context; the fresh recheck passed without configuration changes. Its cause is unconfirmed. Do not promise every startup succeeds: if context is missing, explicitly select `$ponytail:ponytail`, inspect `/hooks` and retry a fresh chat. The verification chats were sequential, read no project files and made no changes.
+
+Verification used isolated temporary state under ignored `tmp/ponytail-check-20261009`, without customer data. All **9 native Windows regression checks** passed, including the stalled-input exit and hostile-root command checks. The unchanged common suite passed in the existing Linux Docker image with networking off and source mounted read-only. **17 focused Codex checks** passed on Windows: two project scopes, Full startup with no map/status-line setup, mode changes, off/normal-mode, malformed/closed input, SubagentStart output, six skill entries and report-only mode preservation. No model calls were needed for these focused checks.
+
+The combined native suite is **not all green**: `tests/hooks.test.js:319` compares an unescaped Windows path with the JSON-escaped command in Claude's status-line nudge. The installed Codex path skips that Claude-only block. Preserve this failure rather than altering upstream tests to claim a pass; Linux common checks and Windows Codex checks provide separate evidence. Initial shorter test runs timed out; the complete sequential run retained all upstream hang guards. These results qualify the tested hooks, not every third-party workflow.
+
+### First focused pilot audit
+
+Assumed load: one shop, a few concurrent staff, one daily hosted backup. This was source inspection, not a fresh production or database audit. Money/auth helpers and relevant tests were traced; no new application defect or worthwhile speculative refactor was established in the reviewed paths.
+
+| Required before daily reliance | Concrete case and source evidence | Smallest next step |
+| --- | --- | --- |
+| Unattended backup and recovery | `.github/workflows/pilot-backup.yml:19` deliberately gates execution; a Drive chat connection cannot supply the offline credentials required by `backend/ops/backup_job.py:23`. Connected Drive alone does not produce a nightly backup. | Complete the existing dedicated consent/private credential and separate-target restore checks in `docs/hosted-backup-check.md`; keep the workflow disabled until qualified. |
+| Delivered failure/missed-run alerts | `backend/ops/backup_job.py:67` stores success in the local runner folder; the workflow neither persists a remote heartbeat nor delivers an alert. An omitted schedule event leaves no new job to report its own absence. | Qualify a persistent success record and an independent overdue check, plus a delivered failure alert, within the existing zero-spend plan. Owner alert settings alone are not alert delivery. |
+| Retention handling | `backend/ops/backup_job.py:72` records 90 days but explicitly reports `automatic_deletion: False`. Day 91 does not expire an archive. | Rehearse conservative expiry handling for verified QLMS archives in the private destination, preserving a recoverable recent copy; then qualify it before activation. |
+| Paired hosted release | `docs/cloudflare-qualification-check.md` distinguishes local success from open hosted CPU/browser checks; `docs/pilot-release-status.md` keeps runtime/backup credentials and staff acceptance open. Local builds do not qualify the shop. | Continue hosted frontend/private API configuration, fictional acceptance and coordinated release in the existing order. Cloudflare account setup is already complete. |
+
+Retain DB-backed login throttling and live account/version checks (`backend/login_throttle.py`, `backend/auth.py`); decimal whole-order discount policy (`backend/discount_policy.py`); request fingerprint/advisory-lock/replay checks before new validation (`backend/transaction_safety.py`, `backend/main.py`); and preserved uncertain browser attempts (`frontend/src/lib/pending-save.js`). Relevant existing tests include `backend/tests/test_launch_security.py`, `test_discount_policy.py`, `test_refunds.py` and `frontend/tests/pending-save.test.mjs`. They were inspected, not rerun for this workflow-only change. The protected save-rejection draft remained unchanged.
+
+Not checked: full application regression, every router/screen, live credentials/provider state, actual staff acceptance, cloud alerts/recovery or cutover. Review/audit reports do not authorize those operations. Plugin/doc changes need no shop deployment. The author's [Claude Code benchmark](https://github.com/DietrichGebert/ponytail/blob/9cc65d03aa2da1db7121b912d03596409ee340b8/benchmarks/results/2026-10-07-agentic.md#limitations) does not establish equivalent QLMS or Plus savings.
+
+## Earlier skill installation provenance
 
 | Repository | Pinned commit | Installed subset |
 |---|---|---|
