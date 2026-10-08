@@ -9,7 +9,7 @@ The August demonstration is still deployed. The modern pilot candidate is now pu
 - Render was read in the user-confirmed My Workspace. `qlms-backend` still reports a live `5da24e5` deployment, automatic deployment of `main`, root `backend`, request access logs enabled by its start command and health check `/`. It is on the free plan. Candidate-specific log/privacy and readiness configuration must be coordinated with release.
 - Fresh pilot reads found zero staff accounts, customers, orders and payments; 22 services and 30 garment types. Both restricted database roles remain NOLOGIN. The practice records were not imported or changed.
 - The business Drive identity/private folder and encrypted disposable upload/readback are verified. Both existing plugin connections remain intact. User choices are resolved: 90 days, 22:00 Nairobi with the PC off, separate owner/technical-maintainer key copies, 5 GB reported free space. No unattended grant or running backup/alert schedule exists yet.
-- The Vercel dashboard opened at its login page. Automatic approval review initially blocked its GitHub sign-in route; the user then explicitly approved that existing sign-in. The GitHub browser session is signed out, so the tab is retained for the user to finish login privately. Actual Vercel plan remains unknown; no authenticated login or hosting change occurred.
+- Authenticated Vercel inspection now confirms Hobby. Its non-commercial-personal-use rule does not qualify for the real shop pilot. Production is Ready at `5da24e5`; the approved branch push automatically created a Ready frontend preview at `1bfdf4a`. Preview readiness is not a paired pilot or staff acceptance. No production promotion or purchase occurred. See [frontend-hosting-check.md](frontend-hosting-check.md); continue the approved isolated Cloudflare qualification, with account availability still unverified.
 
 ## Remaining work, in order
 
@@ -18,7 +18,7 @@ The August demonstration is still deployed. The modern pilot candidate is now pu
 | Private pilot setup | Actual restricted runtime/backup TLS connections to `qlms`, fresh signing secret and privately entered first-owner/staff credentials. Verify schema/permissions/readiness; preserve the demonstration. |
 | Real backup and recovery | Dedicated unattended Google consent for the verified business destination; real encrypted export/upload/readback; separate-target restoration; owner/maintainer recovery without this machine; measured archive/quota and qualified 90-day expiry handling. |
 | PC-off operation | Authenticated hosted execution targeting 22:00 Nairobi, delivered failure and missed-run alerts, with schedule delays accounted for. The workflow remains disabled until these pass. |
-| Hosting and paired release | Verify a suitable commercial frontend plan within zero spend; qualify the exact candidate on HTTPS with private headers, CORS, trusted proxy, readiness and a fresh pilot frontend origin. Rehearse the first-release receipt fallback and record actual deployment IDs. |
+| Hosting and paired release | Vercel Hobby is confirmed unsuitable for business use. Qualify the approved Cloudflare experiment within zero spend, then the exact candidate on HTTPS with private headers, CORS, trusted proxy, readiness and a fresh pilot frontend origin. Rehearse the first-release receipt fallback and record actual deployment IDs. |
 | Final acceptance and cutover | One fictional staff session covering time/contact, sessions, clothing/outsourcing/custody, money/CSV and daily close; then concrete cutover approval, coordinated deployment and live owner/employee smoke checks before real entry. |
 
 The copied real catalogue needs no re-entry. Drive plugin account setup and the resolved operating choices need no repetition. Remote CI is complete for `1bfdf4a`; do not rerun the same local suites solely to restate that result.
@@ -29,6 +29,6 @@ The full small fictional archive measured 103,574 bytes. Ninety equal-size copie
 
 ## Publication and release boundary
 
-The initial branch push was rejected by automatic approval review because the complete 47-commit public export needed explicit authorization. The user then approved that exact candidate and branch; the push and independent remote-SHA check succeeded. No merge into `main`, provider deployment, credential/role change, real-data write, scheduler activation or delivered alert occurred.
+The initial branch push was rejected by automatic approval review because the complete 47-commit public export needed explicit authorization. The user then approved that exact candidate and branch; the push and independent remote-SHA check succeeded. Authenticated Vercel inspection later established that this push also triggered its existing automatic preview integration. No merge into `main`, production deployment/promotion, credential/role change, real-data write, scheduler activation or delivered alert occurred.
 
 The unrelated unfinished `docs/save-rejection-check.md` remains unstaged. Follow [pilot-release-runbook.md](pilot-release-runbook.md) for the coordinated cutover; August code is not a compatible rollback after modern correction/refund records.
