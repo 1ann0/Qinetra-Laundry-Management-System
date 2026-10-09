@@ -1,6 +1,6 @@
 # Pilot release status — 9 October 2026
 
-9 October update: existing Cloudflare account/Workers Free is verified. The published frontend candidate passed isolated Linux/OpenNext build, dry-run and local private-header/direct-route/asset checks; browser/hosted CPU qualification remains open because tool transport failed. [Qualification evidence](cloudflare-qualification-check.md) owns details. No production cutover, database move or paid resource occurred. Supabase remains the selected pilot database.
+9 October update: existing Cloudflare account/Workers Free is verified. The published frontend candidate passed isolated Linux/OpenNext build, dry-run, local private-header/direct-route/asset checks and the resumed local browser workflow checks after normal terminal recovery. Lost-reply retry kept exactly one fictional order/payment; Finance/CSV API figures match. Browser disk-save observation and actual hosted CPU/startup remain open. [Qualification evidence](cloudflare-qualification-check.md) owns details. A scoped hosted qualification resource/access path is prepared for approval. No production cutover, database move or paid resource occurred. Supabase remains the selected pilot database.
 
 The August demonstration is still deployed. The modern pilot candidate is now published and verified on GitHub, but the real-data pilot has not been opened. Continue only the setup and release work below; the creator console, new business features and deep teaching sessions remain after the pilot.
 
