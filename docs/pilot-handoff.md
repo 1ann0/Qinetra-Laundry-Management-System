@@ -1,6 +1,6 @@
 # Qinetra pilot handover
 
-Updated 9 October 2026. Start here when continuing in a fresh task.
+Updated 10 October 2026. Start here when continuing in a fresh task.
 
 ## Objective and working rules
 
@@ -11,6 +11,12 @@ Make the single-shop pilot dependable and simple enough for daily use. Finish an
 Use the current worktree as the source of truth. Preserve unfinished changes. Do not create a second agent/task that edits these same files while the original task is running.
 
 ## Current continuation
+
+- 10 October hosted qualification: user approved the scoped Cloudflare proposal and clicked Deploy. Verified the existing named Worker Ready/100%, dashboard version `c51ab264`, zero bindings and independent public HTTPS 200 `Hello World!`. This is the placeholder, not the QLMS frontend or actual CPU qualification. Exact retained image digest was read back. Token-page loading/refresh and browser inventory then timed out; per-Worker access controls are not yet visually qualified. Private ignored `.env.cloudflare-qualification` has an empty entry; verify owner-only ACL before the user privately creates/enters a short-lived Editor token for this Worker only. No account-wide grant, second Worker, QLMS upload, purchase, account reconnect, main merge or real-data cutover. Details: [qualification record](cloudflare-qualification-check.md). Continue private grant/upload and hosted limits; preserve the unrelated save-rejection draft and all existing data.
+
+- 10 October private-entry follow-up: owner-only token-file ACL and Git exclusion are now verified; file-open is queued, not confirmed visible. Installed deploy help completed successfully; explicit target/strict/no-autoconfig/token-free dry-run is being qualified. User needs help creating the restricted token; browser attachment continues timing out. Pending text question asks which role/resource labels the custom token form actually offers. Resolve that specific scope before private user creation/entry; do not substitute an account-wide token or repeat account setup. No secret has been supplied or read.
+
+- 10 October upload rehearsal passed, exit 0: installed Wrangler explicit config/name/strict/no-autoconfig dry-run, 42 assets, unchanged 5,472.90 KiB raw/1,123.38 KiB gzip and only ASSETS. No token/private file or remote upload. Next remains the pending custom-token resource-label question, private user entry, actual upload and cloud limits. No further local fixture suite is needed solely to restate the same bundle result.
 
 - 9 October resumed after app reopen: normal terminal passed `SANDBOX_OK` and subsequent normal repository/API/SQLite checks. Local Workers candidate still matches published `1bfdf4a` product source. Owner/employee login, employee Finance redirect and three owner API 403s, lost-reply refresh/retry, direct receipt/refresh, employee search/history, logout/account switch and Finance passed. Fictional KES 800 order/250 cash/550 due remains exactly one order/one payment with the same request key; Nairobi 19:37 is stored as UTC 16:37. CSV API and UI success feedback passed, but browser download-file observation timed out/reset its kernel, so disk-save proof remains open. Phone viewport has no page overflow; normal capture retained. Screenshots 56/57 and [qualification record](cloudflare-qualification-check.md) hold evidence. This supersedes the ordinary-terminal/browser-blocked portions of the historical entries below. Existing signed-in Cloudflare creation route is accessible; a clearly named empty qualification Worker and per-Worker deployment grant require concrete approval/private user entry. No Worker, token, OAuth grant, purchase, account reconnect, push, main merge or pilot cutover occurred. Keep backup/private setup/hosted CPU/staff gates open and preserve the unrelated save-rejection draft.
 
