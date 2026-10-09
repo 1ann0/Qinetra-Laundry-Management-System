@@ -1,4 +1,52 @@
-# Cloudflare frontend qualification — 9 October 2026
+# Cloudflare frontend qualification — updated 10 October 2026
+
+## 10 October approved cache probe: fixed pages improve, dynamic HTML still fails
+
+The approved throwaway adapter probe is complete. No product code, installed dependency, FastAPI contract, Supabase record or runtime/backup credential changed. Added the installed read-only `staticAssetsIncrementalCache` override and `enableCacheInterception` in the ignored wrapper. Installed adapter source confirms `populateCache local` copies build-time cache files into ASSETS; direct Wrangler upload alone would not do this. The image runs that supported population step during build. Fourteen build-time cache files are present; dynamic receipt/customer routes still require rendering.
+
+- Retained derivative image: `qlms-workers-cache-candidate:1bfdf4a`, manifest `2bc0434261f9c20e1f1f4a4a82df1ce0ab6c5a42ed66805d42645b17fadec07f`.
+- Same source/public files: all 57 hashes matched the published candidate. Next/OpenNext build and cache population exited 0. Dry-run exited 0: 62 assets, 5,486.43 KiB raw / 1,126.14 KiB gzip, only ASSETS.
+- Eight local checks: four routes each as HTML and RSC, 200, correct content type, private/no-store and required security headers.
+- Scoped `versions upload` exited 0; startup 19 ms. Cloudflare plugin verified version `ec0278b6-4512-49be-96b8-d6d338121226`, only ASSETS, original compatibility date/flags. The plugin activated it and independently read back deployment `664d28ac-e662-4a08-ad36-7b7d3b8dfa40`, 100%, created 9 October 23:17:18 UTC / 10 October 02:17:18 Nairobi.
+- Active URL remains `https://qlms-pilot-qualification.qinetra.workers.dev/login`. It is a frontend qualification shell built for fictional loopback API `http://127.0.0.1:8012`, not a usable hosted shop/API pair. Final Worker name is not applied. Previous app version `4868d747-283d-414c-b157-e3569e2ca15b` remains the rollback reference; remote rollback was not rehearsed in this probe.
+
+Sixteen hosted client checks passed: three HTML rounds across login/workspace/order/customer plus one RSC navigation check each. All final responses were 200 with private/no-store, CSP, nosniff, DENY and no-referrer. Final content types matched HTML versus RSC. Dynamic RSC requests each redirected once (307) to Next's `_rsc` URL; the trace therefore contains 18 events, including both redirects. The evidence validator checks all 18, exact version, all outcomes ok, 16 final 200s, two expected dynamic redirects and three HTML samples per route. No excessive-CPU event was discarded.
+
+| Hosted route | Three HTML CPU samples | Final RSC CPU | Free 10 ms result |
+| --- | --- | --- | --- |
+| `/login` | 3, 2, 1 ms | 1 ms | Within limit in this sample |
+| `/workspace` | 2, 1, 4 ms | 1 ms | Within limit in this sample |
+| `/orders/1` | 19, 15, 14 ms | 6 ms | All HTML samples exceed limit |
+| `/customers/1` | 10, 8, 11 ms | 6 ms | One HTML sample exceeds limit |
+
+Both redirects used 2 ms. The cache helps fixed pages but **does not qualify the complete frontend on Free**. Successful responses during Cloudflare's overrun tolerance do not clear this failure. No further cache tweak, paid plan, Worker rename, stack replacement or real-data release is approved by the probe alone.
+
+Trace capture required correction: Python's HTTP client returned 403, while the established Windows HTTP client returned 200; no application cause was established for that client-specific result. Early trace attempts yielded zero events; connection readiness had not been verified. A detached owned helper plus plugin tail-count read confirmed an active trace before the complete run. A keep-alive/reconnection warning remained, but the complete expected event set was checked. Raw logs were deleted after sanitization, both owned helpers stopped and the trace container removed. Browser capture/control remains unverified; HTTP/RSC checks are developer evidence, not staff acceptance.
+
+Ignored evidence: `tmp/qlms-workers-hosted-cache-routes-20261010.json`, `tmp/qlms-workers-cloud-cpu-summary-cache-20261010.json`, the populated-cache image and temporary wrapper/probe scripts. The protected save-rejection draft hash is unchanged.
+
+Recommended next design, not implemented: native [Next static export](https://nextjs.org/docs/app/guides/static-exports), keeping existing browser fetch/auth and FastAPI/Supabase. Unknown record IDs prevent build-time dynamic paths; use fixed `/orders/receipt?id=1` and `/customers/contact?id=1` pages, update six link sites across order entry/status/customer search, and preserve old numeric links with hosting redirects. Validate IDs, reset record state on ID changes, and preserve pending-save keys at their original API paths/account/origin. Static export does not apply Next `headers()` or runtime redirects: supply equivalent [Cloudflare asset headers](https://developers.cloudflare.com/workers/static-assets/headers/) and redirect-response headers, preserving CSP/private/no-store. Qualify this as a separate approved increment; do not fabricate records at build time or serve a dummy receipt under arbitrary IDs. First test build, links/direct refresh/back/forward, role denial, payment recovery and headers/CPU in the existing fictional qualification environment. Final HTTPS API pairing, private setup/backup/staff and cutover approval remain required.
+
+## 10 October deployed qualification and measured CPU failure
+
+User explicitly approved the broader namespace change and confirmed private token entry. The token file passed expected-entry validation, owner-only ACL and Git exclusion; the token value was not printed or committed. The account namespace is now `qinetra`, verified via public HTTPS and the user-requested Cloudflare plugin. The plugin identity matches the existing university account and its inventory contains only the qualification Worker. No account reconnection, broader deployment token, purchase or real-data cutover occurred.
+
+The first upload passed asset transfer but failed version validation with API 100328: Free does not support explicitly configuring CPU limits. Removed only `limits.cpu_ms` from the ignored wrapper, checked equality with the immutable original after removing that field, then retried the same app image with the corrected config mounted read-only. The Free plan's fixed 10 ms allowance still applies. The retry uploaded and deployed the bundle with 23 ms startup; Wrangler subsequently exited 1 when trigger discovery tried to read the account-level subdomain outside the single-Worker grant. No account-wide token permission was added. Independent deployment reads prove the result:
+
+- URL: `https://qlms-pilot-qualification.qinetra.workers.dev/login`.
+- Deployment: `80da4a4d-e0bf-4ba5-9f23-8c0c6c086163`.
+- Version: `4868d747-283d-414c-b157-e3569e2ca15b`, 100%.
+- Created: 9 October 2026 22:33:12 UTC / 10 October 01:33:12 Nairobi.
+- Original app source/image unchanged: `1bfdf4a`, image manifest `baeec29ffb31afa7375b0b9ce1165e5b105f7be2604ff0bd325aaaa04f203587`.
+- Plugin settings read: compatibility `2026-08-27`, original two flags, only ASSETS. The final `qlms.qinetra.workers.dev` name has not been applied.
+
+Twelve marked anonymous HTTPS GETs (three rounds of `/login`, `/workspace`, `/orders/1`, `/customers/1`) all returned QLMS HTML, 200, private/no-store, CSP, nosniff, frame denial and no-referrer. The original logo returned exactly 142,697 bytes. Wall time was 278–4,781 ms; this is not CPU time. Remote tail filtering used the same version and qualification header, then retained only path, CPU, wall time and outcome. All 12 outcomes were ok, but CPU was **11–215 ms**, mean **44.58 ms**, exceeding the fixed Free allowance even on warm requests. Startup passed; dependable Free runtime remains unqualified. [Cloudflare CPU guidance](https://developers.cloudflare.com/workers/platform/limits/#cpu-time) explains occasional overrun tolerance and eventual termination for consistent excess.
+
+Ignored evidence: `tmp/qlms-workers-hosted-routes-20261010.json` and `tmp/qlms-workers-cloud-cpu-summary-20261010.json`. The raw request log was deleted after sanitization; the tail container stopped. Its keep-alive/reconnection warning is retained as a monitoring limitation, not an application failure. A fresh browser attempt to open hosted login timed out/reset the kernel; no hosted interactive or screenshot acceptance is claimed.
+
+User approved one further bounded cache probe following [OpenNext SSG guidance](https://opennext.js.org/cloudflare/caching); its completed result is recorded above. The baseline app version is the rollback reference. A final HTTPS API build and all private setup/backup/staff/cutover gates remain required.
+
+## Earlier continuation history
 
 10 October free-address follow-up: user confirmed no owned domain and chose a free address. Preferred final target is `qlms.qinetra.workers.dev`. The live Workers & Pages inventory contained only `qlms-pilot-qualification`; the subdomain review confirmed `qinetra.workers.dev` available. The account-wide update would immediately invalidate old `*.2401829.workers.dev` addresses, with possible propagation delay for the replacement. Automatic approval review blocked Update because this broader account change was not explicitly approved. A follow-up screenshot attempt was also rejected. No namespace or Worker rename was applied; explicit approval is pending. Preserve the existing qualification Worker while the token grant/upload is completed, then coordinate the final Worker name, wrapper target, frontend/API origins, CORS and release record. Do not treat the proposed final URL as deployed.
 
