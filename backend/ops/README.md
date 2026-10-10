@@ -2,6 +2,27 @@
 
 These are private operations tools, not browser/database access or a public bootstrap API. Install `../requirements-ops.txt` into a verified private Python environment. Use the current check record in `../../docs/pilot-essentials-check.md` for actual evidence and unresolved setup gates.
 
+## Owner-run private database setup
+
+The user requires all real credential handling outside ChatGPT. Agents must not read private configuration/key files, execute commands which load real secrets, capture filled password forms or inspect credential-bearing logs. Guide private entry/execution and check only sanitized status and database metadata. Existing connector authentication stays connected; do not repeat account setup.
+
+`pilot_private_setup.py` is a bounded setup command for the existing fresh `QLMS-Qinetra-Pilot` only. It uses the four prepared owner-only `.env.pilot-*` files in `private/`. The administrator password must already match the reset completed privately in Supabase. If you prefer your own role passwords/signing secret, replace their values privately first: use separate strong values, with at least 32 bytes for the signing secret. Never paste these values into chat, command arguments, screenshots or the Codex terminal.
+
+Open your own Windows PowerShell window outside Codex and run:
+
+```powershell
+Set-Location 'C:\Users\1ann0\qlms\backend'
+& '..\tmp\test-venv\Scripts\python.exe' -m ops.pilot_private_setup
+```
+
+The command reads secrets locally and authenticates only to the verified pilot Supabase session pooler. Before changing access it requires the expected catalogue-only counts, 22 RLS tables, restricted grants, immutable-history protection and denied browser access. It assigns passwords/login only to the existing `qlms_runtime` and `qlms_backup` roles, using SCRAM verifiers in SQL, without changing their grants. It verifies each actual encrypted role/schema connection and saves only `DATABASE_URL` and `QLMS_BACKUP_DATABASE_URL` in the existing private files, preserving their Windows file permissions and other settings. It does not connect to the old practice project or create staff/data, deploy, upload archives, or activate a schedule. Supabase and your local process necessarily use the credentials; they are never printed to ChatGPT.
+
+Success ends with `PASS: private pilot database setup; runtime and backup TLS connections verified; private settings saved.` Report only the PASS or FAIL/STEP lines. A STEP line means role credentials were committed, even if a later connection/file check fails; stop and share only those safe lines before continuing. Do not copy a traceback, connection URL or file contents. The administrator credential remains a private setup credential and must never be installed on Render or the frontend.
+
+The SQL password handling follows [PostgreSQL's client-side password preparation guidance](https://www.postgresql.org/docs/current/libpq-misc.html#LIBPQ-PQENCRYPTPASSWORDCONN) through the installed [Psycopg password function](https://www.psycopg.org/docs/extensions.html#psycopg2.extensions.encrypt_password). Actual hosted connection verification remains the owner's pending action.
+
+## Existing operations tools
+
 - `base-schema.sql` supplies the original tables; `schema_setup.py` applies every numbered migration twice and checks current model columns.
 - `rehearse_schema.py` produces `../schema/pilot.sql` and its migration/hash manifest only after a disposable local restore succeeds. The snapshot excludes prices, users and customers. Regenerate it; do not hand-edit it or apply it over an existing schema.
 - `runtime_access_sql`/`backup_access_sql` configure separate restricted roles. Runtime deletion is limited to old login buckets and replaceable current clothing rows; clothing snapshots remain in immutable history. Provisioning must test those rights before opening access. Browser roles remain denied.

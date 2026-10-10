@@ -12,6 +12,8 @@ This is the first real-data cutover procedure, not a deployment record. Use [pil
 
 ## Qinetra owner and employee handoff
 
+Credential handling is now owner-operated outside ChatGPT: agents must not read/load real private credential files, capture filled forms or inspect credential-bearing logs. Use the [private database setup instructions](../backend/ops/README.md#owner-run-private-database-setup), then check only sanitized status and non-secret metadata. This restriction also applies to provider deployment secrets, unattended OAuth, signing secrets, staff passwords and recovery keys.
+
 Requested by the user on 10 October. This is the required handoff plan, not a completed onboarding or live-system guarantee. Finish deployment/recovery checks and device acceptance before giving the owner the final go-live instructions.
 
 1. Confirm the final HTTPS site/API pair points to the separate pilot `qlms` schema. Recheck the original Shop setup catalogue against the copied services/prices/clothing types. Carry over only that catalogue; keep old practice accounts/customers/orders/payments/history and credentials out of the pilot. Record zero operational rows before account setup; do not erase the old database.

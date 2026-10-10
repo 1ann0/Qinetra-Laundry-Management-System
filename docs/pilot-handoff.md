@@ -1,6 +1,6 @@
 # Qinetra pilot handover
 
-Updated 10 October 2026. Start here when continuing in a fresh task.
+Updated 11 October 2026. Start here when continuing in a fresh task.
 
 ## Objective and working rules
 
@@ -11,6 +11,10 @@ Make the single-shop pilot dependable and simple enough for daily use. Finish an
 Use the current worktree as the source of truth. Preserve unfinished changes. Do not create a second agent/task that edits these same files while the original task is running.
 
 ## Current continuation
+
+- 11 October credential-privacy instruction supersedes earlier agent-operated private preparation: the user does not want real passwords, tokens, signing secrets or recovery keys exposed to ChatGPT. Do not read private files, execute tools/scripts that load their values, capture filled credential forms, inspect authentication/SQL logs containing credentials/verifiers, or request secrets in chat. Guide the user to run credential-handling steps in their own terminal outside Codex, or enter values directly in the provider UI. Connected plugins may check non-secret metadata/results only. Preserve this restriction across continuation and release work.
+
+- User confirms the pilot administrator reset succeeded and the private file was saved; authentication is still awaiting an owner-run check. Supabase metadata still shows the two restricted roles with login disabled and the catalogue-only counts at 22 services, 30 clothing types and zero users/customers/orders/payments. Added the bounded owner-run `backend/ops/pilot_private_setup.py`: it checks the fixed project, strong separate credentials, fresh counts, restricted grants/RLS and browser denial; assigns only the two role passwords/login using client-generated SCRAM verifiers; checks actual TLS role connections; then updates only the private runtime/backup URLs in place. It never prints secrets or driver messages and never sets up staff, deploys, exports data or activates backups. The agent must not run it against private files. Instructions: [private setup](../backend/ops/README.md#owner-run-private-database-setup).
 
 - 10 October release continuation: candidate `97686708c2f6e4facf574054850847b50bd0dbbd` was published to the existing feature branch; remote SHA matched and its full new commit range passed secret scanning. [GitHub run 38083394911](https://github.com/1ann0/Qinetra-Laundry-Management-System/actions/runs/38083394911) passed both backend/PostgreSQL/recovery and frontend tests/lint/static build. This resolves CI/publication for that exact candidate, superseding earlier no-new-push entries. Main remains `5da24e5`; no real-data cutover. Explicit Render reads reused the already-approved My Workspace; no account setup repeated.
 
