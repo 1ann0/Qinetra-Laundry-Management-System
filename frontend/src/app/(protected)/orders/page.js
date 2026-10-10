@@ -2061,7 +2061,7 @@ export default function OrderEntryPage() {
             </button>
             <Link
               className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#005AAB] px-5 font-bold text-[#005AAB] no-underline hover:bg-blue-50"
-              href={`/orders/${createdOrder.id}`}
+              href={`/orders/receipt?id=${createdOrder.id}`}
             >
               Open full receipt
             </Link>

@@ -2,8 +2,9 @@
 
 // Contact changes keep the same customer and orders; history explains each edit.
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { readRecordId } from "@/lib/record-id";
 import OwnerGuard from "@/components/auth/owner-guard";
 import { useAuth } from "@/context/auth-context";
 import usePendingSave from "@/components/orders/use-pending-save";
@@ -13,8 +14,7 @@ import { getUserMessage } from "@/lib/user-messages";
 const inputClass = "mt-1 min-h-11 w-full rounded-lg border border-slate-400 bg-white px-3";
 const buttonClass = "min-h-11 rounded-lg bg-[#005AAB] px-5 font-bold text-white disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#005AAB]";
 
-function ContactDetails() {
-  const { customerId } = useParams();
+function ContactDetails({ customerId }) {
   const { authenticatedRequest } = useAuth();
   const path = `/customers/${customerId}`;
   const save = usePendingSave(`${path}/corrections`);
@@ -169,7 +169,18 @@ function ContactDetails() {
   </section>;
 }
 
+function SelectedCustomerContact() {
+  const customerId = readRecordId(useSearchParams());
+  if (customerId === null) {
+    return <section className="mx-auto max-w-3xl space-y-5">
+      <h1 className="text-3xl font-bold text-slate-900">Customer contact details</h1>
+      <p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-800">This customer link is not valid. Find the customer again.</p>
+      <Link className="inline-flex min-h-11 items-center font-bold text-[#005AAB] underline" href="/customers/search">Back to customer search</Link>
+    </section>;
+  }
+  return <ContactDetails key={customerId} customerId={customerId} />;
+}
+
 export default function CustomerContactPage() {
-  const { customerId } = useParams();
-  return <OwnerGuard><ContactDetails key={customerId} /></OwnerGuard>;
+  return <OwnerGuard><Suspense fallback={<p role="status">Loading contact details…</p>}><SelectedCustomerContact /></Suspense></OwnerGuard>;
 }

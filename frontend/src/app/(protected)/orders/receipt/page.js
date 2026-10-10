@@ -3,8 +3,9 @@
 import { getUserMessage } from "@/lib/user-messages";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { readRecordId } from "@/lib/record-id";
 import ServiceItemEntry, {
   createBlankGarment,
   createBlankTallyException,
@@ -166,11 +167,9 @@ function getItemError(serviceLine, items) {
   return "";
 }
 
-export default function OrderDetailPage() {
+function OrderDetailPage({ orderId }) {
   const { authenticatedRequest, role, reauthenticationRequired } = useAuth();
   const loadedOrderId = useRef(null);
-  const params = useParams();
-  const orderId = Number(params.orderId);
 
   // Store the complete receipt, matching customer and active clothing choices.
   const [order, setOrder] = useState(null);
@@ -518,7 +517,7 @@ export default function OrderDetailPage() {
 
   if (isLoading) {
     return (
-      <p className="mx-auto max-w-5xl rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-600">
+      <p role="status" className="mx-auto max-w-5xl rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-600">
         Loading order receipt…
       </p>
     );
@@ -1255,4 +1254,20 @@ export default function OrderDetailPage() {
       </section>
     </section>
   );
+}
+
+function SelectedOrderReceipt() {
+  const orderId = readRecordId(useSearchParams());
+  if (orderId === null) {
+    return <section className="mx-auto max-w-3xl rounded-2xl border border-red-300 bg-red-50 p-6">
+      <h1 className="text-2xl font-bold text-slate-900">Order could not be opened</h1>
+      <p className="mt-3 text-red-800" role="alert">This order link is not valid. Open Track orders and find the order again.</p>
+      <Link className="mt-5 inline-flex min-h-11 items-center font-bold text-[#005AAB] underline" href="/orders/status">Return to status tracking</Link>
+    </section>;
+  }
+  return <OrderDetailPage key={orderId} orderId={orderId} />;
+}
+
+export default function OrderReceiptPage() {
+  return <Suspense fallback={<p role="status">Loading order receipt…</p>}><SelectedOrderReceipt /></Suspense>;
 }

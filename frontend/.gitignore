@@ -16,6 +16,8 @@
 # next.js
 /.next/
 /out/
+/hosting/wrangler.generated.json
+.wrangler/
 
 # production
 /build

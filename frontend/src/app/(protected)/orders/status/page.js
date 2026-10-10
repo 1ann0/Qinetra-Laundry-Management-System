@@ -297,7 +297,7 @@ function OrderCard({
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link
               className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#005AAB] px-5 font-bold text-[#005AAB] no-underline hover:bg-blue-50"
-              href={`/orders/${order.id}`}
+              href={`/orders/receipt?id=${order.id}`}
             >
               {moveState.itemCheckBlocksNextStage
                 ? "Complete item check"
@@ -326,7 +326,7 @@ function OrderCard({
           </p>
           <Link
             className="font-bold text-[#005AAB] hover:underline"
-            href={`/orders/${order.id}`}
+            href={`/orders/receipt?id=${order.id}`}
           >
             View order and receipt
           </Link>

@@ -1,6 +1,43 @@
 # Cloudflare frontend qualification — updated 10 October 2026
 
-## 10 October approved cache probe: fixed pages improve, dynamic HTML still fails
+## 10 October approved static export: measured Free CPU gate passed
+
+After user approval, Next.js now exports fixed receipt/contact shells. Authenticated browsers still fetch records from FastAPI, with Supabase behind the API; no customer records enter generated HTML. Five link sites and navigation titles use `/orders/receipt?id=1` and `/customers/contact?id=1`. A small Worker redirects numeric bookmarks. Exactly one positive safe integer is required; changing ID remounts the editor. Invalid/ambiguous IDs show an alert/recovery link before an editor mounts. Existing API paths, pending-save scopes, guards, dependencies, backend and database are unchanged.
+
+The existing private/security policy has one source for Next development, static assets and Worker responses. `npm run build:cloudflare` generates `out/_headers` and ignored `hosting/wrangler.generated.json`; static export cannot use Next runtime headers/redirects. CI now runs that build with its fictional HTTPS origin. Worker-first routing for `/orders/*` and `/customers/*` preserves bookmark redirects on browser navigation; other fixed pages are direct assets. No paid service or final Worker rename was added.
+
+- Retained image: `qlms-static-export-candidate:20261010`, manifest `2773f09e065ea73626af4a84f1b4ba80e861acb8a6d9b725dc29a2f611a9c054`. All 65 public source/config hashes matched the workspace; no private environment file entered the build context. Node 22.23.3, Next 16.3.6, existing Wrangler 4.125.0; this build does not use OpenNext.
+- Fresh checks: 81 frontend tests passed, zero failed/skipped; lint passed with no errors/warnings; all 16 generated pages are static. Strict/no-autoconfig dry-run passed: 128 assets, Worker 2.15 KiB raw / 1.03 KiB gzip. Upload-only passed, startup 1 ms. Four new tests cover ID validation, security policy, GET/HEAD redirects, asset status/content preservation and non-redirected POSTs.
+- Cloudflare plugin verified version `cb6c9c7d-c413-41d7-9157-a81e9cb4a0db`, ASSETS/public API-origin bindings, asset headers and routing. Initial deployment `e6f860b5-47c0-410d-a0d3-9ff8faede9e4`: 10 October 08:09:26 UTC / 11:09:26 Nairobi. Restored active deployment is below.
+- URL: `https://qlms-pilot-qualification.qinetra.workers.dev/login`. It still targets fictional `http://127.0.0.1:8012`: **not a usable hosted shop/API pair**. Final `qlms.qinetra.workers.dev` name is unapplied. Rebuild for the qualified HTTPS API and verify its actual CORS/CSP/roles/recovery before staff use.
+
+Eight local HTTP checks passed. The final hosted three-round batch passed all 24 client checks: login/workspace, receipt/contact HTML, both navigation payloads and both legacy links. Final responses were 200 with expected content types, private/no-store, CSP, Permissions-Policy, nosniff, frame denial and no-referrer; legacy destinations matched exactly.
+
+The complete native trace captured the exact version and all **24 expected Worker events**: six receipt HTML, six contact HTML, three of each navigation payload and three of each legacy 302. Login/workspace produced six further direct-asset responses without Worker execution. **All 24 events used 0–1 ms CPU, outcome `ok`, below Free's fixed 10 ms allowance.** The validator checks exact path/status counts and numeric CPU. All 44 events from two earlier partial CLI captures are also retained; all 68 retained events were 0–1 ms, with no overrun discarded. This clears the bounded measured CPU gate, not general availability or the final API pair.
+
+CLI tracing captured 23/24 events in one batch and 21/24 in another, with keep-alive/reconnection warnings; these were not accepted as complete captures. A Node-built-in WebSocket harness using installed Wrangler's `trace-v1` protocol, exact-version/header filters and no added sampling filter captured the full batch. One readiness-only attempt expired before requests started and retained zero events. The successful harness retained only path/status/CPU/wall/outcome and deleted its remote tail; plugin independently reported zero active tails. Raw logs were removed after sanitization; credential-bearing helpers stopped/removed. No new dependency or wider token grant.
+
+### Fictional browser and recovery checks
+
+Static preview port 8791 used the same preserved SQLite fixture/API at 8012. Original customer/order/payment #1 rows were hash-checked unchanged. Separate order #2, `QL-20261010-001`, KES 800, promised 12 October 20:30 Nairobi, received one KES 50 cash payment and has KES 750 due. Totals: two users, one customer, two orders, two payments. Earlier fixtures were not copied, deleted or reassigned.
+
+- Owner navigation, query receipt links, direct refresh, back/forward, customer-search contact link and numeric contact bookmark passed.
+- A deliberately lost payment reply on #2 survived refresh. Order #1 showed no #2 retry; returning to #2 retained its reference. Explicit retry confirmed the same payment ID/key and exactly one KES 50 payment. A refreshed disabled amount field can show the latest balance; preservation concerns the original request body/reference, not that visible field value.
+- Employee direct contact/Finance returned Home; corresponding owner-only API reads returned 403/private headers. Its numeric `/orders/2` bookmark opened the matching KES 50/750 receipt.
+- Duplicate IDs showed an alert without an editor. At 375 × 812, content width was 375 with no horizontal overflow or input mounted; Enter on the recovery link opened tracking. Viewport reset.
+- `58-static-payment-recovered.jpg` proves receipt payment confirmation; SQLite proves the one-payment result. `59-static-invalid-link-mobile.jpg` proves phone feedback/recovery. Developer checks only; staff/student acceptance remains separate.
+
+### Rollback, review and continuation
+
+The plugin restored cache version `ec0278b6-4512-49be-96b8-d6d338121226` for rehearsal: deployment `3a973319-650c-4abb-84b8-c35dbb242379`, 10 October 08:41:16 UTC. Independent HTTPS returned 200/private at old `/orders/1`, with no query redirect. It then restored static version `cb6c9c7d-c413-41d7-9157-a81e9cb4a0db` at 100%: active deployment `cc05262f-ad5c-4585-b3b6-8875c2d2c79e`, 08:41:47 UTC / 11:41:47 Nairobi. All eight restored route/header checks passed. This rehearses the fictional frontend switch, not a database/API cutover or rollback to August backend code.
+
+Read-only consequential-change review traced both moved pages, all five links, guards, API calls and pending-save scopes; no blocker at single-shop pilot load. No main merge, public publication of this increment, real-data write, scheduler activation or account reconnection. Protected save-rejection WIP remained unstaged and hash-identical.
+
+Ignored evidence: final build log, source hashes, `tmp/qlms-static-http-hosted-native-20261010.json`, `tmp/qlms-static-cpu-summary-20261010.json`, `tmp/qlms-static-http-restored-20261010.json` and retained image. Windows test startup hit `spawn EPERM`; focused tests passed with isolation disabled, full suite in isolated Linux. An inherited generated `dry-run-build/worker.js` caused the first isolated lint failure; removing that bundle from the harness resolved it. A Node module-detection notice remains; lint/runtime checks passed.
+
+Remaining launch work: actual restricted runtime/backup connections and private staff setup; final HTTPS frontend/API/CORS/privacy pair; unattended encrypted Drive upload/readback, independent restore/key copies, 90-day cleanup and delivered failure/missed-run alerts; final fictional staff session and concrete real-data cutover approval. Preserve connected Drive accounts/private destination; interactive connector access is not an unattended grant.
+
+## Earlier 10 October cache probe: fixed pages improved, dynamic HTML failed
 
 The approved throwaway adapter probe is complete. No product code, installed dependency, FastAPI contract, Supabase record or runtime/backup credential changed. Added the installed read-only `staticAssetsIncrementalCache` override and `enableCacheInterception` in the ignored wrapper. Installed adapter source confirms `populateCache local` copies build-time cache files into ASSETS; direct Wrangler upload alone would not do this. The image runs that supported population step during build. Fourteen build-time cache files are present; dynamic receipt/customer routes still require rendering.
 
@@ -25,7 +62,7 @@ Trace capture required correction: Python's HTTP client returned 403, while the 
 
 Ignored evidence: `tmp/qlms-workers-hosted-cache-routes-20261010.json`, `tmp/qlms-workers-cloud-cpu-summary-cache-20261010.json`, the populated-cache image and temporary wrapper/probe scripts. The protected save-rejection draft hash is unchanged.
 
-Recommended next design, not implemented: native [Next static export](https://nextjs.org/docs/app/guides/static-exports), keeping existing browser fetch/auth and FastAPI/Supabase. Unknown record IDs prevent build-time dynamic paths; use fixed `/orders/receipt?id=1` and `/customers/contact?id=1` pages, update six link sites across order entry/status/customer search, and preserve old numeric links with hosting redirects. Validate IDs, reset record state on ID changes, and preserve pending-save keys at their original API paths/account/origin. Static export does not apply Next `headers()` or runtime redirects: supply equivalent [Cloudflare asset headers](https://developers.cloudflare.com/workers/static-assets/headers/) and redirect-response headers, preserving CSP/private/no-store. Qualify this as a separate approved increment; do not fabricate records at build time or serve a dummy receipt under arbitrary IDs. First test build, links/direct refresh/back/forward, role denial, payment recovery and headers/CPU in the existing fictional qualification environment. Final HTTPS API pairing, private setup/backup/staff and cutover approval remain required.
+The next design proposed at that point was native [Next static export](https://nextjs.org/docs/app/guides/static-exports), fixed query-selected detail pages, five updated links, validated IDs, keyed editors and compatible numeric-bookmark redirects. Equivalent [Cloudflare asset headers](https://developers.cloudflare.com/workers/static-assets/headers/) preserve CSP/private/no-store when Next runtime headers are unavailable. That separate increment was subsequently approved and completed above. Final HTTPS API pairing, private setup/backup/staff and cutover approval remain required.
 
 ## 10 October deployed qualification and measured CPU failure
 

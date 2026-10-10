@@ -404,7 +404,7 @@ export default function CustomerSearchPage() {
                           </Link>
                           {role === "owner" ? <Link
                             className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[#005AAB] px-4 font-bold text-[#005AAB] no-underline hover:bg-blue-50"
-                            href={`/customers/${customer.id}`}
+                            href={`/customers/contact?id=${customer.id}`}
                           >Contact details</Link> : null}
                         </div>
                       </td>
@@ -590,7 +590,7 @@ export default function CustomerSearchPage() {
                       </div>
                       <Link
                         className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[#005AAB] px-4 font-bold text-[#005AAB] no-underline hover:bg-blue-50"
-                        href={`/orders/${order.id}`}
+                        href={`/orders/receipt?id=${order.id}`}
                       >
                         Open order
                       </Link>

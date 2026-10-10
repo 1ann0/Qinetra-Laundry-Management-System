@@ -63,6 +63,24 @@ npm run dev
 
 Open `http://localhost:3000` in a browser.
 
+### Static Cloudflare qualification
+
+The current frontend exports HTML/JavaScript rather than running `next start`.
+Set `NEXT_PUBLIC_API_URL` to the intended API URL in the process environment,
+then run `npm run build:cloudflare` from `frontend`. It creates `out`, matching
+private/security asset headers and the ignored `hosting/wrangler.generated.json`.
+Use the existing Wrangler 4 tooling to preview or upload that generated config;
+QLMS does not install another product dependency for hosting. The configured
+Worker is the qualification site, not the real-data release.
+
+Receipts use `/orders/receipt?id=1`; owner contact details use
+`/customers/contact?id=1`. The hosting Worker redirects old numeric bookmarks.
+API paths, permissions and pending-save references are unchanged. The fixed
+pages contain no customer records at build time; signed-in browsers fetch them
+from FastAPI. Archived check records that use `next start` describe their older
+server build; use this hosting flow and a matching fictional API for the current
+candidate. Keep earlier fixtures and pending requests in their original origin.
+
 ## Project status
 
 The original academic system was deployed. Later pilot improvements are local and have separate automated, browser, staff-acceptance and release gates; local completion is not production readiness.
