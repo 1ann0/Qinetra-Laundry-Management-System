@@ -2,7 +2,7 @@
 
 The current address is **https://qlms.qinetra.workers.dev/login**. The reviewed HTTPS frontend is activated and the pilot API is Live at `https://qlms-pilot-api.onrender.com`. A same-version API redeploy recovered a reproduced timeout; final-origin readiness/CORS pass, while idle recovery and actual private device sign-in remain to qualify.
 
-The next upload adds the requested inline sign-in/reentry spinner and bounded login-only two-minute wait. The new pinned local image passed all 84 frontend tests, lint, 16-page static export, compiled HTTPS-origin checks and an offline strict upload dry-run. This button change is prepared, not live until a new version is activated/read back. The existing Worker was renamed to `qlms`, preserving its immutable ID; target that name now.
+The user completed the upload below privately. The plugin activated/read back version `c622e581-6d12-45a9-b0d6-c07d8bf4bd36` in deployment `5ca27a41-144c-494d-90ea-f4823ea535b8` at 14:49:51 UTC; **the requested button change is deployed**. All 27 public JS hashes match the tested image, and eight route/private-header/redirect checks pass. The new image passed all 84 frontend tests, lint, 16-page static export, compiled HTTPS-origin checks and an offline strict upload dry-run. The existing Worker was renamed to `qlms`, preserving its immutable ID; target that name now. The command is retained for reproducibility; do not repeat a completed upload merely to sign in.
 
 ## Keep the upload token private
 
