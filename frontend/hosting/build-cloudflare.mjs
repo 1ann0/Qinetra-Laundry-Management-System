@@ -13,7 +13,7 @@ execFileSync(process.execPath, [fileURLToPath(new URL("../node_modules/next/dist
 const headers = securityHeaders(api.origin);
 writeFileSync(new URL("../out/_headers", import.meta.url), `/*\n${headers.map(({key, value}) => `  ${key}: ${value}`).join("\n")}\n`);
 writeFileSync(new URL("./wrangler.generated.json", import.meta.url), JSON.stringify({
-  name: "qlms-pilot-qualification",
+  name: "qlms",
   main: "worker.js",
   compatibility_date: "2026-08-27",
   compatibility_flags: ["nodejs_compat", "global_fetch_strictly_public"],

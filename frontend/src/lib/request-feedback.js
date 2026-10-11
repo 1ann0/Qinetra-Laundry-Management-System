@@ -7,10 +7,10 @@ export function getRequestFeedback(path, method = "GET") {
   else if (!isRead && path === "/orders/detailed") label = "Saving order…";
   else if (!isRead && /\/payments$/.test(path)) label = "Recording payment…";
   else if (!isRead && /\/refunds$/.test(path)) label = "Recording refund…";
-  return { label, isRead };
+  return { label, isRead, inline: path === "/auth/login" };
 }
 
 export function getActiveRequest(requests) {
-  const active = Object.values(requests);
+  const active = Object.values(requests).filter((request) => !request.inline);
   return active.find((request) => !request.isRead) || active[0] || null;
 }

@@ -87,9 +87,13 @@ export default function LoginForm() {
         </p>
       ) : null}
 
-      <button className="primary-button" type="submit" disabled={isSubmitting}>
+      <button className="primary-button gap-3" type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
+        {isSubmitting ? <span className="h-5 w-5 shrink-0 rounded-full border-2 border-white/40 border-t-white motion-safe:animate-spin" aria-hidden="true" /> : null}
+        <span role="status" aria-live="polite">
         {isSubmitting ? "Signing in…" : "Sign in to QLMS"}
+        </span>
       </button>
+      {isSubmitting ? <p className="mt-3 text-center text-sm text-slate-600">Keep this page open. Connecting can take up to two minutes after QLMS has been idle.</p> : null}
     </form>
   );
 }

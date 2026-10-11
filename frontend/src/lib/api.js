@@ -54,14 +54,16 @@ export async function apiRequest(path, options = {}) {
     : "Try again in a moment.";
 
   const canRetry = ["GET", "HEAD"].includes((fetchOptions.method || "GET").toUpperCase()) && !path.startsWith("/auth/");
-  const deadline = Date.now() + REQUEST_TIMEOUT_MS;
+  // Free hosting can take a minute to wake; record requests keep their normal deadline.
+  const timeout = path === "/auth/login" ? 120_000 : REQUEST_TIMEOUT_MS;
+  const deadline = Date.now() + timeout;
   // Fetches, backoff and reply parsing share one deadline. Saves are never repeated here.
   const controller = new AbortController();
   let timedOut = false;
   const timer = setTimeout(() => {
     timedOut = true;
     controller.abort();
-  }, REQUEST_TIMEOUT_MS);
+  }, timeout);
   const abortRequest = () => controller.abort();
   if (signal?.aborted) controller.abort();
   signal?.addEventListener("abort", abortRequest, { once: true });

@@ -189,11 +189,15 @@ export default function SessionReauthenticationDialog() {
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row-reverse">
               <button
-                className="inline-flex min-h-12 flex-1 items-center justify-center rounded-xl bg-[#005AAB] px-5 font-bold text-white hover:bg-[#004782] disabled:cursor-wait disabled:opacity-60"
+                className="inline-flex min-h-12 flex-1 items-center justify-center gap-3 rounded-xl bg-[#005AAB] px-5 font-bold text-white hover:bg-[#004782] disabled:cursor-wait disabled:opacity-60"
                 type="submit"
                 disabled={isSubmitting || !username}
+                aria-busy={isSubmitting}
               >
+                {isSubmitting ? <span className="h-5 w-5 shrink-0 rounded-full border-2 border-white/40 border-t-white motion-safe:animate-spin" aria-hidden="true" /> : null}
+                <span role="status" aria-live="polite">
                 {isSubmitting ? "Checking…" : "Continue where I left off"}
+                </span>
               </button>
               <button
                 className="inline-flex min-h-12 items-center justify-center rounded-xl border border-slate-300 px-5 font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
@@ -205,6 +209,7 @@ export default function SessionReauthenticationDialog() {
                 Log out
               </button>
             </div>
+            {isSubmitting ? <p className="mt-3 text-sm text-slate-600">Keep this page open. Connecting can take up to two minutes after QLMS has been idle.</p> : null}
           </form>
         </section>
       </div>
