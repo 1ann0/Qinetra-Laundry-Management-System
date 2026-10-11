@@ -89,6 +89,22 @@ class DriveStorage:
         if not self.private_owner(folder, self.folder_id) or folder.get("mimeType") != "application/vnd.google-apps.folder" or folder.get("capabilities", {}).get("canAddChildren") is not True:
             raise ValueError("Drive destination must be private, owned and writable")
 
+    def check_capacity(self, archive_bytes, reserved_bytes):
+        if type(archive_bytes) is not int or archive_bytes <= 0 or type(reserved_bytes) is not int or reserved_bytes < 0:
+            raise ValueError("Invalid backup capacity requirement")
+        data, _ = self.request(API + "/about?" + urlencode({"fields": "user(emailAddress),storageQuota"}))
+        about = json.loads(data)
+        if about.get("user", {}).get("emailAddress", "").casefold() != self.account:
+            raise ValueError("Drive connection belongs to a different account")
+        quota = about.get("storageQuota", {})
+        if any(not isinstance(quota.get(field), str) or not re.fullmatch(r"[0-9]{1,30}", quota[field])
+               for field in ("limit", "usage")):
+            raise ValueError("Actual Drive storage allowance is unknown")
+        available = int(quota["limit"]) - int(quota["usage"])
+        if available - archive_bytes < reserved_bytes:
+            raise ValueError("Actual Drive free space cannot preserve the backup headroom")
+        return available
+
     def upload_verified(self, archive_path, key):
         path = Path(archive_path)
         if path.suffix != ".qlmsbackup" or path.stat().st_size > MAX_ENVELOPE:

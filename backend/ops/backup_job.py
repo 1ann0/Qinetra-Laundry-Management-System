@@ -10,6 +10,7 @@ import sys
 
 from dotenv import dotenv_values
 from ops.backup import export_database, project_ref
+from ops.backup_budget import APPROVED_BUDGET_BYTES, backup_projection
 from ops.drive_storage import DriveStorage, refresh_access_token
 from sqlalchemy.engine import make_url
 
@@ -44,7 +45,7 @@ def run_job(configuration_file=None):
         key = base64.b64decode(key_base64, validate=True)
     if len(key) != 32:
         raise ValueError("Backup key must contain exactly 32 bytes")
-    storage, client_image, retention = None, None, None
+    storage, client_image, retention, projection = None, None, None, None
     schema = settings.get("QLMS_DB_SCHEMA", "qlms")
     if cloud:
         if (parsed.username or "").split(".", 1)[0] != "qlms_backup" or schema != "qlms":
@@ -55,12 +56,18 @@ def run_job(configuration_file=None):
         retention = int(settings["QLMS_BACKUP_RETENTION_DAYS"])
         if not 1 <= retention <= 3650:
             raise ValueError("Invalid agreed retention period")
+        budget = int(settings.get("QLMS_BACKUP_STORAGE_BUDGET_BYTES") or APPROVED_BUDGET_BYTES)
+        if not 1 <= budget <= APPROVED_BUDGET_BYTES:
+            raise ValueError("Invalid approved backup storage budget")
         token = refresh_access_token(settings["QLMS_DRIVE_CLIENT_ID"], settings["QLMS_DRIVE_CLIENT_SECRET"], settings["QLMS_DRIVE_REFRESH_TOKEN"])
         storage = DriveStorage(token, settings["QLMS_BACKUP_DRIVE_ACCOUNT"], settings["QLMS_BACKUP_DRIVE_FOLDER_ID"])
         storage.check_destination()
     # Do not load DATABASE_URL/SECRET_KEY from the application or enable automatic deletion.
     encrypted, copied = export_database(url, schema, key, settings["QLMS_BACKUP_LOCAL_FOLDER"],
                                        None if cloud else settings["QLMS_BACKUP_INDEPENDENT_FOLDER"], client_image=client_image)
+    if cloud:
+        projection = backup_projection(encrypted.stat().st_size, retention, budget)
+        storage.check_capacity(projection["archive_bytes"], projection["reserved_bytes"])
     remote_id = storage.upload_verified(encrypted, key) if storage else None
     if cloud and (not isinstance(remote_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{3,200}", remote_id)):
         raise ValueError("Cloud backup has no verified remote reference")
@@ -69,7 +76,12 @@ def run_job(configuration_file=None):
                                  "archive": encrypted.name, "second_copy_verified": copied is not None,
                                  "remote_upload_verified": remote_id is not None,
                                  "remote_file_id": remote_id, "archive_bytes": encrypted.stat().st_size,
-                                 "retention_days": retention, "automatic_deletion": False}) + "\n", encoding="utf-8")
+                                 "retention_days": retention, "automatic_deletion": False,
+                                 **(projection or {})}) + "\n", encoding="utf-8")
+    if projection:
+        print(f"Verified archive: {projection['archive_bytes']} bytes; {retention} equal-size copies: "
+              f"{projection['projected_retained_bytes']} bytes. This is a projection, not a growth forecast; "
+              "retention cleanup remains inactive.")
     return remote_id is not None
 
 

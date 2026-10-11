@@ -55,6 +55,33 @@ class HostedBackupJobTests(unittest.TestCase):
         self.assertFalse(marker["automatic_deletion"])
         self.assertEqual(marker["retention_days"], 90)
         self.assertEqual(marker["archive_bytes"], (self.root / "archives" / marker["archive"]).stat().st_size)
+        self.assertEqual(marker["projected_retained_bytes"], marker["archive_bytes"] * 90)
+        self.assertEqual(marker["storage_budget_bytes"], 5000000000)
+
+    def test_capacity_failure_does_not_upload_or_replace_success_marker(self):
+        archives = self.root / "archives"
+        archives.mkdir()
+        marker = archives / "last-success.json"
+        marker.write_text('{"completed_at":"previous"}')
+        with patch.dict(os.environ, self.settings, clear=True), \
+                patch("ops.backup_job.refresh_access_token", return_value="fictional"), \
+                patch("ops.backup_job.DriveStorage") as drive, \
+                patch("ops.backup_job.export_database", side_effect=self.export_fixture):
+            drive.return_value.check_capacity.side_effect = ValueError("capacity")
+            with self.assertRaises(ValueError):
+                run_job()
+        drive.return_value.upload_verified.assert_not_called()
+        self.assertEqual(marker.read_text(), '{"completed_at":"previous"}')
+
+    def test_retained_projection_blocks_oversize_before_upload(self):
+        with patch.dict(os.environ, self.settings | {"QLMS_BACKUP_STORAGE_BUDGET_BYTES": "1000"}, clear=True), \
+                patch("ops.backup_job.refresh_access_token", return_value="fictional"), \
+                patch("ops.backup_job.DriveStorage") as drive, \
+                patch("ops.backup_job.export_database", side_effect=self.export_fixture):
+            with self.assertRaises(ValueError):
+                run_job()
+        drive.return_value.upload_verified.assert_not_called()
+        self.assertFalse((self.root / "archives" / "last-success.json").exists())
 
     def test_remote_failure_preserves_archive_and_previous_success_marker(self):
         archives = self.root / "archives"

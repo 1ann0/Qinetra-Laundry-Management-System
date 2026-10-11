@@ -27,6 +27,7 @@ class DriveFixture:
         self.ciphertext = ciphertext
         permission = {"type": "user", "role": "owner", "emailAddress": ACCOUNT}
         self.account = ACCOUNT
+        self.quota = {"limit": "5000000000", "usage": "0"}
         self.folder = {"id": "folder_fixture", "mimeType": "application/vnd.google-apps.folder",
                        "shared": False, "trashed": False, "permissions": [permission],
                        "capabilities": {"canAddChildren": True}}
@@ -40,7 +41,7 @@ class DriveFixture:
         self.requests.append(request)
         url = request.full_url
         if "/about?" in url:
-            return Reply({"user": {"emailAddress": self.account}})
+            return Reply({"user": {"emailAddress": self.account}, "storageQuota": self.quota})
         if "/files/folder_fixture?" in url:
             return Reply(self.folder)
         if "uploadType=resumable" in url:
@@ -77,6 +78,26 @@ class DriveStorageTests(unittest.TestCase):
         self.assertEqual(uploads[0].data, self.envelope)
         self.assertNotIn(self.key, uploads[0].data)
         self.assertNotIn(b"fictional backup records", uploads[0].data)
+
+    def test_capacity_checks_real_free_bytes_and_preserves_headroom(self):
+        self.assertEqual(self.storage.check_capacity(10000000, 1000000000), 5000000000)
+        self.api.quota["usage"] = "3990000000"
+        self.assertEqual(self.storage.check_capacity(10000000, 1000000000), 1010000000)
+        self.api.quota["usage"] = "3990000001"
+        with self.assertRaises(ValueError):
+            self.storage.check_capacity(10000000, 1000000000)
+
+    def test_unknown_invalid_quota_or_wrong_account_cannot_pass_capacity(self):
+        for quota in [{}, {"limit": "unlimited", "usage": "0"},
+                      {"limit": "5000000000", "usage": "-1"},
+                      {"limit": "5000000000", "usage": "5000000001"}]:
+            self.api.quota = quota
+            with self.subTest(quota=quota), self.assertRaises(ValueError):
+                self.storage.check_capacity(10000000, 1000000000)
+        self.api.quota = {"limit": "5000000000", "usage": "0"}
+        self.api.account = "other@example.invalid"
+        with self.assertRaises(ValueError):
+            self.storage.check_capacity(10000000, 1000000000)
 
     def test_other_account_stops_before_any_upload(self):
         self.api.account = "other@example.invalid"
