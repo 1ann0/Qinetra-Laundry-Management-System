@@ -6,6 +6,8 @@ These are private operations tools, not browser/database access or a public boot
 
 The user requires all real credential handling outside ChatGPT. Agents must not read private configuration/key files, execute commands which load real secrets, capture filled password forms or inspect credential-bearing logs. Guide private entry/execution and check only sanitized status and database metadata. Existing connector authentication stays connected; do not repeat account setup.
 
+The database setup below is already completed. For the first staff account, use [private Owner setup](../../docs/pilot-owner-setup.md): run `python -m ops.pilot_owner_setup` in your own terminal outside Codex. Its fixed-project guard loads only the existing restricted runtime file before calling the existing private bootstrap; do not run an unqualified `create_owner.py` against an implicit old `.env`.
+
 `pilot_private_setup.py` is a bounded setup command for the existing fresh `QLMS-Qinetra-Pilot` only. It uses the four prepared owner-only `.env.pilot-*` files in `private/`. The administrator password must already match the reset completed privately in Supabase. If you prefer your own role passwords/signing secret, replace their values privately first: use separate strong values, with at least 32 bytes for the signing secret. Never paste these values into chat, command arguments, screenshots or the Codex terminal.
 
 Open your own Windows PowerShell window outside Codex and run:
