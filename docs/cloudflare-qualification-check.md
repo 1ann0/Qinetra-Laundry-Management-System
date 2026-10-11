@@ -2,13 +2,15 @@
 
 ## 11 October actual HTTPS API build prepared locally
 
-Created separate Free Render API `https://qlms-pilot-api.onrender.com`, with creation deploy selecting CI-verified `97686708c2f6e4facf574054850847b50bd0dbbd`. Its initial attempt ended `update_failed`; private runtime entry and actual hosted readiness remain pending. No credential-bearing logs were inspected.
+Separate Free Render API `https://qlms-pilot-api.onrender.com` is now Live at CI-verified `97686708c2f6e4facf574054850847b50bd0dbbd`, deployment `dep-db5d3gt9fdbs73celc90`. The owner privately installed runtime values and saved `/health/ready`; public readiness/docs/anonymous denial/private headers/CORS checks passed. This supersedes the initial `update_failed` attempt. No credential-bearing logs or environment values were inspected. [The API record](pilot-api-deployment.md) contains the hosted evidence.
 
 The retained static image still matches all 65 recorded public source/config hashes and contains no environment files. Rebuilt that source offline with only `NEXT_PUBLIC_API_URL=https://qlms-pilot-api.onrender.com`; all 16 static pages generated successfully. Exported public assets and configuration to ignored `tmp/qlms-pilot-https-assets-20261011` and `tmp/qlms-pilot-https-config-20261011.json`. A focused self-check passed for 108 public assets, the HTTPS API compiled into browser JavaScript, absent old loopback API values, required routes, private cache/CSP/HSTS/nosniff/frame/referrer headers and no environment files. The ignored per-asset SHA256 manifest records this local package.
 
 The offline strict/no-autoconfig Wrangler 4.125.0 dry-run exited 0 with ASSETS and the actual public HTTPS API binding only; Worker size remains 2.15 KiB raw / 1.03 KiB gzip. Its asset-reading counter reported 128; independent filesystem enumeration found 108 files and 20 directories, with no symlinks. The per-file hash check covers all 108 physical files. No paid binding or remote upload was used. The optional local snapshot client was stopped after the exported assets were preserved because it was slow; the engine produced retained image `qlms-pilot-static-https:20261011`, digest `91aeac649e6ced997ead6c49cdc708a6be86464de3e3526117e192843416e899`. The stopped build container and offline dry-run container were removed.
 
 Fresh Cloudflare plugin reads confirm only `qlms-pilot-qualification` under namespace `qinetra`; active deployment/version remain `cc05262f-ad5c-4585-b3b6-8875c2d2c79e` / `cb6c9c7d-c413-41d7-9157-a81e9cb4a0db`, 100%. No new upload or final rename occurred. The public qualification site still uses the earlier fictional API until the prepared HTTPS package is deployed and verified. Real credential handling remains owner-operated; no private token file was read or loaded.
+
+[The owner-run frontend upload instructions](pilot-frontend-deployment.md) use the pinned checked image and upload a version without switching traffic. The original temporary single-Worker token expired 11 October at 01:18 Nairobi; renew only that same bounded grant privately. The connected plugin verifies/activates the public version afterward. No account setup or agent-operated token read is required.
 
 ## 10 October approved static export: measured Free CPU gate passed
 

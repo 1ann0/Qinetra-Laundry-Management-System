@@ -19,7 +19,7 @@ The command reads secrets locally and authenticates only to the verified pilot S
 
 Success ends with `PASS: private pilot database setup; runtime and backup TLS connections verified; private settings saved.` Report only the PASS or FAIL/STEP lines. A STEP line means role credentials were committed, even if a later connection/file check fails; stop and share only those safe lines before continuing. Do not copy a traceback, connection URL or file contents. The administrator credential remains a private setup credential and must never be installed on Render or the frontend.
 
-The SQL password handling follows [PostgreSQL's client-side password preparation guidance](https://www.postgresql.org/docs/current/libpq-misc.html#LIBPQ-PQENCRYPTPASSWORDCONN) through the installed [Psycopg password function](https://www.psycopg.org/docs/extensions.html#psycopg2.extensions.encrypt_password). Actual hosted connection verification remains the owner's pending action.
+The SQL password handling follows [PostgreSQL's client-side password preparation guidance](https://www.postgresql.org/docs/current/libpq-misc.html#LIBPQ-PQENCRYPTPASSWORDCONN) through the installed [Psycopg password function](https://www.psycopg.org/docs/extensions.html#psycopg2.extensions.encrypt_password). On 11 October the owner confirmed the final setup PASS; the privately configured Render API subsequently passed public `/health/ready` at the intended role/schema. Do not repeat this completed setup. These results do not activate backups or qualify independent recovery.
 
 ## Existing operations tools
 
