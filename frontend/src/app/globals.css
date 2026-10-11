@@ -30,6 +30,24 @@ html {
   background: var(--background);
 }
 
+.skip-link {
+  position: fixed;
+  left: 12px;
+  top: 12px;
+  z-index: 110;
+  transform: translateY(-200%);
+  border-radius: 8px;
+  padding: 12px 16px;
+  background: white;
+  color: var(--qinetra-navy);
+  font-weight: 700;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+  outline: 3px solid var(--qinetra-navy);
+}
+
 body {
   min-width: 320px;
   margin: 0;
@@ -376,7 +394,7 @@ a {
 .navigation-toggle,
 .page-tour-button {
   display: inline-flex;
-  min-height: 42px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   border: 1px solid #bfd0df;
@@ -466,6 +484,8 @@ a {
   bottom: 24px;
   z-index: 60;
   width: min(390px, calc(100vw - 32px));
+  max-height: calc(100dvh - 120px);
+  overflow-y: auto;
   border: 2px solid var(--qinetra-navy);
   border-radius: 16px;
   background: white;
@@ -504,7 +524,7 @@ a {
 .page-tour-actions .primary-button,
 .page-tour-actions .secondary-button {
   width: auto;
-  min-height: 42px;
+  min-height: 44px;
 }
 
 .page-tour-actions button:disabled {
@@ -516,8 +536,8 @@ a {
   position: absolute;
   top: 12px;
   right: 13px;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   border: 0;
   border-radius: 9px;
   background: transparent;

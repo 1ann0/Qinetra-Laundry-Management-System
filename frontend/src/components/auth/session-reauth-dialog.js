@@ -193,6 +193,7 @@ export default function SessionReauthenticationDialog() {
                 type="submit"
                 disabled={isSubmitting || !username}
                 aria-busy={isSubmitting}
+                aria-label={isSubmitting ? "Checking…" : "Continue where I left off"}
               >
                 {isSubmitting ? <span className="h-5 w-5 shrink-0 rounded-full border-2 border-white/40 border-t-white motion-safe:animate-spin" aria-hidden="true" /> : null}
                 <span role="status" aria-live="polite">

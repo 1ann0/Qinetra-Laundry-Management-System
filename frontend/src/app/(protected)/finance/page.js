@@ -476,7 +476,7 @@ function FinancialSnapshotContent() {
           Loading financial overview…
         </p>
       ) : summary ? (
-        <section aria-label="Financial figures">
+        <section id="finance-figures-step" aria-label="Financial figures">
           <p className="mb-3 text-sm font-semibold text-slate-600">
             {formatDate(summary.start_date)} to {formatDate(summary.end_date)}
           </p>
@@ -561,7 +561,7 @@ function FinancialSnapshotContent() {
       ) : null}
 
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <h2 className="text-xl font-bold text-slate-900">Choose a period</h2>
+        <h2 id="finance-period-step" className="text-xl font-bold text-slate-900">Choose a period</h2>
 
         <div className="mt-4 flex flex-wrap gap-3" aria-label="Quick date ranges">
           {presetButtons.map((preset) => (
@@ -754,7 +754,7 @@ function FinancialSnapshotContent() {
             )}
           </section>
 
-          <section className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-700">
+          <section id="finance-definitions-step" className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-700">
             <h2 className="font-bold text-slate-900">How these figures work</h2>
             <p className="mt-2">
               Final order value uses order dates and includes discounts.

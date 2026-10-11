@@ -131,6 +131,7 @@ export default function CustomerForm({
 
   return (
     <form
+      id={compact ? undefined : "customer-add-step"}
       className={
         compact
           ? "rounded-2xl border border-blue-200 bg-blue-50/40 p-5"

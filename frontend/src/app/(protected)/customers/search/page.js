@@ -79,14 +79,20 @@ export default function CustomerSearchPage() {
         setAllCustomers(customerResponse);
         setServices(serviceResponse);
 
-        const requestedServiceId = new URLSearchParams(
-          window.location.search,
-        ).get("serviceId");
+        const parameters = new URLSearchParams(window.location.search);
+        const requestedCustomer = customerResponse.find(customer => String(customer.id) === parameters.get("customerId"));
+        const requestedServiceId = parameters.get("serviceId");
         const requestedService = serviceResponse.find(
           (service) => String(service.id) === requestedServiceId,
         );
 
-        if (requestedService) {
+        if (requestedCustomer) {
+          setSelectedCustomer(requestedCustomer);
+          setIsHistoryLoading(true);
+          setHasLoadedHistory(false);
+          setHistoryOrders(await authenticatedRequest(`/orders?customer_id=${requestedCustomer.id}`));
+          setHasLoadedHistory(true);
+        } else if (requestedService) {
           setServiceBrowseId(String(requestedService.id));
           setHistoryServiceId(String(requestedService.id));
           setIsHistoryLoading(true);
@@ -96,6 +102,11 @@ export default function CustomerSearchPage() {
           );
           setHistoryOrders(orderResponse);
           setHasLoadedHistory(true);
+        } else if (parameters.get("search")?.trim()) {
+          const search = parameters.get("search").trim();
+          setCustomers(await authenticatedRequest(`/customers?search=${encodeURIComponent(search)}`));
+          setLastSearch(search);
+          setHasSearched(true);
         }
       } catch (loadError) {
         setError(
@@ -190,7 +201,7 @@ export default function CustomerSearchPage() {
     });
     window.setTimeout(() => {
       historySectionRef.current?.scrollIntoView({
-        behavior: "smooth",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
         block: "start",
       });
     }, 0);
@@ -217,7 +228,7 @@ export default function CustomerSearchPage() {
     });
     window.setTimeout(() => {
       historySectionRef.current?.scrollIntoView({
-        behavior: "smooth",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
         block: "start",
       });
     }, 0);
@@ -281,6 +292,7 @@ export default function CustomerSearchPage() {
       <div className="grid gap-5 lg:grid-cols-[1.3fr_0.7fr]">
         <form
           className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+          id="customer-search-step"
           onSubmit={handleSearch}
         >
           <label className="mb-2 block text-lg font-bold text-slate-800" htmlFor="search">
@@ -295,6 +307,7 @@ export default function CustomerSearchPage() {
               id="search"
               name="search"
               type="search"
+              defaultValue={lastSearch}
               maxLength={100}
               autoFocus
               disabled={isLoading}
@@ -312,6 +325,7 @@ export default function CustomerSearchPage() {
 
         <form
           className="rounded-2xl border border-blue-200 bg-blue-50/50 p-6 shadow-sm"
+          id="service-history-step"
           onSubmit={handleServiceHistory}
         >
           <label
@@ -424,6 +438,8 @@ export default function CustomerSearchPage() {
       {historyIsOpen ? (
         <section
           className="mt-8 scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+          id="customer-history-step"
+          tabIndex="-1"
           ref={historySectionRef}
         >
           <div className="flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">

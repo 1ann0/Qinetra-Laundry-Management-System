@@ -606,7 +606,7 @@ function OrderDetailPage({ orderId }) {
       ) : null}
 
       {activeHold ? (
-        <section className="mb-6 rounded-2xl border-2 border-amber-400 bg-amber-50 p-5">
+        <section id="receipt-hold-step" className="mb-6 rounded-2xl border-2 border-amber-400 bg-amber-50 p-5">
           <p className="text-sm font-bold uppercase tracking-wide text-amber-900">
             Waiting for customer reply
           </p>
@@ -697,7 +697,7 @@ function OrderDetailPage({ orderId }) {
         </details>
       ) : null}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+      <section id="receipt-summary-step" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
         <div className="grid gap-5 border-b border-slate-200 pb-6 sm:grid-cols-2 lg:grid-cols-6">
           <div>
             <p className="text-sm text-slate-500">Customer</p>
@@ -1057,7 +1057,7 @@ function OrderDetailPage({ orderId }) {
         }}
       />
 
-      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+      <section id="receipt-payments-step" className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
         <h2 className="text-2xl font-bold text-slate-900">Payment history</h2>
         <p className="mt-2 text-slate-600">
           Each confirmed payment remains on the receipt for accountability.

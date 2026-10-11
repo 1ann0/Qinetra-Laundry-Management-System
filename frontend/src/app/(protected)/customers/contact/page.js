@@ -134,7 +134,7 @@ function ContactDetails({ customerId }) {
         <p>{customer.name} · {customer.phone}</p>
         <p className="mt-2 text-sm text-slate-600">Changes appear wherever these customer details are shown, including older order screens. Previous details stay in the history below.</p>
       </div>
-      <form className="rounded-xl border border-slate-200 bg-white p-5" onSubmit={submit}>
+      <form id="customer-contact-step" className="rounded-xl border border-slate-200 bg-white p-5" onSubmit={submit}>
         <fieldset className="space-y-4" disabled={stale || submitting || save.isSaving || Boolean(save.pending) || !save.ready}>
           <legend className="mb-4 text-lg font-bold">Correct contact details</legend>
           <label className="block font-semibold">Customer name
@@ -155,7 +155,7 @@ function ContactDetails({ customerId }) {
           <button className={buttonClass} type="submit" disabled={!confirmed || !reason.trim() || Boolean(matches.length && !sharedPhone)}>{save.isSaving ? "Saving…" : "Save contact correction"}</button>
         </fieldset>
       </form>
-      <section aria-label="Contact correction history" className="rounded-xl border border-slate-200 bg-white p-5">
+      <section id="customer-contact-history-step" aria-label="Contact correction history" className="rounded-xl border border-slate-200 bg-white p-5">
         <h2 className="text-lg font-bold">Contact correction history</h2>
         {history.length ? <ul className="mt-3 space-y-4">{history.map((item) => <li className="border-t border-slate-200 pt-3" key={item.id}>
           <p><strong>Before:</strong> {item.before_state.name} · {item.before_state.phone}</p>

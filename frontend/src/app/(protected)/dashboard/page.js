@@ -153,7 +153,7 @@ function DashboardContent() {
         </p>
       ) : summary ? (
         <>
-          <section className="mb-6 rounded-2xl border-2 border-red-300 bg-red-50 p-5 shadow-sm sm:flex sm:items-center sm:justify-between sm:p-6">
+          <section id="dashboard-attention-step" className="mb-6 rounded-2xl border-2 border-red-300 bg-red-50 p-5 shadow-sm sm:flex sm:items-center sm:justify-between sm:p-6">
             <div>
               <p className="text-sm font-bold uppercase tracking-wide text-red-800">
                 Payments needing attention
@@ -177,6 +177,7 @@ function DashboardContent() {
 
           <section
             className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            id="dashboard-summary-step"
             aria-label="Order summary"
           >
             {summaryCards.map((card) => (
@@ -207,7 +208,7 @@ function DashboardContent() {
         </>
       ) : null}
 
-      <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+      <section id="dashboard-export-step" className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <h2 className="text-2xl font-bold text-slate-900">Order report</h2>
         <p className="mt-3 max-w-2xl leading-7 text-slate-600">
           Download all orders as a CSV file for record keeping or opening in a

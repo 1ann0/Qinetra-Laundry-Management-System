@@ -87,7 +87,7 @@ export default function LoginForm() {
         </p>
       ) : null}
 
-      <button className="primary-button gap-3" type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
+      <button className="primary-button gap-3" type="submit" disabled={isSubmitting} aria-busy={isSubmitting} aria-label={isSubmitting ? "Signing in…" : "Sign in to QLMS"}>
         {isSubmitting ? <span className="h-5 w-5 shrink-0 rounded-full border-2 border-white/40 border-t-white motion-safe:animate-spin" aria-hidden="true" /> : null}
         <span role="status" aria-live="polite">
         {isSubmitting ? "Signing in…" : "Sign in to QLMS"}

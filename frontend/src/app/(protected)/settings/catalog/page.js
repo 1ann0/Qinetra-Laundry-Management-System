@@ -8,6 +8,7 @@ import OwnerGuard from "@/components/auth/owner-guard";
 import { useAuth } from "@/context/auth-context";
 import DiscountPolicySettings from "@/components/settings/discount-policy-settings";
 import AlertSettings from "@/components/settings/alert-settings";
+import { matchesSearch } from "@/lib/workspace-search";
 
 const UNIT_OPTIONS = [
   { value: "kg", label: "Per kilogram" },
@@ -125,6 +126,8 @@ function ShopSetupContent() {
   // Store both catalogues, including inactive entries needed by the owner.
   const [services, setServices] = useState([]);
   const [itemTypes, setItemTypes] = useState([]);
+  const [serviceSearch, setServiceSearch] = useState("");
+  const [itemSearch, setItemSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   // Use the same service form for adding a new service or editing one.
@@ -498,6 +501,9 @@ function ShopSetupContent() {
     }
   }
 
+  const filteredServices = services.filter(service => matchesSearch(serviceSearch, service.name, service.code));
+  const filteredItems = itemTypes.filter(item => matchesSearch(itemSearch, item.name));
+
   return (
     <section className="mx-auto max-w-6xl">
       <div className="mb-8">
@@ -513,6 +519,10 @@ function ShopSetupContent() {
         </p>
       </div>
 
+      <nav className="mb-6 flex flex-wrap gap-3" aria-label="Shop setup sections">
+        <a className="inline-flex min-h-11 items-center rounded-xl border border-[#005AAB] px-4 font-bold text-[#005AAB]" href="#catalogue-services">Find a service</a>
+        <a className="inline-flex min-h-11 items-center rounded-xl border border-[#005AAB] px-4 font-bold text-[#005AAB]" href="#catalogue-clothing">Find clothing</a>
+      </nav>
       <DiscountPolicySettings />
       <AlertSettings />
 
@@ -526,7 +536,7 @@ function ShopSetupContent() {
       ) : null}
 
       {isLoading ? (
-        <p className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-600">
+        <p role="status" className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-600">
           Loading shop setup…
         </p>
       ) : (
@@ -773,8 +783,12 @@ function ShopSetupContent() {
               <ActionFeedback feedback={serviceFormFeedback} />
             </form>
 
-            <div className="mt-6 space-y-3">
-              {services.map((service) => (
+            <div id="catalogue-services" className="mt-6 scroll-mt-24 space-y-3">
+              <label className="block font-bold text-slate-800" htmlFor="catalogue-service-search">Find a service</label>
+              <input id="catalogue-service-search" type="search" value={serviceSearch} onChange={event => setServiceSearch(event.target.value)} placeholder="Service name or code" className="min-h-12 w-full rounded-xl border border-slate-400 px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#005AAB]" />
+              <p role="status" aria-atomic="true" className="text-sm text-slate-600">{filteredServices.length} of {services.length} services shown, including inactive services.</p>
+              {filteredServices.length === 0 ? <p className="rounded-xl border border-dashed border-slate-300 p-4 text-slate-600">No service matches. Try another name or clear the search.</p> : null}
+              {filteredServices.map((service) => (
                 <article
                   className={`rounded-xl border p-4 ${
                     service.is_active
@@ -810,13 +824,13 @@ function ShopSetupContent() {
 
                     <div className="flex flex-wrap gap-3">
                       <Link
-                        className="font-bold text-[#005AAB] no-underline hover:underline"
+                        className="inline-flex min-h-11 items-center px-2 font-bold text-[#005AAB] no-underline hover:underline"
                         href={`/customers/search?serviceId=${service.id}`}
                       >
                         Order history
                       </Link>
                       <button
-                        className="font-bold text-[#005AAB] hover:underline disabled:opacity-50"
+                        className="min-h-11 px-2 font-bold text-[#005AAB] hover:underline disabled:opacity-50"
                         type="button"
                         disabled={Boolean(busyAction)}
                         onClick={() => startServiceEdit(service)}
@@ -824,7 +838,7 @@ function ShopSetupContent() {
                         Edit
                       </button>
                       <button
-                        className="font-bold text-slate-700 hover:underline disabled:opacity-50"
+                        className="min-h-11 px-2 font-bold text-slate-700 hover:underline disabled:opacity-50"
                         type="button"
                         disabled={Boolean(busyAction)}
                         onClick={() => toggleService(service)}
@@ -922,9 +936,14 @@ function ShopSetupContent() {
               <ActionFeedback feedback={itemFormFeedback} />
             </form>
 
-            <div className="mt-6 space-y-7">
+            <div id="catalogue-clothing" className="mt-6 scroll-mt-24 space-y-7">
+              <div>
+                <label className="block font-bold text-slate-800" htmlFor="catalogue-clothing-search">Find clothing</label>
+                <input id="catalogue-clothing-search" type="search" value={itemSearch} onChange={event => setItemSearch(event.target.value)} placeholder="Clothing name" className="mt-2 min-h-12 w-full rounded-xl border border-slate-400 px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#005AAB]" />
+                <p role="status" aria-atomic="true" className="mt-2 text-sm text-slate-600">{filteredItems.length} of {itemTypes.length} clothing names shown, including inactive clothing.</p>
+              </div>
               {ITEM_CATALOGUE_SECTIONS.map((section) => {
-                const sectionItems = itemTypes.filter((itemType) =>
+                const sectionItems = filteredItems.filter((itemType) =>
                   [section.value, "both"].includes(itemType.item_group),
                 );
 
@@ -939,7 +958,7 @@ function ShopSetupContent() {
                     <div className="mt-3 space-y-3">
                       {sectionItems.length === 0 ? (
                         <p className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-600">
-                          No items have been added to this list.
+                          {itemSearch.trim() ? "No clothing matches in this list. Try another name or clear the search." : "No items have been added to this list."}
                         </p>
                       ) : (
                         sectionItems.map((itemType) => (
@@ -974,7 +993,7 @@ function ShopSetupContent() {
 
                               <div className="flex flex-wrap gap-3">
                                 <button
-                                  className="font-bold text-[#005AAB] hover:underline disabled:opacity-50"
+                                  className="min-h-11 px-2 font-bold text-[#005AAB] hover:underline disabled:opacity-50"
                                   type="button"
                                   disabled={Boolean(busyAction)}
                                   onClick={() => startItemEdit(itemType)}
@@ -982,7 +1001,7 @@ function ShopSetupContent() {
                                   Edit
                                 </button>
                                 <button
-                                  className="font-bold text-slate-700 hover:underline disabled:opacity-50"
+                                  className="min-h-11 px-2 font-bold text-slate-700 hover:underline disabled:opacity-50"
                                   type="button"
                                   disabled={Boolean(busyAction)}
                                   onClick={() => toggleItemType(itemType)}

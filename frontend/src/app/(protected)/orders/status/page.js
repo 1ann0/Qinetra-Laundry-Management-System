@@ -362,6 +362,7 @@ export default function OrderStatusPage() {
   const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
+    const requestedSearch = new URLSearchParams(window.location.search).get("search") || "";
     const requestedFilter = new URLSearchParams(window.location.search).get(
       "filter",
     );
@@ -377,6 +378,8 @@ export default function OrderStatusPage() {
     ];
 
     const filterTimer = window.setTimeout(() => {
+      setSearchInput(requestedSearch);
+      setSearchTerm(requestedSearch.trim());
       if (supportedFilters.includes(requestedFilter)) {
         setFilter(requestedFilter);
       }

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import SessionReauthenticationDialog from "@/components/auth/session-reauth-dialog";
 import PageTour from "@/components/layout/page-tour";
 import { useAuth } from "@/context/auth-context";
@@ -100,6 +100,8 @@ export default function AppShell({ children }) {
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [isMobileNavigation, setIsMobileNavigation] = useState(false);
   const [warningIdleExpiry, setWarningIdleExpiry] = useState(null);
+  const menuRef = useRef(null);
+  const menuButtonRef = useRef(null);
 
   // Creating an order and following saved orders are separate daily tasks.
   const isWorkspacePage = pathname === "/workspace";
@@ -172,6 +174,36 @@ export default function AppShell({ children }) {
     return () => window.clearTimeout(warningTimer);
   }, [idleExpiresAt]);
 
+  useEffect(() => {
+    if (!isMobileNavigation || !mobileNavigationOpen || reauthenticationRequired) return undefined;
+    const menu = menuRef.current;
+    const menuButton = menuButtonRef.current;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    menu?.querySelector("button, a[href]")?.focus();
+    function handleMenuKey(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMobileNavigationOpen(false);
+      } else if (event.key === "Tab") {
+        const controls = menu?.querySelectorAll("button, a[href]");
+        if (!controls?.length) return;
+        const first = controls[0], last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault(); last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault(); first.focus();
+        }
+      }
+    }
+    document.addEventListener("keydown", handleMenuKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleMenuKey);
+      menuButton?.focus({ preventScroll: true });
+    };
+  }, [isMobileNavigation, mobileNavigationOpen, reauthenticationRequired]);
+
   function toggleSidebar() {
     if (isMobileNavigation) {
       setMobileNavigationOpen((current) => !current);
@@ -198,11 +230,17 @@ export default function AppShell({ children }) {
     <div
       className={`app-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}
     >
+      <a className="skip-link" href="#main-content">Skip to page content</a>
       <aside
+        ref={menuRef}
+        role={isMobileNavigation && mobileNavigationOpen ? "dialog" : undefined}
+        aria-modal={isMobileNavigation && mobileNavigationOpen ? true : undefined}
+        aria-label={isMobileNavigation && mobileNavigationOpen ? "Main menu" : undefined}
         className={`app-sidebar ${mobileNavigationOpen ? "sidebar-open" : ""}`}
         inert={sidebarHidden ? true : undefined}
         aria-hidden={sidebarHidden || undefined}
       >
+        {isMobileNavigation && mobileNavigationOpen ? <button className="secondary-button mb-4 min-h-11" type="button" onClick={() => setMobileNavigationOpen(false)}>Close menu</button> : null}
         <Link className="sidebar-brand" href={homeHref} aria-label="QLMS home">
           <Image
             className="header-logo"
@@ -242,12 +280,13 @@ export default function AppShell({ children }) {
 
       <div
         className="app-content"
-        inert={reauthenticationRequired ? true : undefined}
-        aria-hidden={reauthenticationRequired || undefined}
+        inert={reauthenticationRequired || (isMobileNavigation && mobileNavigationOpen) ? true : undefined}
+        aria-hidden={reauthenticationRequired || (isMobileNavigation && mobileNavigationOpen) || undefined}
       >
         <header className="app-header">
           <div className="topbar-heading">
             <button
+              ref={menuButtonRef}
               className="navigation-toggle"
               type="button"
               aria-label={
@@ -281,6 +320,7 @@ export default function AppShell({ children }) {
           </div>
 
           <div className="session-controls">
+            <Link className="secondary-button inline-flex min-h-11 items-center no-underline" href="/workspace#quick-find">Find</Link>
             <PageTour key={pathname} pathname={pathname} />
             <span className="role-badge">{role}</span>
             <button
@@ -303,7 +343,7 @@ export default function AppShell({ children }) {
           </p>
         ) : null}
 
-        <main className={`app-main ${isWorkspacePage ? "workspace-main" : ""}`}>
+        <main id="main-content" tabIndex="-1" className={`app-main ${isWorkspacePage ? "workspace-main" : ""}`}>
           {hasOpenedSession ? children : <p role="status">Enter your password to open this page.</p>}
         </main>
       </div>

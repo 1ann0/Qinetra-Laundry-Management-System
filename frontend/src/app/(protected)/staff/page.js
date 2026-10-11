@@ -5,6 +5,7 @@ import { getUserMessage } from "@/lib/user-messages";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import OwnerGuard from "@/components/auth/owner-guard";
 import { useAuth } from "@/context/auth-context";
+import { matchesSearch } from "@/lib/workspace-search";
 
 function sortAccounts(accounts) {
   return [...accounts].sort((first, second) => {
@@ -43,6 +44,7 @@ function getPasswordValidationError(password) {
 function StaffManagementContent() {
   const { authenticatedRequest, userId } = useAuth();
   const [accounts, setAccounts] = useState([]);
+  const [accountSearch, setAccountSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [feedback, setFeedback] = useState(null);
@@ -278,6 +280,8 @@ function StaffManagementContent() {
       ? "border-green-300 bg-green-50 text-green-800"
       : "border-red-300 bg-red-50 text-red-800";
 
+  const filteredAccounts = accounts.filter(account => matchesSearch(accountSearch, account.username, account.role));
+
   return (
     <section className="mx-auto max-w-6xl">
       <div className="mb-7">
@@ -437,6 +441,9 @@ function StaffManagementContent() {
             </span>
           </div>
 
+          <label className="mt-4 block font-bold text-slate-800" htmlFor="staff-search">Find a staff login</label>
+          <input id="staff-search" type="search" value={accountSearch} onChange={event => setAccountSearch(event.target.value)} placeholder="Username or role" className="mt-2 min-h-12 w-full rounded-xl border border-slate-400 px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#005AAB]" />
+          {!isLoading && !loadError ? <p className="mt-2 text-sm text-slate-600" role="status">{filteredAccounts.length} of {accounts.length} logins shown.</p> : null}
           {loadError ? (
             <div className="mt-5 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800" role="alert">
               <p>{loadError}</p>
@@ -452,13 +459,13 @@ function StaffManagementContent() {
             <p className="py-10 text-center text-slate-600" role="status">
               Loading staff accounts…
             </p>
-          ) : accounts.length === 0 ? (
+          ) : filteredAccounts.length === 0 ? (
             <p className="mt-5 rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-600">
-              No accounts were returned. Create the first employee using the form.
+              {accounts.length === 0 ? "No accounts were returned. Create the first employee using the form." : "No staff login matches. Try another username or clear the search."}
             </p>
           ) : (
             <ul className="divide-y divide-slate-200" aria-label="QLMS accounts">
-              {accounts.map((account) => {
+              {filteredAccounts.map((account) => {
                 const isCurrentAccount = account.id === userId;
                 const isEmployee = account.role === "employee";
                 const isStatusBusy = busyAction === `status-${account.id}`;

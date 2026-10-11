@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
+import QuickFind from "@/components/layout/quick-find";
 
 // Keep the same everyday actions within reach for both staff roles.
 const SHORTCUTS = [
@@ -51,7 +52,9 @@ export default function WorkspacePage() {
         <p>Choose what you need to do.</p>
       </section>
 
-      <section className="module-grid" aria-label="Daily work shortcuts">
+      <QuickFind />
+
+      <section id="daily-shortcuts" className="module-grid" aria-label="Daily work shortcuts">
         {visibleShortcuts.map((shortcut) => (
           <article className="module-card" key={shortcut.title}>
             <div className="module-card-heading">
