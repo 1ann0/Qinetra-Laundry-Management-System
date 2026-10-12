@@ -4,9 +4,9 @@
 
 **Goal:** qualify the already-uploaded HTTPS frontend/API and complete private account/recovery prerequisites before real-data cutover.
 
-12 October continuation: user-approved public backup disclosures/pages are implemented and locally verified. Image `65d380728a9d9d81130d730b99e73eae890928fa95244ebd651decc7c6d1900e` includes the search/help increment; 90 tests/lint/19-page export, strict offline upload dry-run, 60-file source comparison, 124-asset manifest and twelve anonymous route/phone-width checks pass. [Private upload guide](../../pilot-backup-pages-upload.md) replaces the usability-only candidate. Connected-plugin readback still serves `c622e581` at 100%. No upload, activation, schema change or actual Google publication occurred. Scope/domain/production-consent/runner grant and recovery/retention/alerts/schedule remain open.
+12 October continuation: user-approved public backup disclosures/pages and shared search/help are deployed from `bb71009`, image `65d380728a9d9d81130d730b99e73eae890928fa95244ebd651decc7c6d1900e`. Version `cf2c15f9-90c0-4a53-a6dc-3cc7eefbaadd` is served at 100% by deployment `5732c263-0031-41aa-bdbd-470a5a52cc81`, 15:00:27 Nairobi. Fresh initial-content/private-header/link/redirect/404 checks pass; all 123 public asset hashes match. Exact Worker/header module readback and unchanged public bindings/routing/log settings pass; `c622e581` remains the rollback version. [Release record](../../pilot-backup-pages-upload.md) explains the existing plugin's temporary asset grant and privacy-preserving finalization. No schema change or actual Google publication occurred. Scope/domain/production-consent/runner grant and recovery/retention/alerts/schedule remain open.
 
-**Architecture:** reuse the native static frontend, restricted FastAPI deployment, existing private bootstrap and backup tools. Humans alone load real credentials. Additional business features follow this release, using the approved design.
+**Architecture:** reuse the native static frontend, restricted FastAPI deployment, existing private bootstrap and backup tools. Humans alone load Google/password/recovery credentials; the user authorized one temporary Cloudflare upload exception. Additional business features follow this release, using the approved design.
 
 **Tech Stack:** Next.js 16.3.6, FastAPI, PostgreSQL 17, Cloudflare Workers Free, Render Free, Supabase, Python operations tools.
 
@@ -14,7 +14,7 @@
 
 ## Global constraints
 
-- No real private file/credential/log reads or credential-loading execution by the agent.
+- No real private file/password/Google credential/recovery-key/log reads. The temporary Cloudflare upload exception uses the existing plugin and short-lived asset grant without reading the existing private token file or creating broader access.
 - Catalogue-only pilot; original practice records untouched; no live fixture seeding.
 - Preserve docs/save-rejection-check.md and original pending-save scopes.
 - No spend, account reconnection, paid fallback or premature backup activation.

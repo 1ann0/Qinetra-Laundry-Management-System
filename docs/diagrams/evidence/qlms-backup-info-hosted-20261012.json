@@ -1,0 +1,77 @@
+{
+  "date": "2026-10-12",
+  "timezone": "Africa/Nairobi",
+  "source": "bb71009",
+  "image": "sha256:65d380728a9d9d81130d730b99e73eae890928fa95244ebd651decc7c6d1900e",
+  "origin": "https://qlms.qinetra.workers.dev",
+  "apiOrigin": "https://qlms-pilot-api.onrender.com",
+  "version": "cf2c15f9-90c0-4a53-a6dc-3cc7eefbaadd",
+  "deployment": "5732c263-0031-41aa-bdbd-470a5a52cc81",
+  "percentage": 100,
+  "deployedAtNairobi": "2026-10-12T15:00:27+03:00",
+  "previousVersion": "c622e581-6d12-45a9-b0d6-c07d8bf4bd36",
+  "assetPaths": 123,
+  "uniqueAssetHashes": 104,
+  "assetHashesMatched": 123,
+  "javascriptFiles": 28,
+  "pages": [
+    {
+      "path": "/backup",
+      "status": 200,
+      "content": true,
+      "privateHeaders": true
+    },
+    {
+      "path": "/backup/privacy",
+      "status": 200,
+      "content": true,
+      "privateHeaders": true
+    },
+    {
+      "path": "/backup/terms",
+      "status": 200,
+      "content": true,
+      "privateHeaders": true
+    },
+    {
+      "path": "/login",
+      "status": 200,
+      "content": true,
+      "privateHeaders": true
+    }
+  ],
+  "legacy": [
+    {
+      "path": "/orders/123",
+      "status": 302,
+      "location": "https://qlms.qinetra.workers.dev/orders/receipt?id=123",
+      "privateHeaders": true
+    },
+    {
+      "path": "/customers/123",
+      "status": 302,
+      "location": "https://qlms.qinetra.workers.dev/customers/contact?id=123",
+      "privateHeaders": true
+    }
+  ],
+  "loginLinks": true,
+  "missingRouteStatus": 404,
+  "moduleReadbackMatched": true,
+  "privateHeaders": true,
+  "observabilityEnabled": false,
+  "logpushEnabled": false,
+  "workerStartupMs": 2,
+  "credentials": {
+    "existingPrivateFileRead": false,
+    "accountApiTokenCreated": false,
+    "credentialFileWritten": false,
+    "completionGrantFinalizedInsidePlugin": true
+  },
+  "notVerified": [
+    "Chrome control unavailable: request-header policy error",
+    "Actual Android rendering in this release",
+    "Authenticated Owner or Employee session in this release",
+    "Google Branding domain acceptance and production publication",
+    "Unattended backup, actual restore, retention, alerts and laptop-off run"
+  ]
+}
