@@ -82,6 +82,96 @@ a {
   box-shadow: 0 12px 35px rgba(24, 47, 75, 0.08);
 }
 
+.public-info-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px clamp(16px, 4vw, 40px);
+}
+
+.public-info-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 16px;
+}
+
+.public-info-header img {
+  display: block;
+  height: auto;
+}
+
+.public-info-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.public-info-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--qinetra-navy);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.public-info-page a {
+  color: var(--qinetra-navy);
+}
+
+.public-info-page a:focus-visible,
+.login-info-links a:focus-visible {
+  outline: 3px solid var(--qinetra-navy);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.public-info-content {
+  max-width: 68ch;
+  padding: 24px 0;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.public-info-content .eyebrow {
+  margin-top: 0;
+}
+
+.public-info-content h1 {
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  line-height: 1.2;
+}
+
+.public-info-content h2 {
+  margin: 28px 0 8px;
+  font-size: 1.25rem;
+  line-height: 1.4;
+}
+
+.public-info-content p {
+  margin: 12px 0;
+}
+
+.public-info-content code {
+  font-size: 0.9em;
+}
+
+.public-info-footer {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.login-info-links {
+  margin-top: 20px;
+}
+
 .login-page {
   display: grid;
   min-height: 100vh;

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import LoginForm from "@/components/auth/login-form";
 
 export default function LoginPage() {
@@ -30,6 +31,10 @@ export default function LoginPage() {
             Use the username and password provided by the owner.
           </p>
           <LoginForm />
+          <nav className="public-info-links login-info-links" aria-label="Backup information">
+            <Link href="/backup">About backups</Link>
+            <Link href="/backup/privacy">Backup privacy</Link>
+          </nav>
         </div>
       </section>
     </main>

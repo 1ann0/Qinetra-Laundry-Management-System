@@ -30,7 +30,7 @@ Verified **in the agent execution environment** on 12 October 2026: official arc
 
 After the human's final setup **PASS** and restart on 12 October, `mcp__gcloud_qlms` is exposed in this chat. Authenticated MCP readback, explicitly selecting `qinetraian@gmail.com` and `qlms-backup-automation`, confirms the project name **QLMS backup automation** and lifecycle **ACTIVE**. Separate enabled-service queries initially returned neither required API. The authorized enable operation completed successfully; independent follow-up queries now report both `drive.googleapis.com` and `picker.googleapis.com` as **ENABLED**. No billing activation, paid resource, app deployment or backup schedule activation was performed.
 
-Installation/sign-in/project/API verification is complete. Do not repeat it. The Google Auth platform branding, production consent setting, Desktop client and private backup-runner grant remain separate human steps. No Google credentials were read or requested in chat.
+Installation/sign-in/project/API verification is complete. Do not repeat it. On 12 October the user also confirms **Branding created**; do not repeat that step. The production consent setting, Desktop client and private backup-runner grant remain separate human steps. Branding completion is human-reported, not an MCP readback. No Google credentials were read or requested in chat.
 
 For MCP 0.5.3, query one API per `--filter=config.name:API_NAME` argument. Its command linter split the attempted multi-value filter containing a space; that failed read performed no mutation. Keep explicit account/project arguments and the existing narrow command policy.
 

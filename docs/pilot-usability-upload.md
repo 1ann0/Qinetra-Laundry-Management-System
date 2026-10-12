@@ -2,6 +2,8 @@
 
 Prepared 12 October 2026. The current public app remains **https://qlms.qinetra.workers.dev/login**. This guide targets the finished interface increment; it does not repeat the earlier completed sign-in-button upload.
 
+**Superseded before upload:** the approved public backup-information/privacy/terms pages are now included alongside this increment in [the newer upload candidate](pilot-backup-pages-upload.md). Use that candidate once its checks are complete; do not upload both images. The image below remains the historical usability-only qualification record.
+
 ## Reviewed candidate
 
 - Frontend source: `e6c7ec9`, shared Find, searchable catalogue/Staff lists, direct history links, optional page help and accessible mobile navigation/buttons.
