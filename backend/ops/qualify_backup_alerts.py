@@ -7,6 +7,16 @@ from ops.backup_monitor import signal
 from ops.drive_authorize import PRIVATE, validate_destination
 
 
+def confirm_email(prompt):
+    while True:
+        answer = input(prompt).strip().upper()
+        if answer in {"YES", "RECEIVED"}:
+            return
+        if answer in {"NO", "NOT RECEIVED"}:
+            raise ValueError("Email not received")
+        print("Type YES only after that email arrives, or NO to stop if it has not arrived.")
+
+
 def main():
     try:
         if not sys.stdin.isatty():
@@ -20,18 +30,16 @@ def main():
         signal(url, "success")
         signal(url, "fail")
         print("Look for the qualification failure email in the company inbox (including Spam).")
-        if input("Only after it arrives, type RECEIVED: ").strip() != "RECEIVED":
-            raise ValueError("Failure email not received")
+        confirm_email("Has the failure email arrived? Type YES after reading it, or NO to stop: ")
         signal(url, "success")
-        print("No more pings will be sent for 130 seconds. The independent monitor should detect the missing run.")
+        print("Recovery ping acknowledged. Now wait 130 seconds (just over two minutes) with no more pings.", flush=True)
         time.sleep(130)
         print("Look for a NEW qualification Down/missing-run email, separate from the earlier failure email.")
-        if input("Only after the new email arrives, type RECEIVED: ").strip() != "RECEIVED":
-            raise ValueError("Missing-run email not received")
+        confirm_email("Has the NEW Down email arrived? Type YES after reading it, or NO to stop: ")
         signal(url, "success")
         print("PASS: private monitor signals acknowledged; human confirms failure and missing-run emails received. Change to the daily schedule before activation. No backup or database operation ran.")
         return 0
-    except Exception as error:
+    except (Exception, KeyboardInterrupt) as error:
         print(f"FAIL: private alert qualification ({type(error).__name__}); schedule remains off.", file=sys.stderr)
         return 1
 

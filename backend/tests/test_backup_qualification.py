@@ -16,6 +16,43 @@ SETTINGS = {"QLMS_BACKUP_PROJECT_REF": PROJECT, "QLMS_BACKUP_PROVIDER": "google_
 
 
 class AlertQualificationTests(unittest.TestCase):
+    def test_typing_mistake_reprompts_without_sending_another_ping(self):
+        replies = iter(["TEST ALERTS", "RECIEVED", " yes ", "", "YES"])
+        with patch("sys.stdin.isatty", return_value=True), patch("ops.qualify_backup_alerts.dotenv_values", return_value=SETTINGS), \
+                patch("ops.qualify_backup_alerts.signal") as send, patch("ops.qualify_backup_alerts.time.sleep") as wait, \
+                patch("sys.stdout", io.StringIO()) as output, patch("sys.stderr", io.StringIO()):
+            def reply(prompt):
+                answer = next(replies)
+                if answer in ["RECIEVED", " yes "]:
+                    self.assertEqual(send.call_count, 2)
+                    wait.assert_not_called()
+                if answer in ["", "YES"]:
+                    self.assertEqual(send.call_count, 3)
+                    wait.assert_called_once_with(130)
+                return answer
+
+            with patch("builtins.input", side_effect=reply):
+                self.assertEqual(alert_main(), 0)
+        self.assertEqual([call.args[1] for call in send.call_args_list], ["success", "fail", "success", "success"])
+        self.assertIn("PASS:", output.getvalue())
+        self.assertNotIn(SETTINGS["QLMS_BACKUP_MONITOR_URL"], output.getvalue())
+
+    def test_no_or_cancel_cannot_confirm_delivery_or_repeat_failure_pings(self):
+        for replies, expected_statuses in [
+                (["TEST ALERTS", "RECIEVED", "NO"], ["success", "fail"]),
+                (["TEST ALERTS", "YES", "NO"], ["success", "fail", "success"]),
+                (["TEST ALERTS", KeyboardInterrupt()], ["success", "fail"]),
+                (["TEST ALERTS", "YES", EOFError()], ["success", "fail", "success"])]:
+            with self.subTest(replies=replies), patch("sys.stdin.isatty", return_value=True), \
+                    patch("ops.qualify_backup_alerts.dotenv_values", return_value=SETTINGS), \
+                    patch("builtins.input", side_effect=replies), patch("ops.qualify_backup_alerts.signal") as send, \
+                    patch("ops.qualify_backup_alerts.time.sleep"), patch("sys.stdout", io.StringIO()) as output, \
+                    patch("sys.stderr", io.StringIO()) as errors:
+                self.assertEqual(alert_main(), 1)
+                self.assertEqual([call.args[1] for call in send.call_args_list], expected_statuses)
+                self.assertNotIn("PASS:", output.getvalue())
+                self.assertIn("FAIL:", errors.getvalue())
+
     def test_both_delivery_confirmations_and_actual_silence_are_required(self):
         with patch("sys.stdin.isatty", return_value=True), patch("ops.qualify_backup_alerts.dotenv_values", return_value=SETTINGS), \
                 patch("builtins.input", side_effect=["TEST ALERTS", "RECEIVED", "RECEIVED"]), \

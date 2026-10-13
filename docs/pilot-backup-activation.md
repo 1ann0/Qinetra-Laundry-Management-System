@@ -12,7 +12,9 @@ Current provider qualification: [Healthchecks' free plan](https://healthchecks.i
 
 ## 1. Email qualification
 
-The human confirms the free monitoring account is ready. In its private dashboard create one check named **QLMS backup qualification**, temporarily with Simple schedule, Period **1 minute**, Grace time **1 minute**, and the agreed company-email integration enabled. Save its Ping URL privately in the existing `.env.pilot-hosted-backup` as `QLMS_BACKUP_MONITOR_URL=...`. Never put the filled URL in chat, a public file or a screenshot. The monitor has no access to Drive.
+**Actual email qualification passed on 13 October.** With explicit permission to use only the stored monitor URL locally, the agent sent empty success/failure pings; the human confirmed a new Down email. A recovery ping was acknowledged at about 16:19 Nairobi, no pings were sent for over two minutes, and the human confirmed a new missing-run Down email. A final recovery ping was acknowledged at about 16:23. The URL was never displayed or saved in output; the temporary monitor-only runner was removed and this exception is closed. No Google credential, database password or recovery key was used. [Safe qualification record](pilot-monitor-qualification-20261013.md).
+
+The human confirms final settings saved: **QLMS daily backup**, Cron **`0 22 * * *`**, timezone **Africa/Nairobi**, Grace time **2 hours**. This replaces the temporary 1-minute setting; it is human-confirmed rather than an agent dashboard read. No new check or Ping URL is needed. Daily backup execution remains off, so the monitor is not evidence that a backup job is running. Next: actual retention rehearsal and qualified hosted execution. The following commands describe the reusable human-only test; do not repeat the completed delivery proof.
 
 In your own PowerShell outside Codex, run separately:
 
@@ -27,8 +29,8 @@ Set-Location 'C:\Users\1ann0\qlms\backend'
 The terminal guides the test:
 
 1. Type `TEST ALERTS` only when the temporary schedule and company email are set.
-2. Wait for the deliberate failure email. Only after reading it in the company inbox, type `RECEIVED`. If it does not arrive, do not confirm; report that delivery failed.
-3. The helper waits 130 seconds with no pings. Wait for a **new** Down/missing-run email, distinct from the first email; then type `RECEIVED`.
+2. Wait for a new deliberate failure email. Only after reading it in the company inbox, type `YES` and press Enter. If it does not arrive, type `NO` to stop and report that delivery failed. A typing mistake asks again without sending another ping; the previous `RECEIVED` confirmation is also accepted.
+3. The helper acknowledges the recovery ping and waits 130 seconds with no further pings. Wait for a **new** Down/missing-run email, distinct from the first email; then type `YES` and press Enter. An Up email means recovery and is not the required new Down email. Do not confirm an earlier email again.
 4. Send only the final PASS/FAIL line. PASS records human-confirmed delivery, not an agent mailbox inspection. No database or backup operation runs.
 5. Immediately rename the check **QLMS daily backup** and change its schedule to Cron, `0 22 * * *`, timezone **Africa/Nairobi**, Grace time **2 hours**. This accounts for delayed GitHub execution; it is not an exact-22:00 guarantee. Confirm these final settings privately. Do not leave the 1-minute test schedule active. Actual daily scheduling remains off.
 
@@ -54,4 +56,4 @@ Use `QLMS_BACKUP_QUALIFICATION_ENABLED=true` only for the reviewed manual qualif
 
 ## Developer checks
 
-286 full backend tests passed against disposable PostgreSQL (95.831 s), with migrations/reapplication/empty restore and 22-table fictional recovery in 38.9 s for the full rehearsal. After the final fresh-copy recheck was added, all 52 focused retention/transport/monitor/qualification/recovery/budget tests passed (0.882 s). Both workflows pass actionlint. The pinned test image now matches the restore helper, and test execution disables implicit application dotenv loading. No real private configuration, Google grant, key, email or database row was opened by the agent. This evidence does not substitute for the private delivery/deletion or hosted runs above.
+Latest alert-prompt change: the original typo fixture failed before the fix; the helper now accepts `YES`, retains `RECEIVED`, reprompts on invalid input without another ping, and safely stops on No/cancellation. All 289 backend tests passed against disposable PostgreSQL (103.289 s), followed by migrations/reapplication/empty restore and 22-table fictional recovery/sequence comparison/cleanup (23.2 s for the full recovery rehearsal). All 8 named focused alert tests also passed (0.039 s). The earlier 52 focused retention/transport/recovery/budget checks and actionlint results remain recorded for the unchanged workflow. Actual delivery is qualified above; actual retention deletion and hosted execution remain separate gates. Google credentials, the real key, database passwords and customer records stayed outside agent use.

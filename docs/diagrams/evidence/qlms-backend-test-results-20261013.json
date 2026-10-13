@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-13",
+  "timezone": "Africa/Nairobi",
+  "full_backend": {"tests": 289, "seconds": 103.289, "result": "OK", "database": "disposable local PostgreSQL with fictional fixtures"},
+  "focused_alert_regression": {"tests": 8, "seconds": 0.039, "result": "OK"},
+  "schema_rehearsal": {"migration_chain": "PASS", "repeat_application": "PASS", "empty_restore": "PASS"},
+  "fictional_recovery": {"tables_compared": 22, "sequences_compared": true, "temporary_container_removed": true, "full_rehearsal_seconds": 23.2},
+  "candidate_sha256": {
+    "backend/ops/qualify_backup_alerts.py": "81ea95b777f5e067192e6c1731b46e47707a0bcd2e57cfcf8822126c8340ca01",
+    "backend/tests/test_backup_qualification.py": "f28c943af83c764d15f5aaf73c49d6c006887eadcc060f96f6179005f9b09f3e"
+  },
+  "screenshot": {
+    "path": "64-qlms-backend-test-results-20261013.jpg",
+    "sha256": "3b66c87d6583bdf2a6483132d0d1935d8cc8f4e19a72a66eb9de5e51e21137cc",
+    "kind": "browser screenshot of a report generated from actual developer test results",
+    "published": false,
+    "contains_credentials_or_customer_data": false
+  },
+  "live_monitor": {"failure_email": "human confirms new DOWN received", "missing_run_email": "human confirms new DOWN after recovery and over two minutes of silence", "final_recovery_acknowledged": true, "monitor_url_exception": "closed"},
+  "daily_monitor_settings": {"confirmation": "human reports saved", "name": "QLMS daily backup", "cron": "0 22 * * *", "timezone": "Africa/Nairobi", "grace_hours": 2},
+  "daily_backup_execution": "disabled",
+  "actual_retention_and_hosted_pc_off_execution": "pending"
+}
