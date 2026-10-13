@@ -23,6 +23,12 @@ AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 SCOPE = "https://www.googleapis.com/auth/drive.file"
 GRANT_KEYS = ("QLMS_DRIVE_CLIENT_ID", "QLMS_DRIVE_CLIENT_SECRET", "QLMS_DRIVE_REFRESH_TOKEN")
+# Only fixed setup messages may be shown; exception details can contain credentials.
+SAFE_SETUP_FAILURES = frozenset({
+    "Use the existing pilot backup configuration", "The approved folder is missing",
+    "The approved account is missing", "Use the downloaded Google Desktop application client",
+    "Invalid Google client", "Invalid client file", "Invalid private authorization value",
+})
 
 
 def private_value(value):
@@ -181,7 +187,10 @@ def main():
     try:
         run_authorization()
     except Exception as error:
-        print(f"FAIL: private Drive consent ({type(error).__name__}); no backup schedule activated.")
+        reason = type(error).__name__
+        if type(error) is ValueError and str(error) in SAFE_SETUP_FAILURES:
+            reason = str(error)
+        print(f"FAIL: private Drive consent ({reason}); no backup schedule activated.")
         return 1
     print("PASS: selected private Drive folder and account verified; runner consent saved privately. Schedule remains off.")
     return 0

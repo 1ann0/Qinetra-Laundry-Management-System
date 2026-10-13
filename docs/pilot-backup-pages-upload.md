@@ -57,10 +57,12 @@ Use the existing backup project in your own browser. Confirm app name **QLMS bac
 - Privacy: `https://qlms.qinetra.workers.dev/backup/privacy`
 - Terms: `https://qlms.qinetra.workers.dev/backup/terms`
 
-Do not use the sign-in page as the homepage. These pages are deployed; Google's acceptance is the next separate check.
+Do not use the sign-in page as the homepage. **13 October human report:** these fields were saved successfully. Do not repeat entry or deployment. Publishing status and any domain ownership requirement remain separate checks.
 
 Google's domain acceptance/ownership verification for this free address is still unqualified. `workers.dev` is a public suffix; `qinetra.workers.dev` is the candidate authorized domain, but that fact alone does not prove Google accepts or verifies it. If Google refuses it, report only the nonsecret validation message and stop. Do not buy a domain, add billing, use another organization's URLs or claim verification succeeded. A Search Console verification challenge, if required, needs a separate bounded public-file/tag step; credentials stay private.
 
 After required Branding fields and domain checks pass, return to Audience and confirm **In production** before issuing the offline Drive grant. Creating Branding, uploading frontend files or passing local tests does not itself set that status. Actual Drive consent, measured backup/storage, timed restore, retention, alerts and laptop-off scheduling remain incomplete.
+
+**13 October update:** the user confirms Audience now shows **In production**. Accept the human report and do not repeat publication; this does not establish actual folder consent or any recovery result.
 
 References: [Google Branding requirements](https://support.google.com/cloud/answer/15549049), [Testing expiry](https://support.google.com/cloud/answer/15549945), [Workers version upload](https://developers.cloudflare.com/workers/wrangler/commands/workers/#versions-upload).

@@ -15,6 +15,7 @@ __pycache__/
 .pnpm-store/
 .env.*
 !.env.example
+backend/ops/private/google-desktop-client.json
 
 # Private working notes and local tools
 AGENTS.md

@@ -133,6 +133,32 @@ class GrantTests(unittest.TestCase):
             grant.verify_and_save(path, CLIENT, TOKENS, settings, opener=DriveFixture(b"fictional"))
             self.assertIn("QLMS_DRIVE_REFRESH_TOKEN=fictional-refresh", path.read_text(encoding="utf-8"))
 
+    def test_setup_failures_explain_known_checks_but_never_echo_unknown_private_errors(self):
+        cases = [
+            (grant.validate_destination, {}, "Use the existing pilot backup configuration"),
+            (grant.validate_client, {"web": CLIENT}, "Use the downloaded Google Desktop application client"),
+            (grant.validate_client, {"installed": CLIENT | {"client_id": "wrong"}}, "Invalid Google client"),
+        ]
+        for validator, data, expected in cases:
+            with self.subTest(expected=expected):
+                with self.assertRaises(ValueError) as failure:
+                    validator(data)
+                with patch.object(grant.sys.stdin, "isatty", return_value=True), \
+                        patch.object(grant, "run_authorization", side_effect=failure.exception), \
+                        redirect_stdout(StringIO()) as output:
+                    self.assertEqual(grant.main(), 1)
+                self.assertIn(expected, output.getvalue())
+                self.assertIn("no backup schedule activated", output.getvalue())
+        for failure in [ValueError("private-client-secret"),
+                        json.JSONDecodeError("private-client-secret", "private-document", 0)]:
+            with patch.object(grant.sys.stdin, "isatty", return_value=True), \
+                    patch.object(grant, "run_authorization", side_effect=failure), \
+                    redirect_stdout(StringIO()) as output:
+                self.assertEqual(grant.main(), 1)
+            self.assertIn(type(failure).__name__, output.getvalue())
+            self.assertNotIn("private-client-secret", output.getvalue())
+            self.assertNotIn("private-document", output.getvalue())
+
     def test_loopback_callback_rejects_foreign_host_and_does_not_echo_codes_or_log(self):
         with grant.consent_server("fictional-state", "folder_fixture") as server:
             self.assertEqual(server.server_address[0], "127.0.0.1")

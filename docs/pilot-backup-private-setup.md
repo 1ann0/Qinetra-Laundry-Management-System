@@ -31,18 +31,24 @@ Open [Google Cloud Console](https://console.cloud.google.com/) in your own brows
 1. **Completed and verified 12 October:** existing project **QLMS backup automation**, ID `qlms-backup-automation`, is ACTIVE under the explicitly selected business account. Do not create another project or reconnect accounts.
 2. **Completed and verified 12 October through the local MCP:** Google Drive API and Google Picker API are ENABLED. The enable operation and two separate readbacks passed. No billing activation or paid service was created; do not repeat this step or add billing to clear Cloud Hub's unrelated panel.
 3. **Completed by human report, 12 October:** the user confirms **Branding created** in the selected backup project. Do not repeat branding creation. Credential pages remain outside Codex browser control; this is human confirmation, not an MCP readback.
-4. In **Audience**, choose the appropriate external audience for the existing Gmail account. In **Data Access**, request only `https://www.googleapis.com/auth/drive.file`. Do not add full-Drive, email, Gmail or profile scopes.
-5. **Publication blocked, 12 October:** the user's Audience screenshot shows Testing and a disabled Publish app button requiring valid app name/support email/homepage/privacy-policy URLs. Creating Branding alone does not complete these fields. The live frontend root redirects to login; do not supply placeholder URLs or claim publication succeeded. [Approved public content](pilot-backup-public-content.md) is now implemented as three static pages, with [private upload instructions](pilot-backup-pages-upload.md). Hosted pages and the free address's Google domain/ownership acceptance need qualification first. Then set publishing status to **In production**. A Testing consent refresh token expires after seven days for this scope. The helper asks you to check this setting; that confirmation is a human attestation, not an API verification of Google's project configuration.
-6. In **Clients → Create client**, choose **Desktop app**, named **QLMS private backup runner**. Download its JSON directly to `C:\Users\1ann0\qlms\backend\ops\private\google-desktop-client.json`. Keep the file protected and ignored. Do not paste its contents anywhere.
+4. **Human report, 13 October:** after the guided selection, the user confirms **drive.file is listed** in Data Access. Do not repeat selection. The intended only scope is `https://www.googleapis.com/auth/drive.file`; full-Drive, email, Gmail and profile scopes are not part of this backup client. This is not an independent scope-list readback.
+5. **Completed by human report, 13 October:** the user saved the deployed Branding URLs, published the existing app and confirms Audience shows **In production**. Do not repeat those steps. This is human attestation, not an MCP configuration readback or independent ownership verification. Production removes the seven-day Testing expiry for this scope; consent can still be revoked or expire for other reasons. The helper asks for this setting again only as its private execution guard.
+6. In **Clients → Create client**, choose **Desktop app**, named **QLMS private backup runner**. Download its JSON directly to `C:\Users\1ann0\qlms\backend\ops\private\google-desktop-client.json`. If Chrome saves it in Downloads, use File Explorer to move that downloaded file to the existing private directory and rename it `google-desktop-client.json`; enable **View → Show → File name extensions** to avoid `.json.json`. Keep the file closed. On 13 October, an exact Git-ignore rule was added and checked before this handoff; Git exclusion does not replace the existing private folder permissions. Do not paste its contents anywhere.
 
 Google's [desktop Picker guide](https://developers.google.com/workspace/drive/picker/guides/desktop-mobile-picker) supports a folder picker within the OAuth flow. It needs no additional JavaScript page or API key. The helper uses a loopback callback, state and PKCE, asks for offline access and excludes previously granted broader scopes. Google documents the [Testing refresh-token limit and other expiry/revocation conditions](https://developers.google.com/identity/protocols/oauth2#expiration); production consent can still be revoked or expire and must be monitored.
 
 ## 3. Authorize only the recorded backup folder
 
-With the downloaded client saved privately, run this in the same private PowerShell:
+**Human report, 13 October:** the Desktop client file is saved at the requested private location. Its contents have not been read by the agent; actual validation happens only in the human-run helper. Do not recreate/download it again.
+
+In your own PowerShell outside Codex, run these two blocks separately:
 
 ```powershell
-& '..\tmp\test-venv\Scripts\python.exe' -m ops.drive_authorize
+Set-Location 'C:\Users\1ann0\qlms\backend'
+```
+
+```powershell
+..\tmp\test-venv\Scripts\python.exe -m ops.drive_authorize
 ```
 
 After checking Audience yourself, type `IN PRODUCTION` in that private terminal. The helper opens Google's consent/picker in your browser. Use the existing business account and select only the existing privately recorded backup folder. Do not select a new folder or grant full-Drive access.
@@ -54,6 +60,8 @@ Report only:
 `PASS: selected private Drive folder and account verified; runner consent saved privately. Schedule remains off.`
 
 If it fails, report only the safe FAIL line. Close the consent tab and inspect the setup privately before retrying. Do not copy a raw Google error, callback URL, JSON or traceback.
+
+13 October diagnostic update: after the missing file was corrected, the human run stopped with `ValueError` before the production prompt/browser. The helper now displays only an exact allowlist of fixed setup reasons, while all other exception details remain hidden. Share the entire new safe FAIL line, not private configuration values. Three known-reason regressions failed before the change; all 22 consent/storage checks now pass using fictional settings. Real cause/consent remain pending; no validation was relaxed.
 
 ## Still required before real entry
 
