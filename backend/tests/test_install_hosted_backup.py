@@ -56,6 +56,20 @@ class HostedInstallerTests(unittest.TestCase):
             self.assertEqual(kwargs["input"], "private-secret-must-not-escape")
             self.assertTrue(kwargs["capture_output"])
 
+    def test_completed_backup_config_can_omit_the_existing_five_gb_default(self):
+        with tempfile.TemporaryDirectory() as folder:
+            settings = self.settings(Path(folder))
+            settings.pop("QLMS_BACKUP_STORAGE_BUDGET_BYTES")
+            self.assertEqual(len(prepare_secrets(settings)), 8)
+
+    def test_configuration_failure_explains_only_an_allowlisted_safe_reason(self):
+        for reason, expected in [("Retention must be 90 days", "Retention must be 90 days"),
+                                 ("private-token-must-not-escape", "ValueError")]:
+            with self.subTest(reason=reason), patch("sys.stdin.isatty", return_value=True), patch("builtins.input", return_value="INSTALL BACKUP"), patch("ops.install_hosted_backup.dotenv_values", return_value={}), patch("ops.install_hosted_backup.prepare_secrets", side_effect=ValueError(reason)), patch("sys.stdout", io.StringIO()) as output:
+                self.assertEqual(main(), 1)
+            self.assertIn(expected, output.getvalue())
+            self.assertNotIn("private-token", output.getvalue())
+
     def test_noninteractive_agent_call_never_loads_private_settings(self):
         with patch("sys.stdin.isatty", return_value=False), patch("ops.install_hosted_backup.dotenv_values") as load, patch("sys.stdout", io.StringIO()) as output:
             self.assertEqual(main(), 1)

@@ -28,6 +28,8 @@ Type `INSTALL BACKUP` when asked. The helper reads the existing `.env.pilot-host
 
 Send only the final `PASS:` or `FAIL:` line. If it fails, do not enable the daily switch or send raw logs. Partial installation stays inactive and may be privately resumed after identifying the failed stage.
 
+13 October installer follow-up: a human attempt stopped at local configuration validation before GitHub mutation. A fictional reproduction identified an overly strict optional budget check: the already-qualified backup job accepts the agreed 5 GB default when the field is absent. The installer now reuses that default, still rejects another budget/project/account/retention/key choice, and prints only allowlisted fixed failure reasons. Twenty-one focused installer/budget/hosted-job checks pass; the real attempt's specific cause is not independently read. The corrected private attempt remains pending.
+
 ## 3. Prove cloud operation
 
 After installer PASS, turn the shop laptop off. On the work phone, open [Qinetra encrypted backup](https://github.com/1ann0/Qinetra-Laundry-Management-System/actions/workflows/pilot-backup.yml). Select **Run workflow**, branch **main**, mode **qualification**, then **Run workflow**. No secrets should be entered on this page.

@@ -11,6 +11,7 @@ import sys
 from dotenv import dotenv_values
 from sqlalchemy.engine import make_url
 from ops.backup import project_ref
+from ops.backup_budget import APPROVED_BUDGET_BYTES
 
 REPOSITORY = "1ann0/Qinetra-Laundry-Management-System"
 ENVIRONMENT = "qinetra-pilot-backup"
@@ -19,16 +20,30 @@ WORKFLOW_SHA256 = "a3c4f530c8f5fb0f4c71c99e68cf5e064a6876a1a60354e6ec8f37ce733a8
 SECRET_NAMES = ("QLMS_BACKUP_DATABASE_URL", "QLMS_BACKUP_KEY_BASE64", "QLMS_BACKUP_DRIVE_ACCOUNT",
                 "QLMS_BACKUP_DRIVE_FOLDER_ID", "QLMS_DRIVE_CLIENT_ID", "QLMS_DRIVE_CLIENT_SECRET",
                 "QLMS_DRIVE_REFRESH_TOKEN", "QLMS_BACKUP_MONITOR_URL")
+SAFE_FAILURES = frozenset({
+    "Use the qualified Qinetra pilot settings", "Use the approved backup account", "Retention must be 90 days",
+    "Storage budget must be 5 GB", "Use the restricted encrypted pilot backup connection",
+    "Use exactly one existing key source", "Existing key must contain exactly 32 bytes",
+    "Private configuration is incomplete or malformed", "Use the existing private monitor URL",
+    "Reviewed workflow has not been installed on main", "Sign in to the existing repository owner's GitHub account",
+    "Unexpected repository or hosting budget", "Daily backup is already enabled; do not reinstall live credentials",
+    "Existing environment must allow only main; its protections were preserved",
+    "Environment permits an unexpected branch or tag", "Secret-name readback is incomplete",
+})
 
 
 def prepare_secrets(settings):
     if (settings.get("QLMS_BACKUP_PROVIDER") != "google_drive"
             or settings.get("QLMS_DB_SCHEMA") != "qlms"
-            or settings.get("QLMS_BACKUP_PROJECT_REF") != PROJECT
-            or settings.get("QLMS_BACKUP_DRIVE_ACCOUNT") != "qinetraian@gmail.com"
-            or settings.get("QLMS_BACKUP_RETENTION_DAYS") != "90"
-            or settings.get("QLMS_BACKUP_STORAGE_BUDGET_BYTES") != "5000000000"):
+            or settings.get("QLMS_BACKUP_PROJECT_REF") != PROJECT):
         raise ValueError("Use the qualified Qinetra pilot settings")
+    if settings.get("QLMS_BACKUP_DRIVE_ACCOUNT") != "qinetraian@gmail.com":
+        raise ValueError("Use the approved backup account")
+    if settings.get("QLMS_BACKUP_RETENTION_DAYS") != "90":
+        raise ValueError("Retention must be 90 days")
+    # The qualified backup job already uses this agreed default when the optional field is absent.
+    if (settings.get("QLMS_BACKUP_STORAGE_BUDGET_BYTES") or str(APPROVED_BUDGET_BYTES)) != str(APPROVED_BUDGET_BYTES):
+        raise ValueError("Storage budget must be 5 GB")
     url = make_url(settings.get("QLMS_BACKUP_DATABASE_URL") or "")
     if (project_ref(url) != PROJECT or url.get_backend_name() != "postgresql"
             or (url.username or "").split(".", 1)[0] != "qlms_backup"
@@ -43,7 +58,7 @@ def prepare_secrets(settings):
     else:
         key = base64.b64decode(encoded, validate=True)
     if len(key) != 32:
-        raise ValueError("Existing key must contain 32 bytes")
+        raise ValueError("Existing key must contain exactly 32 bytes")
     secrets = {name: settings.get(name) for name in SECRET_NAMES}
     secrets["QLMS_BACKUP_KEY_BASE64"] = base64.b64encode(key).decode("ascii")
     if any(not isinstance(value, str) or not value or len(value.encode()) > 48000
@@ -130,7 +145,8 @@ def main():
         stage = "protected GitHub installation"
         install(root / "tmp/github-cli/gh.exe", secrets)
     except (Exception, KeyboardInterrupt) as error:
-        print(f"FAIL: {stage} ({type(error).__name__}); do not enable daily scheduling.")
+        reason = str(error) if str(error) in SAFE_FAILURES else type(error).__name__
+        print(f"FAIL: {stage} ({reason}); do not enable daily scheduling.")
         return 1
     print("PASS: private cloud backup settings installed; main-only protection verified; daily schedule remains OFF.")
     return 0
