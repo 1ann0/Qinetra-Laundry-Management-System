@@ -1,0 +1,99 @@
+name: Qinetra encrypted backup
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Private qualification; daily scheduling has a separate switch
+        type: choice
+        default: qualification
+        options: [qualification, alert-failure]
+  schedule:
+    # Initial owner choice: 22:00 Nairobi (UTC+3). Cron is not an exact-time guarantee.
+    - cron: '0 19 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qinetra-pilot-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    # Job admission switches are repository variables; environment variables arrive after admission.
+    # A manual qualification run does not enable the daily schedule.
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      ((github.event_name == 'schedule' && vars.QLMS_HOSTED_BACKUP_ENABLED == 'true') ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'qualification' && vars.QLMS_BACKUP_QUALIFICATION_ENABLED == 'true'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    environment: qinetra-pilot-backup
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          # Keep automation independent of main's older application and unfinished local reports.
+          ref: c06dc6290394d607dccc927c2046a2a2bb77d104
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.12'
+      - name: Signal start to the independent monitor
+        env:
+          QLMS_BACKUP_MONITOR_URL: ${{ secrets.QLMS_BACKUP_MONITOR_URL }}
+        run: python backend/ops/backup_monitor.py start
+      - name: Require qualified retention before a scheduled run
+        if: github.event_name == 'schedule'
+        env:
+          QLMS_BACKUP_CLEANUP_ENABLED: ${{ vars.QLMS_BACKUP_CLEANUP_ENABLED }}
+        run: python -c "import os; assert os.environ.get('QLMS_BACKUP_CLEANUP_ENABLED') == 'true', 'Retention is not qualified'"
+      - name: Install verified operations dependencies
+        run: python -m pip install --disable-pip-version-check -r backend/requirements-ops.txt
+      - name: Pull pinned PostgreSQL client
+        run: docker pull postgres:17@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675
+      - name: Export encrypted archive and authenticate Drive readback
+        id: archive
+        working-directory: backend
+        env:
+          QLMS_BACKUP_PROVIDER: google_drive
+          QLMS_DB_SCHEMA: qlms
+          QLMS_BACKUP_PG_CLIENT_IMAGE: postgres:17@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675
+          QLMS_BACKUP_DATABASE_URL: ${{ secrets.QLMS_BACKUP_DATABASE_URL }}
+          QLMS_BACKUP_PROJECT_REF: ${{ vars.QLMS_BACKUP_PROJECT_REF }}
+          QLMS_BACKUP_KEY_BASE64: ${{ secrets.QLMS_BACKUP_KEY_BASE64 }}
+          QLMS_BACKUP_LOCAL_FOLDER: ${{ runner.temp }}/qlms-encrypted-backups
+          QLMS_BACKUP_RETENTION_DAYS: '90'
+          QLMS_BACKUP_STORAGE_BUDGET_BYTES: '5000000000'
+          QLMS_BACKUP_CLEANUP_ENABLED: ${{ vars.QLMS_BACKUP_CLEANUP_ENABLED }}
+          QLMS_BACKUP_DRIVE_ACCOUNT: ${{ secrets.QLMS_BACKUP_DRIVE_ACCOUNT }}
+          QLMS_BACKUP_DRIVE_FOLDER_ID: ${{ secrets.QLMS_BACKUP_DRIVE_FOLDER_ID }}
+          QLMS_DRIVE_CLIENT_ID: ${{ secrets.QLMS_DRIVE_CLIENT_ID }}
+          QLMS_DRIVE_CLIENT_SECRET: ${{ secrets.QLMS_DRIVE_CLIENT_SECRET }}
+          QLMS_DRIVE_REFRESH_TOKEN: ${{ secrets.QLMS_DRIVE_REFRESH_TOKEN }}
+        run: python -m ops.backup_job --environment
+      - name: Signal verified completion
+        env:
+          QLMS_BACKUP_MONITOR_URL: ${{ secrets.QLMS_BACKUP_MONITOR_URL }}
+        run: python backend/ops/backup_monitor.py success
+      - name: Signal failure or cancellation
+        if: failure() || cancelled()
+        env:
+          QLMS_BACKUP_MONITOR_URL: ${{ secrets.QLMS_BACKUP_MONITOR_URL }}
+        run: python backend/ops/backup_monitor.py fail
+      # No caches/artifact uploads: keys, database content and private metadata stay out of logs.
+
+  alert-failure:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'alert-failure' && github.ref == 'refs/heads/main' && vars.QLMS_BACKUP_QUALIFICATION_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: qinetra-pilot-backup
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          ref: c06dc6290394d607dccc927c2046a2a2bb77d104
+      - name: Send only an operational test-failure signal
+        env:
+          QLMS_BACKUP_MONITOR_URL: ${{ secrets.QLMS_BACKUP_MONITOR_URL }}
+        run: python3 backend/ops/backup_monitor.py fail
