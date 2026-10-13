@@ -14,7 +14,7 @@ Current provider qualification: [Healthchecks' free plan](https://healthchecks.i
 
 **Actual email qualification passed on 13 October.** With explicit permission to use only the stored monitor URL locally, the agent sent empty success/failure pings; the human confirmed a new Down email. A recovery ping was acknowledged at about 16:19 Nairobi, no pings were sent for over two minutes, and the human confirmed a new missing-run Down email. A final recovery ping was acknowledged at about 16:23. The URL was never displayed or saved in output; the temporary monitor-only runner was removed and this exception is closed. No Google credential, database password or recovery key was used. [Safe qualification record](pilot-monitor-qualification-20261013.md).
 
-The human confirms final settings saved: **QLMS daily backup**, Cron **`0 22 * * *`**, timezone **Africa/Nairobi**, Grace time **2 hours**. This replaces the temporary 1-minute setting; it is human-confirmed rather than an agent dashboard read. No new check or Ping URL is needed. Daily backup execution remains off, so the monitor is not evidence that a backup job is running. Next: actual retention rehearsal and qualified hosted execution. The following commands describe the reusable human-only test; do not repeat the completed delivery proof.
+The human confirms final settings saved: **QLMS daily backup**, Cron **`0 22 * * *`**, timezone **Africa/Nairobi**, Grace time **2 hours**. This replaces the temporary 1-minute setting; it is human-confirmed rather than an agent dashboard read. No new check or Ping URL is needed. Daily backup execution remains off, so the monitor is not evidence that a backup job is running. Actual retention rehearsal has also passed by human confirmation. Next: qualified hosted installation/execution. The following commands describe the reusable human-only test; do not repeat the completed delivery proof.
 
 In your own PowerShell outside Codex, run separately:
 
@@ -36,6 +36,8 @@ The terminal guides the test:
 
 ## 2. Retention qualification
 
+**Actual rehearsal passed by human confirmation on 13 October. Do not repeat it.** The command below is retained for recovery documentation. It did not activate real-folder expiry or the daily schedule.
+
 In the same private PowerShell run:
 
 ```powershell
@@ -48,11 +50,15 @@ Send only its final PASS/FAIL line. Preserve the existing private key copies and
 
 ## 3. Hosted release boundary
 
-The prepared workflow currently requires main. The repository's older default branch can trigger original Render/Vercel integrations; do not silently merge the entire app branch to install a scheduler. Decide and verify the exact publication boundary, protected environment and integration behavior first. No remote workflow, secret, variable, merge or schedule was changed by this local increment. Source-only publication never includes the private config, downloaded Google client, key or archives.
+**Installed on main, still inactive:** commit `d6766d1ee2249e0616cb1389d1420933c4ea799c` adds only this workflow file. The source pin is `c06dc6290394d607dccc927c2046a2a2bb77d104`; fresh full CI run 38452241420 passed both jobs after correcting a Windows-platform test mock that broke Linux path handling. Actionlint passes. Remote commit/file readback confirms the one-file boundary; no PR was created because the connected integration denied write access, so existing Git authentication performed a checked fast-forward. Private secrets/variables and actual hosted run remain human installation/qualification work. Scheduled jobs cannot run without their separate enabled variable.
+
+The workflow requires main but checks out a pinned, separately published operations candidate. Publish only this one workflow file to main; do not merge the application branch or unfinished reports. The 13 October Render read confirms pilot auto-deploy off and the original service rooted at backend. [Render's root-directory rule](https://render.com/docs/monorepo-support) excludes the workflow-only change from that service's deployment trigger. No application source, requirements, schema or build settings on main need change. Read back the exact main diff and deployed pair after publication. Source-only publication never includes the private config, downloaded Google client, key or archives.
 
 Once the reviewed workflow/code is on its qualified default branch, the human installs the existing secrets privately in environment `qinetra-pilot-backup`: restricted DB URL, key base64, Drive account/folder and three OAuth grant fields, plus the monitor URL. Project ref is a protected nonsecret variable. Never paste or reread secrets through the agent. A prepared helper may reduce this handoff; it must be tested with fictional values first.
 
-Use `QLMS_BACKUP_QUALIFICATION_ENABLED=true` only for the reviewed manual qualification; keep `QLMS_HOSTED_BACKUP_ENABLED` unset/false. After retention proof, set `QLMS_BACKUP_CLEANUP_ENABLED=true`. Dispatch qualification on the reviewed default branch; verify completion metadata and receive actual mail alerts. Then demonstrate an independent hosted run while the shop laptop is off. Only after those pass may the separate daily switch be enabled. Record the workflow commit/run, monitoring schedule, delivery evidence and the first scheduled run. Keep the independent monitor armed and investigate missing runs, quota failures and revoked grants.
+The job-admission switches `QLMS_BACKUP_QUALIFICATION_ENABLED` and `QLMS_HOSTED_BACKUP_ENABLED` must be **repository variables**: [GitHub environment variables arrive after the job starts](https://docs.github.com/en/actions/reference/workflows-and-actions/variables). Secrets, project ref and cleanup permission belong to the main-only environment. Use qualification=true only for the reviewed manual test; keep hosted=false. After the completed retention proof, cleanup may be true. The human-only installer validates the fixed pilot, existing 32-byte key, reviewed workflow checksum, existing GitHub owner and main-only environment before transferring just eight allowlisted secrets through stdin. It never prints values, stages a plaintext file, runs a backup or enables daily scheduling; it refuses unexpected existing protections rather than weakening them.
+
+Dispatch qualification on main; verify completion metadata and actual authenticated archive/readback. Demonstrate an independent hosted run while the shop laptop is off. Only after those pass may the separate daily switch be enabled. Record the workflow commit/run, monitoring schedule, delivery evidence and the first scheduled run. Keep the independent monitor armed and investigate missing runs, quota failures and revoked grants. [Private installer steps](pilot-hosted-backup-install.md).
 
 ## Developer checks
 
