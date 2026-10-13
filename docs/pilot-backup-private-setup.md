@@ -67,6 +67,8 @@ Later 13 October format correction: the specific safe failure pointed to the Des
 
 ## Still required before real entry
 
+**13 October consent result:** the user reports PASS after the client-format fix. The helper's success checks the client, account and selected private folder before saving the grant. This is human-reported execution, not an agent credential read. Do not repeat client creation, consent or completed Google setup. Actual unattended refresh/export/upload/readback and recovery remain the next checks.
+
 This setup does **not** prove an independent backup, restore, key recovery, 90-day expiry cleanup, email delivery or laptop-off schedule. Those require a real encrypted export, Drive readback, separate timed restore, actual archive/quota measurements, retention rehearsal, delivered failure/missed-run alerts and a verified hosted run. The schedule stays disabled until those results pass.
 
 Agreed storage budget: 5 GB total, 1 GB reserve, 4 GB usable for 90 archives. An equal-size daily archive must stay at or below 44,444,444 bytes (about 44.4 MB). Actual archive size and Drive usage still need measurement; this is a limit, not a prediction of the shop's future data growth.

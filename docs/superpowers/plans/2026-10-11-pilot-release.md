@@ -49,6 +49,7 @@ Interfaces: validate_runtime(settings), load_settings(directory), check_database
 
 ## Task 3: operational recovery and schedule
 
+- [x] Human reports narrow private folder-consent PASS after client compatibility fix (13 October); real unattended refresh/export/readback remains separate.
 - [ ] Verify remaining unattended OAuth/key/retention/alert prerequisites from source and existing evidence.
 - [ ] Complete justified core tooling gaps with fictional tests before the private handoff.
 - [ ] Human qualifies authenticated export/upload/readback/separate restore/key recovery and real archive size.
@@ -64,6 +65,7 @@ Interfaces: validate_runtime(settings), load_settings(directory), check_database
 
 ## Execution ledger
 
+- 13 October: human reports private consent PASS after `48f34f1`; no actual credentials inspected. Twelve fictional backup-job/budget checks pass. Docker's initially failed/stopped engine recovered after a bounded restart; server 29.8.0 and pinned client image/context verified. [First-backup handoff](../../pilot-first-backup.md) prepares private key/work-folder settings and one actual backup command, requesting only archive bytes/safe status. No real backup, scheduler, cleanup or release activation.
 - 12 October Google Cloud milestone: human-only setup returned final PASS; after restart the MCP is available and authenticated. Expected business account/project scope explicitly selected; project ACTIVE readback passed. Enabled only Google Drive/Picker APIs and verified each as ENABLED. The user subsequently confirms Branding created. No billing activation, paid resource, secret read or backup activation. Scope selection/production consent/Desktop client/private backup grant remain pending human steps; never repeat completed installation/sign-in/API/Branding setup.
 - 11 October continuation: user reports existing cross-device workflow trials; do not repeat the whole rehearsal. Key creation returned private PASS; both separate private recoverable copies are now human-confirmed. Company email is primary for operational alerts, GitHub secondary. No actual grant/export/restore/delivered alerts/retention/PC-off schedule qualification yet.
 - Local recovery tools: drive_authorize.py implements human-only narrow folder consent with PKCE/state/loopback/private status, and init_backup_key secures the empty file before key creation. Nine new consent tests/two key tests and existing regressions pass 35 focused checks; no real private files were read or used by the agent.
