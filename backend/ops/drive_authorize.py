@@ -41,7 +41,9 @@ def validate_client(data):
     if not isinstance(data, dict) or not isinstance(data.get("installed"), dict):
         raise ValueError("Use the downloaded Google Desktop application client")
     client = data.get("installed", {})
-    if (client.get("auth_uri"), client.get("token_uri")) != (AUTH_URL, TOKEN_URL):
+    # Google downloads may name older endpoints; requests still use our pinned URLs.
+    if (client.get("auth_uri") not in (AUTH_URL, "https://accounts.google.com/o/oauth2/auth")
+            or client.get("token_uri") not in (TOKEN_URL, "https://accounts.google.com/o/oauth2/token")):
         raise ValueError("Use the downloaded Google Desktop application client")
     if not private_value(client.get("client_id")).endswith(".apps.googleusercontent.com"):
         raise ValueError("Invalid Google client")

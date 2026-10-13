@@ -69,6 +69,39 @@ class GrantTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 grant.validate_destination(settings | changes)
 
+    def test_google_download_endpoint_metadata_is_accepted_but_requests_stay_pinned(self):
+        for auth_uri in ["https://accounts.google.com/o/oauth2/auth", grant.AUTH_URL]:
+            for token_uri in ["https://accounts.google.com/o/oauth2/token", grant.TOKEN_URL]:
+                with self.subTest(auth_uri=auth_uri, token_uri=token_uri):
+                    client = CLIENT | {"auth_uri": auth_uri, "token_uri": token_uri}
+                    self.assertEqual(grant.validate_client({"installed": client}), client)
+                    url = grant.authorization_url(client, "folder_fixture", "owner@example.invalid",
+                                                  "http://127.0.0.1:43210/callback", "state", "verifier")
+                    parsed = urlsplit(url)
+                    self.assertEqual(parsed.scheme + "://" + parsed.netloc + parsed.path, grant.AUTH_URL)
+                    class Transport:
+                        def open(self, request, timeout):
+                            self.request = request
+                            return Reply(TOKENS)
+                    transport = Transport()
+                    grant.exchange_code(client, "fictional-code", "http://127.0.0.1:43210/callback",
+                                        "verifier", opener=transport)
+                    self.assertEqual(transport.request.full_url, grant.TOKEN_URL)
+
+    def test_download_metadata_rejects_host_spoofing_http_queries_and_web_clients(self):
+        for field, uri in [
+            ("auth_uri", "http://accounts.google.com/o/oauth2/auth"),
+            ("auth_uri", "https://accounts.google.com.untrusted.invalid/o/oauth2/auth"),
+            ("auth_uri", "https://accounts.google.com/o/oauth2/auth?redirect=untrusted"),
+            ("token_uri", "https://oauth2.googleapis.com.untrusted.invalid/token"),
+            ("token_uri", "https://accounts.google.com/o/oauth2/token#untrusted"),
+            ("token_uri", "http://accounts.google.com/o/oauth2/token"),
+        ]:
+            with self.subTest(field=field, uri=uri), self.assertRaises(ValueError):
+                grant.validate_client({"installed": CLIENT | {field: uri}})
+        with self.assertRaises(ValueError):
+            grant.validate_client({"web": CLIENT | {"auth_uri": "https://accounts.google.com/o/oauth2/auth"}})
+
     def test_token_exchange_is_post_only_pkce_and_requires_reusable_narrow_grant(self):
         class Transport:
             def open(self, request, timeout):
