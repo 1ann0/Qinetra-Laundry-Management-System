@@ -21,6 +21,7 @@ from alert_settings import update_alert_settings
 from customer_phone import normalize_kenyan_phone
 from ops.backup import export_database, restore_database
 from ops.schema_setup import backup_access_sql, runtime_access_sql, verify_schema
+from ops.verify_pilot_restore import restore_and_compare
 
 
 def must_be_denied(engine, query):
@@ -124,6 +125,8 @@ def main_rehearsal(container, client_image=None):
                 restore_file, _ = export_database(client_url, "qlms", key, Path(folder) / "cloud-client", client_image=client_image)
                 print("Pinned cloud PostgreSQL client exported the restricted fictional schema.")
             restore_database(backup_url, restore_url, restore_file, key, container=container)
+            tables = restore_and_compare(backup_url, restore_file, key, required_roles=(runtime_name, backup_name))
+            print(f"Fresh disposable recovery helper verified {tables} fictional tables and sequence values; temporary container removed.")
         with sessionmaker(bind=restored)() as db:
             verify_schema(db, "qlms")
             order = main.get_order(order_id, db, db.get(models.User, owner_id))

@@ -2,6 +2,8 @@
 
 Prepared 13 October 2026. The user reports the folder-consent helper passed. No Google setup or consent repeat is needed. This first run uses the existing pilot-only restricted backup connection, selected private Drive folder and original recovery key. It does not enable a schedule, clean up archives, change the database or authorize real-customer entry.
 
+**Completed actual run, 13 October:** the human supplied the safe success output: encrypted archive **103,411 bytes**; **90 equal-size copies = 9,306,990 bytes** (9.31 MB, about 0.19% of the approved 5 GB). The runner confirms fresh offline-token refresh, restricted export, private Drive upload and authenticated remote readback. This is a snapshot measurement, not a growth forecast or timed restoration. Preserve it; do not rerun the completed first-backup step. Next: [private recovery proof](pilot-restore-proof.md).
+
 ## Ready checks
 
 - The original Desktop client compatibility fix passed 24 fictional consent/storage checks. The user subsequently reports PASS from the actual helper; credential contents stayed private.
