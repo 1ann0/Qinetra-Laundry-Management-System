@@ -2,6 +2,8 @@
 
 Prepared 13 October 2026. The first actual backup passed: 103,411 encrypted bytes, 9,306,990 bytes for 90 equal-size copies. No OAuth/account setup or new backup is needed. The independent restore remains unverified until the human supplies the result below.
 
+**Subsequent human result:** user reports **PASS** from the guided actual helper. This resolves private fresh-download/copy-key/local-restore/comparison/cleanup execution as human-reported, without inspecting credentials or records. Exact duration/table-count output was not supplied. Do not repeat the completed check. Continue with [backup automation qualification](pilot-backup-activation.md).
+
 ## What this checks
 
 `ops.verify_pilot_restore` uses the existing private backup settings and success marker. It downloads the verified archive afresh from the expected private Drive destination, authenticates it using a separately stored recovery-key copy and restores into a newly created local PostgreSQL container. It compares every table's rows, including duplicate rows, and sequence values with the authenticated archive. It does not connect to the pilot database, upload/delete Drive files or activate scheduling.

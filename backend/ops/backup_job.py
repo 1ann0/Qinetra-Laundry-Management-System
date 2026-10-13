@@ -47,6 +47,10 @@ def run_job(configuration_file=None):
         raise ValueError("Backup key must contain exactly 32 bytes")
     storage, client_image, retention, projection = None, None, None, None
     schema = settings.get("QLMS_DB_SCHEMA", "qlms")
+    cleanup_value = settings.get("QLMS_BACKUP_CLEANUP_ENABLED") or "false"
+    if cleanup_value not in {"true", "false"} or cleanup_value == "true" and not cloud:
+        raise ValueError("Invalid cloud retention activation")
+    cleanup = cleanup_value == "true"
     if cloud:
         if (parsed.username or "").split(".", 1)[0] != "qlms_backup" or schema != "qlms":
             raise ValueError("Cloud export requires the restricted backup role and private schema")
@@ -56,13 +60,15 @@ def run_job(configuration_file=None):
         retention = int(settings["QLMS_BACKUP_RETENTION_DAYS"])
         if not 1 <= retention <= 3650:
             raise ValueError("Invalid agreed retention period")
+        if cleanup and retention != 90:
+            raise ValueError("Cleanup requires the approved 90-day policy")
         budget = int(settings.get("QLMS_BACKUP_STORAGE_BUDGET_BYTES") or APPROVED_BUDGET_BYTES)
         if not 1 <= budget <= APPROVED_BUDGET_BYTES:
             raise ValueError("Invalid approved backup storage budget")
         token = refresh_access_token(settings["QLMS_DRIVE_CLIENT_ID"], settings["QLMS_DRIVE_CLIENT_SECRET"], settings["QLMS_DRIVE_REFRESH_TOKEN"])
         storage = DriveStorage(token, settings["QLMS_BACKUP_DRIVE_ACCOUNT"], settings["QLMS_BACKUP_DRIVE_FOLDER_ID"])
         storage.check_destination()
-    # Do not load DATABASE_URL/SECRET_KEY from the application or enable automatic deletion.
+    # Application credentials are not loaded; expiry is separately gated below.
     encrypted, copied = export_database(url, schema, key, settings["QLMS_BACKUP_LOCAL_FOLDER"],
                                        None if cloud else settings["QLMS_BACKUP_INDEPENDENT_FOLDER"], client_image=client_image)
     if cloud:
@@ -72,16 +78,22 @@ def run_job(configuration_file=None):
     if cloud and (not isinstance(remote_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{3,200}", remote_id)):
         raise ValueError("Cloud backup has no verified remote reference")
     marker = Path(settings["QLMS_BACKUP_LOCAL_FOLDER"]) / "last-success.json"
-    marker.write_text(json.dumps({"completed_at": datetime.now(timezone.utc).isoformat(),
-                                 "archive": encrypted.name, "second_copy_verified": copied is not None,
-                                 "remote_upload_verified": remote_id is not None,
-                                 "remote_file_id": remote_id, "archive_bytes": encrypted.stat().st_size,
-                                 "retention_days": retention, "automatic_deletion": False,
-                                 **(projection or {})}) + "\n", encoding="utf-8")
+    marker_data = {"completed_at": datetime.now(timezone.utc).isoformat(),
+                   "archive": encrypted.name, "second_copy_verified": copied is not None,
+                   "remote_upload_verified": remote_id is not None,
+                   "remote_file_id": remote_id, "archive_bytes": encrypted.stat().st_size,
+                   "retention_days": retention, "automatic_deletion": cleanup,
+                   "retention_completed": False if cleanup else None, **(projection or {})}
+    # Record the verified new copy before cleanup, so a cleanup failure cannot lose its reference.
+    marker.write_text(json.dumps(marker_data) + "\n", encoding="utf-8")
+    if cleanup:
+        removed = storage.prune_expired(key, settings["QLMS_BACKUP_PROJECT_REF"], remote_id, retention)
+        marker_data.update(retention_completed=True, expired_archives_removed=removed)
+        marker.write_text(json.dumps(marker_data) + "\n", encoding="utf-8")
     if projection:
         print(f"Verified archive: {projection['archive_bytes']} bytes; {retention} equal-size copies: "
               f"{projection['projected_retained_bytes']} bytes. This is a projection, not a growth forecast; "
-              "retention cleanup remains inactive.")
+              + ("90-day retention cleanup completed." if cleanup else "retention cleanup remains inactive."))
     return remote_id is not None
 
 

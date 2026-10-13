@@ -2,6 +2,8 @@
 
 Updated 13 October 2026. Start here when continuing in a fresh task.
 
+**Latest recovery result:** the human reports actual `ops.verify_pilot_restore` **PASS**, after selecting a separately stored key copy. Accept the helper's successful fresh Drive download/authentication, separate local restoration, row/sequence comparison and temporary cleanup as human-reported; exact duration/table-count line was not supplied. Do not repeat restore, Drive setup or key creation. The monitoring account is now human-confirmed ready; private check/URL setup and delivered failure/missing-run proof are pending. [Finish backup automation](pilot-backup-activation.md) records the bounded cleanup/monitor implementation and human-only commands. Cleanup defaults false and daily scheduling remains disabled; hosted secret installation/default-branch publication/PC-off proof are not complete.
+
 ## Objective and working rules
 
 Make the single-shop pilot dependable and simple enough for daily use. Finish and verify one increment at a time. Be direct about defects, unfinished work and release limits. The user has approved the reliability fixes below and asked to continue; ask only for missing business decisions or a concrete production cutover approval.

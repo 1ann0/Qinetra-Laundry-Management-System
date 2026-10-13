@@ -67,6 +67,8 @@ Later 13 October format correction: the specific safe failure pointed to the Des
 
 ## Still required before real entry
 
+**Latest 13 October actual evidence:** human-supplied backup output confirms restricted encrypted export/Drive readback at 103,411 bytes; the human then reports separate copy-key restore PASS. The earlier pending statements below are historical. Exact restore timing was not supplied. Do not repeat consent, export or restore. Retention/delivery/hosted activation steps are in [pilot-backup-activation.md](pilot-backup-activation.md).
+
 **13 October consent result:** the user reports PASS after the client-format fix. The helper's success checks the client, account and selected private folder before saving the grant. This is human-reported execution, not an agent credential read. Do not repeat client creation, consent or completed Google setup. Actual unattended refresh/export/upload/readback and recovery remain the next checks.
 
 This setup does **not** prove an independent backup, restore, key recovery, 90-day expiry cleanup, email delivery or laptop-off schedule. Those require a real encrypted export, Drive readback, separate timed restore, actual archive/quota measurements, retention rehearsal, delivered failure/missed-run alerts and a verified hosted run. The schedule stays disabled until those results pass.

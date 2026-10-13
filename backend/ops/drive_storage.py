@@ -1,5 +1,6 @@
 """Private Drive transport; success requires authenticated remote readback."""
 import hashlib
+from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 import re
@@ -70,7 +71,7 @@ class DriveStorage:
     def metadata(self, file_id):
         if not re.fullmatch(r"[A-Za-z0-9_-]{3,200}", file_id or ""):
             raise ValueError("Invalid Drive file reference")
-        fields = "id,mimeType,trashed,shared,permissions(type,role,emailAddress),parents,size,capabilities(canAddChildren)"
+        fields = "id,name,mimeType,trashed,shared,permissions(type,role,emailAddress),parents,size,capabilities(canAddChildren,canDelete)"
         data, _ = self.request(API + "/files/" + file_id + "?" + urlencode({"fields": fields}))
         return json.loads(data)
 
@@ -104,6 +105,84 @@ class DriveStorage:
         if available - archive_bytes < reserved_bytes:
             raise ValueError("Actual Drive free space cannot preserve the backup headroom")
         return available
+
+    def archive_identity(self, file_id, key, expected_project):
+        remote = self.metadata(file_id)
+        if (not self.private_owner(remote, file_id) or remote.get("parents") != [self.folder_id]
+                or remote.get("mimeType") != "application/octet-stream"
+                or not re.fullmatch(r"[0-9]{1,10}", remote.get("size") or "")
+                or not 0 < int(remote["size"]) <= MAX_ENVELOPE):
+            raise ValueError("Retention archive is outside the private destination")
+        envelope, _ = self.request(API + "/files/" + file_id + "?alt=media", limit=int(remote["size"]))
+        dump, metadata = decrypt_export(envelope, key)
+        created = datetime.fromisoformat(metadata.get("created_at") or "")
+        if (len(envelope) != int(remote["size"]) or metadata.get("schema") != "qlms"
+                or metadata.get("source_ref") != expected_project or not dump.startswith(b"PGDMP")
+                or hashlib.sha256(dump).hexdigest() != metadata.get("archive_sha256")
+                or created.tzinfo is None
+                or remote.get("name") != created.astimezone(timezone.utc).strftime("qlms-%Y%m%dT%H%M%S%fZ.qlmsbackup")):
+            raise ValueError("Retention requires a matching authenticated QLMS archive")
+        return created.astimezone(timezone.utc), hashlib.sha256(envelope).digest(), remote
+
+    def expired_archives(self, key, expected_project, keep_id, retention_days, *, now=None):
+        if retention_days != 90 or not re.fullmatch(r"[a-z]{20}", expected_project):
+            raise ValueError("Use the approved 90-day pilot policy")
+        now = now or datetime.now(timezone.utc)
+        if now.tzinfo is None:
+            raise ValueError("Retention needs an explicit time zone")
+        self.check_destination()
+        created, _, _ = self.archive_identity(keep_id, key, expected_project)
+        if not now - timedelta(hours=2) <= created <= now + timedelta(minutes=5):
+            raise ValueError("Cleanup requires a freshly authenticated backup")
+        cutoff, page, seen_pages, files = now - timedelta(days=90), None, set(), {}
+        while True:
+            parameters = {"q": "'" + self.folder_id + "' in parents and trashed=false",
+                          "fields": "nextPageToken,incompleteSearch,files(id,name)", "pageSize": 1000}
+            if page:
+                parameters["pageToken"] = page
+            data, _ = self.request(API + "/files?" + urlencode(parameters))
+            result = json.loads(data)
+            if result.get("incompleteSearch", False) is not False or not isinstance(result.get("files"), list):
+                raise ValueError("Retention requires a complete folder listing")
+            for item in result["files"]:
+                if (not re.fullmatch(r"[A-Za-z0-9_-]{3,200}", item.get("id") or "")
+                        or not isinstance(item.get("name"), str) or item["id"] in files):
+                    raise ValueError("Invalid retention folder listing")
+                files[item["id"]] = item["name"]
+            if len(files) > 2000:
+                raise ValueError("Review the retention backlog privately")
+            page = result.get("nextPageToken")
+            if not page:
+                break
+            if not isinstance(page, str) or len(page) > 8192 or page in seen_pages or len(seen_pages) >= 10:
+                raise ValueError("Invalid retention pagination")
+            seen_pages.add(page)
+        expired = []
+        for file_id, name in files.items():
+            match = re.fullmatch(r"qlms-([0-9]{8}T[0-9]{12}Z)\.qlmsbackup", name)
+            if file_id == keep_id or not match:
+                continue
+            named_time = datetime.strptime(match[1], "%Y%m%dT%H%M%S%fZ").replace(tzinfo=timezone.utc)
+            if named_time >= cutoff:
+                continue
+            created, digest, remote = self.archive_identity(file_id, key, expected_project)
+            if created >= cutoff or remote.get("capabilities", {}).get("canDelete") is not True:
+                raise ValueError("Expired archive cannot be safely removed")
+            expired.append((file_id, digest))
+        # Validate the entire plan before any deletion; unrelated files are preserved.
+        return expired
+
+    def prune_expired(self, key, expected_project, keep_id, retention_days):
+        expired = self.expired_archives(key, expected_project, keep_id, retention_days)
+        for file_id, digest in expired:
+            self.check_destination()
+            self.archive_identity(keep_id, key, expected_project)
+            _, current, remote = self.archive_identity(file_id, key, expected_project)
+            if current != digest or remote.get("capabilities", {}).get("canDelete") is not True:
+                raise ValueError("Expired archive changed after planning")
+            # A failed or uncertain DELETE is not retried. The fresh backup is never selected.
+            self.request(API + "/files/" + file_id, method="DELETE")
+        return len(expired)
 
     def upload_verified(self, archive_path, key):
         path = Path(archive_path)

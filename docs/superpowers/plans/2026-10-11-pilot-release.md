@@ -51,9 +51,11 @@ Interfaces: validate_runtime(settings), load_settings(directory), check_database
 
 - [x] Human reports narrow private folder-consent PASS after client compatibility fix (13 October); real unattended refresh/export/readback remains separate.
 - [x] Human supplies actual export/upload/authenticated-readback PASS: 103,411 bytes; 90 equal-size copies 9,306,990 bytes (13 October).
+- [x] Human reports actual fresh-download/copy-key/separate-local-restore PASS; exact result duration/count not supplied. Do not repeat the completed private step.
+- [x] Monitoring account ready by human report; new private check/URL and actual failure/missing-run delivery are pending.
 - [ ] Verify remaining unattended OAuth/key/retention/alert prerequisites from source and existing evidence.
 - [ ] Complete justified core tooling gaps with fictional tests before the private handoff.
-- [ ] Human qualifies authenticated export/upload/readback/separate restore/key recovery and real archive size.
+- [x] Human qualifies export/upload/readback, controlled separate local restore/key copy and real archive size; replacement hosted API recovery remains a separate operating procedure.
 - [ ] Qualify 90-day retention against 5 GB and hosted execution with PC off; delivered failure/missed-run alerts.
 - [ ] Activate only after those gates pass; no silent default-branch merge.
 
@@ -66,6 +68,7 @@ Interfaces: validate_runtime(settings), load_settings(directory), check_database
 
 ## Execution ledger
 
+- 13 October continuation: actual restore PASS received; no private data read. Free independent Healthchecks account is now human-confirmed ready. Default-off 90-day expiry/monitor/qualification helpers are prepared with no dependencies. Full backend/PostgreSQL suite: 286 tests, 95.831 s; full fictional recovery 38.9 s. Final fresh-copy recheck and all qualification cases: 52 focused checks, 0.882 s; actionlint accepts both workflows. The test runner uses the restore's pinned image and disables implicit application dotenv loading. No remote publication, default-branch merge, private secret installation, real cleanup/delivery or hosted schedule activation. [Activation guide](../../pilot-backup-activation.md) preserves those boundaries.
 - 13 October actual backup passed by safe human screenshot; storage measurement is 103,411 bytes and 9,306,990 bytes for 90 equal-size copies. Created the human-only fresh-download/copy-key/timed-local-restore helper; no actual secret/record loaded by the agent. Developer rehearsal compares all 22 fictional tables and sequences and removes its generated container. Actual private restore result remains pending; cleanup policy/alerts/hosted activation stay off. Instructions: [restore proof](../../pilot-restore-proof.md).
 - 13 October: human reports private consent PASS after `48f34f1`; no actual credentials inspected. Twelve fictional backup-job/budget checks pass. Docker's initially failed/stopped engine recovered after a bounded restart; server 29.8.0 and pinned client image/context verified. [First-backup handoff](../../pilot-first-backup.md) prepares private key/work-folder settings and one actual backup command, requesting only archive bytes/safe status. No real backup, scheduler, cleanup or release activation.
 - 12 October Google Cloud milestone: human-only setup returned final PASS; after restart the MCP is available and authenticated. Expected business account/project scope explicitly selected; project ACTIVE readback passed. Enabled only Google Drive/Picker APIs and verified each as ENABLED. The user subsequently confirms Branding created. No billing activation, paid resource, secret read or backup activation. Scope selection/production consent/Desktop client/private backup grant remain pending human steps; never repeat completed installation/sign-in/API/Branding setup.

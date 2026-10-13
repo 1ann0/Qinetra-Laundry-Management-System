@@ -73,6 +73,31 @@ class HostedBackupJobTests(unittest.TestCase):
         drive.return_value.upload_verified.assert_not_called()
         self.assertEqual(marker.read_text(), '{"completed_at":"previous"}')
 
+    def test_cleanup_only_follows_verified_new_copy_and_records_completion(self):
+        with patch.dict(os.environ, self.settings | {"QLMS_BACKUP_CLEANUP_ENABLED": "true"}, clear=True), \
+                patch("ops.backup_job.refresh_access_token", return_value="fictional"), patch("ops.backup_job.DriveStorage") as drive, \
+                patch("ops.backup_job.export_database", side_effect=self.export_fixture):
+            drive.return_value.upload_verified.return_value = "file_fixture"
+            drive.return_value.prune_expired.return_value = 2
+            self.assertTrue(run_job())
+            drive.return_value.prune_expired.assert_called_once_with(self.key, PROJECT, "file_fixture", 90)
+        marker = json.loads((self.root / "archives" / "last-success.json").read_text())
+        self.assertTrue(marker["retention_completed"])
+        self.assertEqual(marker["expired_archives_removed"], 2)
+
+    def test_cleanup_failure_preserves_reference_to_fresh_verified_copy(self):
+        with patch.dict(os.environ, self.settings | {"QLMS_BACKUP_CLEANUP_ENABLED": "true"}, clear=True), \
+                patch("ops.backup_job.refresh_access_token", return_value="fictional"), patch("ops.backup_job.DriveStorage") as drive, \
+                patch("ops.backup_job.export_database", side_effect=self.export_fixture):
+            drive.return_value.upload_verified.return_value = "file_fixture"
+            drive.return_value.prune_expired.side_effect = RuntimeError("unknown cleanup outcome")
+            with self.assertRaises(RuntimeError):
+                run_job()
+        marker = json.loads((self.root / "archives" / "last-success.json").read_text())
+        self.assertEqual(marker["remote_file_id"], "file_fixture")
+        self.assertTrue(marker["remote_upload_verified"])
+        self.assertFalse(marker["retention_completed"])
+
     def test_retained_projection_blocks_oversize_before_upload(self):
         with patch.dict(os.environ, self.settings | {"QLMS_BACKUP_STORAGE_BUDGET_BYTES": "1000"}, clear=True), \
                 patch("ops.backup_job.refresh_access_token", return_value="fictional"), \
@@ -117,6 +142,8 @@ class HostedBackupJobTests(unittest.TestCase):
                        {"QLMS_BACKUP_KEY_BASE64": base64.b64encode(b"short").decode()},
                        {"QLMS_DB_SCHEMA": "public"}, {"QLMS_BACKUP_PG_CLIENT_IMAGE": "postgres:latest"},
                        {"QLMS_BACKUP_RETENTION_DAYS": "0"},
+                       {"QLMS_BACKUP_CLEANUP_ENABLED": "yes"},
+                       {"QLMS_BACKUP_CLEANUP_ENABLED": "true", "QLMS_BACKUP_RETENTION_DAYS": "30"},
                        {"QLMS_BACKUP_DATABASE_URL": self.settings["QLMS_BACKUP_DATABASE_URL"].replace("qlms_backup.", "postgres.")}]:
             with self.subTest(change=change), patch.dict(os.environ, {**self.settings, **change}, clear=True), \
                  patch("ops.backup_job.export_database") as export, patch("ops.backup_job.refresh_access_token") as refresh:

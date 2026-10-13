@@ -2,6 +2,10 @@
 
 User requirements: daily backup at 22:00 Nairobi while the shop PC may be off, 90-day retention, and separate recovery-key copies for the Qinetra owner and user as technical maintainer. Spend nothing; preserve the existing Drive connections, private destination and all practice records.
 
+## 13 October continuation
+
+The human supplies actual 103,411-byte encrypted Drive backup/readback success and reports separate copy-key restore PASS (exact timing not supplied). The monitoring account is ready by human report. New default-off expiry and independent status-only monitor candidates passed focused fixtures; all 286 backend/PostgreSQL tests and fictional recovery passed, then 52 focused final checks passed. Both workflows pass actionlint. Manual qualification is now separated from the daily-enable switch. No real cleanup/delivery/hosted run or remote activation is claimed. Earlier pending consent/key/export/restore text below is historical. Continue from [pilot-backup-activation.md](pilot-backup-activation.md); do not repeat completed setup.
+
 ## Implementation
 
 - `backend/ops/drive_storage.py` uses the standard Python library and existing encryption functions. It refreshes a separately authorized unattended token, checks account/folder ownership and privacy, uploads encrypted bytes, checks the uploaded file's parent/access/size, downloads the file and authenticates the matching ciphertext/plaintext. It checks the folder again before returning success. No sharing, deletion, public backup endpoint or automatic write retry exists.
