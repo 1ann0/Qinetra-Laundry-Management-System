@@ -1,6 +1,6 @@
 # Owner reports and dashboard increment
 
-Prepared 14 October 2026. This is the approved reporting/dashboard increment; deployment is authorized by the user's request to release each finished feature. Hosting activation and actual Android acceptance are recorded separately below.
+Released 14 October 2026. This is the approved reporting/dashboard increment; deployment is authorized by the user's request to release each finished feature. Actual Android acceptance remains separate below.
 
 ## Implemented
 
@@ -19,7 +19,13 @@ The Owner starts on Today at Qinetra: due/late/ready/overdue laundry, holds, out
 
 ## Release and rollback
 
-No database migration or data import is required. Preserve live Worker `cf2c15f9-90c0-4a53-a6dc-3cc7eefbaadd` and pilot API commit `97686708c2f6e4facf574054850847b50bd0dbbd` as the preceding compatible pair. Publish the reviewed feature branch, verify exact CI, deploy the existing auto-deploy-off pilot API, verify readiness/access/CORS, then upload/read back/activate the matching HTTPS frontend. The original practice API follows main and must remain unchanged. No real customer test writes.
+**Actual release:** source `bf00780b11ef06950713acd02252c46d7ec782e8`, [CI 38553520017](https://github.com/1ann0/Qinetra-Laundry-Management-System/actions/runs/38553520017) passed both jobs and every step. Render pilot deployment `dep-db7m5d49v7es73ci4j7g` is Live at that exact source, finished 14 October 14:09:34 Nairobi. Anonymous reports are 401; readiness is 200/ready; private headers and allowed-origin Content-Disposition exposure passed. No staff credential or live record contents were inspected.
+
+HTTPS frontend image `sha256:7f0e4073618007dbbe93465374f319167bdc21d05c2efebe765f5bc7f2dc07fb` passed all 99 frontend checks, lint, 20-page static build and offline strict Wrangler dry-run. Public manifest SHA256 `81554571d5b44288e603770e142ba27c1524dc594e5f80ac7b79c152283ba861`. Cloudflare plugin reused a short-lived encrypted asset grant; 94 new unique assets uploaded across three buckets, covering 129 public paths. No private account token was read or renewed. The grant/key were cleared from local memory. Worker `975d3ecc-87d9-4d55-bb6e-52456a38dd15` (version 8, 1ms startup) and `_headers` were read back byte-for-byte before activation. Routing, public API binding and compatibility policy match the preceding version.
+
+Deployment `0c374058-7fe5-4caf-bdbc-096099406d6c` is independently read back at 100%, activated **14 October 14:15:31 Nairobi**. All **129 public asset SHA256 hashes** match; login/dashboard/reports/privacy return 200 with the expected private/CSP/HSTS/frame policy. The anonymous browser login page renders normally. Python's default client signature returned Cloudflare 1010; the explicit `QLMS-release-verification/1.0` client passed without any security-setting change. [Public asset manifest](diagrams/evidence/qlms-owner-report-assets-20261014.json), [hosted evidence](diagrams/evidence/qlms-owner-report-hosted-20261014.json).
+
+No database migration or data import occurred. Retain Worker `cf2c15f9-90c0-4a53-a6dc-3cc7eefbaadd` and pilot API commit `97686708c2f6e4facf574054850847b50bd0dbbd` as the preceding compatible pair. The previous frontend can be reactivated without reverting customer data; the new API preserves its existing contracts. The original practice API and main remain unchanged. No real customer test writes.
 
 Actual Android download, locating and opening each file remains unobserved. Simulated phone widths and desktop download proof are not a substitute. Expenses/closing, isolated hosted demo and memberships remain separate unfinished increments. First automatic scheduled backup invocation remains unobserved; actual manual cloud backup qualification and enabled schedule are recorded in `pilot-cloud-backup-qualified.md`.
 
