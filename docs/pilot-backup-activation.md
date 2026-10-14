@@ -1,5 +1,7 @@
 # Finish backup automation — private qualification
 
+**14 October current state:** private installation passed by human report; actual cloud qualification 38456601715 succeeded and the daily switch is verified enabled. The user-approved alternative proves laptop independence through the real hosted runner and inspected inputs rather than a physically powered-off test. The first scheduled run remains unobserved. [Current proof and operating instructions](pilot-cloud-backup-qualified.md) supersede historical pending/disabled statements below; do not repeat completed setup or rehearsals.
+
 13 October 2026. The human reports actual Drive consent, encrypted backup/upload/readback and separate copy-key restore PASS. Archive size is 103,411 bytes; 90 equal-size copies total 9,306,990 bytes (9.31 MB). The full restore result line was not supplied, so its exact duration/table count is not recorded. Do not repeat those completed checks or generate another recovery key.
 
 ## What is prepared
@@ -58,7 +60,7 @@ Once the reviewed workflow/code is on its qualified default branch, the human in
 
 The job-admission switches `QLMS_BACKUP_QUALIFICATION_ENABLED` and `QLMS_HOSTED_BACKUP_ENABLED` must be **repository variables**: [GitHub environment variables arrive after the job starts](https://docs.github.com/en/actions/reference/workflows-and-actions/variables). Secrets, project ref and cleanup permission belong to the main-only environment. Use qualification=true only for the reviewed manual test; keep hosted=false. After the completed retention proof, cleanup may be true. The human-only installer validates the fixed pilot, existing 32-byte key, reviewed workflow checksum, existing GitHub owner and main-only environment before transferring just eight allowlisted secrets through stdin. It never prints values, stages a plaintext file, runs a backup or enables daily scheduling; it refuses unexpected existing protections rather than weakening them.
 
-Dispatch qualification on main; verify completion metadata and actual authenticated archive/readback. Demonstrate an independent hosted run while the shop laptop is off. Only after those pass may the separate daily switch be enabled. Record the workflow commit/run, monitoring schedule, delivery evidence and the first scheduled run. Keep the independent monitor armed and investigate missing runs, quota failures and revoked grants. [Private installer steps](pilot-hosted-backup-install.md).
+Dispatch qualification on main; verify completion metadata and actual authenticated archive/readback. The human now requests a laptop-on alternative: inspect the GitHub-hosted runner, protected environment inputs and direct cloud connections to establish that no laptop service/file/tunnel participates. Combine that inspection with the actual hosted export/readback/retention/completion result; record it accurately rather than claiming an observed powered-off test. Only after those pass may the separate daily switch be enabled. Record the workflow commit/run, monitoring schedule, delivery evidence and the first scheduled run. Keep the independent monitor armed and investigate missing runs, quota failures and revoked grants. [Private installer steps](pilot-hosted-backup-install.md).
 
 ## Developer checks
 
