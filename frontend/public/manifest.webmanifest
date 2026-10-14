@@ -1,0 +1,13 @@
+{
+  "id": "/",
+  "name": "QLMS | Qinetra Laundry",
+  "short_name": "QLMS",
+  "start_url": "/login",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#005AAB",
+  "icons": [
+    { "src": "/qinetra-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

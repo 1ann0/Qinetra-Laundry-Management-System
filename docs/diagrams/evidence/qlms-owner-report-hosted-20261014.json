@@ -654,5 +654,5 @@
       "matched": true
     }
   ],
-  "actualAndroidAndPrivateAuthenticatedChecks": "unobserved"
+  "actualAndroidAndPrivateAuthenticatedChecks": "Owner-reported PASS: Dashboard and both catalogue Excel/CSV downloads and opening on Android, 14 October 2026"
 }

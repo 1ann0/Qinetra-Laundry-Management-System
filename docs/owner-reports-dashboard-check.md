@@ -1,6 +1,6 @@
 # Owner reports and dashboard increment
 
-Released 14 October 2026. This is the approved reporting/dashboard increment; deployment is authorized by the user's request to release each finished feature. Actual Android acceptance remains separate below.
+Released 14 October 2026. This is the approved reporting/dashboard increment; deployment is authorized by the user's request to release each finished feature. The Owner subsequently confirmed that Dashboard and both Android spreadsheet downloads/opening passed.
 
 ## Implemented
 
@@ -27,8 +27,8 @@ Deployment `0c374058-7fe5-4caf-bdbc-096099406d6c` is independently read back at 
 
 No database migration or data import occurred. Retain Worker `cf2c15f9-90c0-4a53-a6dc-3cc7eefbaadd` and pilot API commit `97686708c2f6e4facf574054850847b50bd0dbbd` as the preceding compatible pair. The previous frontend can be reactivated without reverting customer data; the new API preserves its existing contracts. The original practice API and main remain unchanged. No real customer test writes.
 
-Actual Android download, locating and opening each file remains unobserved. Simulated phone widths and desktop download proof are not a substitute. Expenses/closing, isolated hosted demo and memberships remain separate unfinished increments. First automatic scheduled backup invocation remains unobserved; actual manual cloud backup qualification and enabled schedule are recorded in `pilot-cloud-backup-qualified.md`.
+The Owner reported “Dashboard and both phone downloads/open passed” on 14 October. This supplies private human Android acceptance without sharing credentials or exports. Expenses/closing, isolated hosted demo and memberships remain separate unfinished increments. First automatic scheduled backup invocation remains unobserved; actual manual cloud backup qualification and enabled schedule are recorded in `pilot-cloud-backup-qualified.md`.
 
 ## Private Owner acceptance
 
-Sign in privately at the final site after release. Dashboard attention links should open their filtered tickets. Reports -> Shop catalogue should download the 22 services and 30 clothing types, and Employees should remain on daily work. On Android download both Excel and CSV, locate them in Files -> Downloads and open them in a spreadsheet app. Keep credentials and real customer exports outside chat. No practice transactions should be entered into the live pilot for this check.
+Passed: private Owner Dashboard access and Reports -> Shop catalogue Excel/CSV download, locating and opening on Android. Owner-reported Render usage is 6.27 of 750 shared free instance hours, approximately 743.73 hours remaining at that observation; this is a reported billing figure, not an independent provider readback. Keep the demo suspended between presentations once it exists.

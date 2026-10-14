@@ -5,6 +5,8 @@ import "./globals.css";
 export const metadata = {
   title: "QLMS | Qinetra Laundry",
   description: "Staff order tracking for Qinetra Laundry",
+  icons: { icon: [{ url: "/qinetra-icon.svg", type: "image/svg+xml" }] },
+  manifest: "/manifest.webmanifest",
 };
 
 export default function RootLayout({ children }) {
