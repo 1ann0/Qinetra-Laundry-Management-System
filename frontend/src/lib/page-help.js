@@ -36,9 +36,14 @@ const PAGE_HELP = {
     {targetId: "receipt-payments-step", title: "Check money received", description: "Read the payment history first. Add only a confirmed payment and check the date and amount. Owner corrections keep a history."},
   ],
   "/dashboard": [
-    {targetId: "dashboard-attention-step", title: "See money still owed", description: "This is the current balance remaining. Open outstanding orders to find the tickets."},
-    {targetId: "dashboard-summary-step", title: "Check the workload", description: "These are current order counts. Ready clothes have finished laundry work and are waiting for collection."},
-    {targetId: "dashboard-export-step", title: "Download order records", description: "Download the CSV to your device and open it in a spreadsheet app. Editing the spreadsheet does not change QLMS."},
+    {targetId: "dashboard-attention-step", title: "Choose what needs attention", description: "Open a list to see due laundry, late work, uncollected clothes or money still owed. These are the shop's current tickets."},
+    {targetId: "dashboard-money-step", title: "Choose the money dates", description: "Apply dates to see cash, M-Pesa and returns in that period. Payments received are not profit; costs matter too."},
+    {targetId: "dashboard-export-step", title: "Check and download this report", description: "Open the report for the displayed dates, then save Excel or CSV. Spreadsheet edits do not change QLMS."},
+  ],
+  "/reports": [
+    {targetId: "reports-filters-step", title: "Choose the records", description: "Choose a report, then search for a customer or service and set any dates. Select View report to apply the choices."},
+    {targetId: "reports-preview-step", title: "Check the meaning", description: "Work uses booking dates; payments use received dates. Current balances show what is owed now, even when you choose older dates."},
+    {targetId: "reports-download-step", title: "Save a spreadsheet", description: "Download Excel or CSV from the displayed report. On a phone, look in Files, then Downloads. Editing that file does not change QLMS."},
   ],
   "/finance": [
     {targetId: "finance-period-step", title: "Choose the dates", description: "Choose a quick period or enter start and end dates. Apply the dates before reading the figures."},

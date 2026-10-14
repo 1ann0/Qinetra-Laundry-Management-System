@@ -48,7 +48,7 @@ class AuthenticationContractTests(unittest.TestCase):
         }
 
         for route in main.app.routes:
-            for method in route.methods or set():
+            for method in getattr(route, "methods", None) or set():
                 route_key = (method, route.path)
                 if route_key not in operational_routes:
                     continue

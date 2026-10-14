@@ -223,7 +223,7 @@ class OrderSearchContractTests(unittest.TestCase):
         order_route = next(
             route
             for route in main.app.routes
-            if route.path == "/orders" and "GET" in (route.methods or set())
+            if getattr(route, "path", None) == "/orders" and "GET" in (route.methods or set())
         )
         dependency_calls = {
             dependency.call for dependency in order_route.dependant.dependencies

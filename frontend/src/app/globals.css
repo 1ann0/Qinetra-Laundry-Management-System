@@ -355,6 +355,19 @@ a {
   background: var(--soft-blue);
 }
 
+.primary-button:active:not(:disabled),
+.secondary-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary-button,
+  .secondary-button {
+    transition: none;
+    transform: none !important;
+  }
+}
+
 .app-shell {
   --sidebar-width: 250px;
   display: flex;
@@ -840,6 +853,8 @@ a {
     min-height: 40px;
     padding: 0 11px;
     font-size: 0.82rem;
+    flex-shrink: 0;
+    white-space: nowrap;
   }
 
   .app-main {

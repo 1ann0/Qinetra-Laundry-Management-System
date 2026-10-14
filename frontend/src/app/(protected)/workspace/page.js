@@ -26,7 +26,7 @@ const SHORTCUTS = [
   },
   {
     title: "Owner dashboard",
-    description: "Review order totals, outstanding balances and download order records.",
+    description: "See work needing attention, current balances and money received.",
     actions: [{ label: "View dashboard", href: "/dashboard" }],
     ownerOnly: true,
   },

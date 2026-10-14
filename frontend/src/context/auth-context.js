@@ -492,7 +492,9 @@ export function AuthProvider({ children }) {
           ...options,
           token: currentSession.token,
         }));
-        if (sessionRef.current?.userId !== currentSession.userId) {
+        if (sessionRef.current?.userId !== currentSession.userId || (options.responseType === "blob" &&
+            (!sessionRef.current?.token || sessionRef.current?.role !== currentSession.role ||
+             sessionRef.current?.expiresAt <= Date.now() || checkInactivity()))) {
           throw new ApiError("Your sign-in changed. Open this page again under your current account.", 0, "QLMS-ACCOUNT");
         }
         return response;

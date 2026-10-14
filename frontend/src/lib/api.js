@@ -38,7 +38,11 @@ function getApiBaseUrl() {
 }
 
 export async function apiRequest(path, options = {}) {
-  const { token, headers, signal, ...fetchOptions } = options;
+  const { token, headers, signal, responseType, ...fetchOptions } = options;
+  const isBinaryReport = responseType === "blob" && /^\/dashboard\/reports\/(orders|customer|service|money|attention|catalogue)\/download(?:\?|$)/.test(path);
+  if (responseType && (responseType !== "blob" || !isBinaryReport || (fetchOptions.method || "GET").toUpperCase() !== "GET")) {
+    throw new ApiError("QLMS could not prepare this download. Contact support.", 0, "QLMS-RESPONSE");
+  }
   const requestHeaders = new Headers(headers);
 
   if (token) {
@@ -91,7 +95,7 @@ export async function apiRequest(path, options = {}) {
     const contentType = response.headers.get("content-type") || "";
     let payload;
     try {
-      payload = contentType.includes("application/json")
+      payload = isBinaryReport && response.ok ? await response.blob() : contentType.includes("application/json")
         ? await response.json()
         : await response.text();
     } catch (error) {
@@ -101,6 +105,16 @@ export async function apiRequest(path, options = {}) {
       }
     }
     if (!response.ok) throw responseError(response.status, payload, path, recovery);
+    if (isBinaryReport) {
+      const requestedFormat = new URLSearchParams(path.split("?")[1] || "").get("format") || "xlsx";
+      const expectedType = requestedFormat === "csv" ? "text/csv" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+      const filename = response.headers.get("content-disposition")?.match(/filename="(qlms_[A-Za-z0-9_.-]{1,170})"/)?.[1];
+      if (!contentType.toLowerCase().startsWith(expectedType) || !filename?.endsWith(`.${requestedFormat}`)) {
+        throw new ApiError("QLMS could not read the report. Try again or contact support.", response.status, "QLMS-RESPONSE");
+      }
+      if (controller.signal.aborted) throw new Error("Request aborted");
+      return { blob: payload, filename };
+    }
     const isReport = path.split("?")[0] === "/dashboard/export" && /text\/(csv|plain)/.test(contentType);
     if (!isReport && (!contentType.includes("application/json") || payload === null || typeof payload !== "object")) {
       throw new ApiError(`QLMS could not read the reply. ${recovery} Contact support.`, response.status, "QLMS-RESPONSE");

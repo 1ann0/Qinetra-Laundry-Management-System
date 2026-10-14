@@ -4,6 +4,57 @@ import { ApiError, apiRequest, loginRequest } from "../src/lib/api.js";
 import { getUserMessage, responseError } from "../src/lib/user-messages.js";
 
 const originalApiUrl = process.env.NEXT_PUBLIC_API_URL;
+test("report size failures explain how to narrow filters without exposing server details", () => {
+  const error = responseError(413, { detail: "private database content" }, "/dashboard/reports/orders/download", "Try again.");
+  assert.match(error.message, /narrow|fewer|shorter/i);
+  assert.doesNotMatch(error.message, /private database content/);
+});
+
+test("report filter failures tell the owner to select the required customer or service", () => {
+  const error = responseError(422, { detail: "Select the customer or service for this report" }, "/dashboard/reports/customer", "Try again.");
+  assert.match(error.message, /choose|select/i);
+  assert.match(error.message, /customer or service/i);
+});
+
+test("authenticated XLSX download returns its binary body and safe dated filename", async (t) => {
+  const bytes = new Uint8Array([80, 75, 3, 4]);
+  t.mock.method(globalThis, "fetch", async (_url, options) => {
+    assert.equal(options.headers.get("authorization"), "Bearer fictional-token");
+    assert.equal(options.responseType, undefined);
+    return new Response(bytes, { headers: {
+      "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "content-disposition": 'attachment; filename="qlms_orders_current_20261013.xlsx"',
+    } });
+  });
+  const result = await apiRequest("/dashboard/reports/orders/download?format=xlsx", { token: "fictional-token", responseType: "blob" });
+  assert.equal(result.filename, "qlms_orders_current_20261013.xlsx");
+  assert.deepEqual(new Uint8Array(await result.blob.arrayBuffer()), bytes);
+});
+
+test("binary downloads preserve sign-in errors and refuse HTML or unsafe filenames", async (t) => {
+  for (const response of [
+    new Response("<html>private</html>", { status: 401 }),
+    new Response("<html>private</html>", { headers: { "content-type": "text/html" } }),
+    new Response('{"private":"not a report"}', { headers: { "content-type": "application/json" } }),
+    new Response("csv", { headers: { "content-type": "text/csv", "content-disposition": 'attachment; filename="../private.csv"' } }),
+  ]) {
+    t.mock.method(globalThis, "fetch", async () => response);
+    await assert.rejects(apiRequest("/dashboard/reports/orders/download?format=csv", { responseType: "blob" }),
+      { code: response.status === 401 ? "QLMS-SIGNIN" : "QLMS-RESPONSE" });
+  }
+});
+
+test("binary reply parsing stays inside the existing request deadline", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  t.mock.method(globalThis, "fetch", async (_url, { signal }) => ({
+    ok: true, status: 200, headers: new Headers({ "content-type": "text/csv", "content-disposition": 'attachment; filename="qlms_orders_current.csv"' }),
+    blob: () => new Promise((_resolve, reject) => signal.addEventListener("abort", () => reject(new Error("body interrupted")))),
+  }));
+  const pending = assert.rejects(apiRequest("/dashboard/reports/orders/download?format=csv", { responseType: "blob" }), { code: "QLMS-TIMEOUT" });
+  await Promise.resolve();
+  t.mock.timers.tick(30_000);
+  await pending;
+});
 beforeEach(() => { process.env.NEXT_PUBLIC_API_URL = "http://qlms.invalid"; });
 afterEach(() => {
   if (originalApiUrl === undefined) delete process.env.NEXT_PUBLIC_API_URL;

@@ -67,6 +67,7 @@ export default function CustomerSearchPage() {
   const [historyError, setHistoryError] = useState("");
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
+  const [historyReportFilters, setHistoryReportFilters] = useState({});
 
   // Customer names and inactive services are still needed for old order history.
   useEffect(() => {
@@ -91,6 +92,7 @@ export default function CustomerSearchPage() {
           setIsHistoryLoading(true);
           setHasLoadedHistory(false);
           setHistoryOrders(await authenticatedRequest(`/orders?customer_id=${requestedCustomer.id}`));
+          setHistoryReportFilters({ customer_id: String(requestedCustomer.id), start_date: "", end_date: "" });
           setHasLoadedHistory(true);
         } else if (requestedService) {
           setServiceBrowseId(String(requestedService.id));
@@ -101,6 +103,7 @@ export default function CustomerSearchPage() {
             `/orders?service_id=${requestedService.id}`,
           );
           setHistoryOrders(orderResponse);
+          setHistoryReportFilters({ service_id: String(requestedService.id), start_date: "", end_date: "" });
           setHasLoadedHistory(true);
         } else if (parameters.get("search")?.trim()) {
           const search = parameters.get("search").trim();
@@ -177,6 +180,8 @@ export default function CustomerSearchPage() {
         `/orders?${parameters.toString()}`,
       );
       setHistoryOrders(response);
+      setHistoryReportFilters({ customer_id: customer ? String(customer.id) : "", service_id: serviceId,
+        status, start_date: startDate, end_date: endDate });
       setHasLoadedHistory(true);
     } catch (loadError) {
       setHistoryOrders([]);
@@ -454,6 +459,11 @@ export default function CustomerSearchPage() {
                 <p className="mt-1 text-slate-600">{selectedCustomer.phone}</p>
               ) : null}
             </div>
+            <div className="flex flex-wrap gap-3">
+            {role === "owner" && hasLoadedHistory ? <Link className="secondary-button min-h-12" href={`/reports?${new URLSearchParams({
+              report: historyReportFilters.customer_id ? (historyReportFilters.service_id ? "orders" : "customer") : "service",
+              ...historyReportFilters,
+            })}`}>Reports for this history</Link> : null}
             <button
               className="min-h-10 rounded-lg border border-slate-300 px-4 font-bold text-slate-700 hover:bg-slate-50"
               type="button"
@@ -461,6 +471,7 @@ export default function CustomerSearchPage() {
             >
               Close history
             </button>
+            </div>
           </div>
 
           <form

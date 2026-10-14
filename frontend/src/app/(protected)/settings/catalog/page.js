@@ -829,6 +829,9 @@ function ShopSetupContent() {
                       >
                         Order history
                       </Link>
+                      <Link className="inline-flex min-h-11 items-center px-2 font-bold text-[#005AAB] no-underline hover:underline" href={`/reports?report=service&service_id=${service.id}`}>
+                        Download service report
+                      </Link>
                       <button
                         className="min-h-11 px-2 font-bold text-[#005AAB] hover:underline disabled:opacity-50"
                         type="button"

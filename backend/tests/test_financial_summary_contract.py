@@ -332,7 +332,7 @@ class FinancialSummaryTests(unittest.TestCase):
         matching_routes = [
             route
             for route in main.app.routes
-            if route.path == "/dashboard/financial-summary"
+            if getattr(route, "path", None) == "/dashboard/financial-summary"
         ]
 
         self.assertEqual(len(matching_routes), 1)

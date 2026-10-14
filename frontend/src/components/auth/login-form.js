@@ -17,7 +17,7 @@ export default function LoginForm() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.replace(role === "owner" ? "/finance" : "/workspace");
+      router.replace(role === "owner" ? "/dashboard" : "/workspace");
     }
   }, [isAuthenticated, isLoading, role, router]);
 
@@ -37,7 +37,7 @@ export default function LoginForm() {
 
     try {
       const signedInRole = await login(username, password);
-      router.replace(signedInRole === "owner" ? "/finance" : "/workspace");
+      router.replace(signedInRole === "owner" ? "/dashboard" : "/workspace");
     } catch (loginError) {
       setError(getUserMessage(loginError, "QLMS could not sign you in."));
     } finally {

@@ -18,6 +18,7 @@ const PAGE_TITLES = {
   "/orders/status": "Track orders",
   "/orders/receipt": "Order receipt",
   "/dashboard": "Dashboard",
+  "/reports": "Reports",
   "/staff": "Staff",
   "/settings": "Shop setup",
 };
@@ -112,7 +113,7 @@ export default function AppShell({ children }) {
   const isFinancePage = pathname.startsWith("/finance");
   const isStaffPage = pathname.startsWith("/staff");
   const isSettingsPage = pathname.startsWith("/settings");
-  const homeHref = role === "owner" ? "/finance" : "/workspace";
+  const homeHref = role === "owner" ? "/dashboard" : "/workspace";
   const pageTitle = PAGE_TITLES[pathname] || (
     isTrackingPage ? "Order details" : isSettingsPage ? "Shop setup" : "QLMS"
   );
@@ -124,7 +125,8 @@ export default function AppShell({ children }) {
   );
   const navigationItems = [
     ...(role === "owner"
-      ? [{ href: "/finance", label: "Finance", icon: "finance", active: isFinancePage }]
+      ? [{ href: "/dashboard", label: "Dashboard", icon: "dashboard", active: isDashboardPage },
+         { href: "/finance", label: "Finance", icon: "finance", active: isFinancePage }]
       : []),
     { href: "/workspace", label: "Home", icon: "workspace", active: isWorkspacePage },
     { href: "/orders", label: "New order", icon: "orders", active: isNewOrderPage },
@@ -132,7 +134,7 @@ export default function AppShell({ children }) {
     { href: "/customers/search", label: "Customers", icon: "customers", active: isCustomersPage },
     ...(role === "owner"
       ? [
-          { href: "/dashboard", label: "Dashboard", icon: "dashboard", active: isDashboardPage },
+          { href: "/reports", label: "Reports", icon: "orders", active: pathname === "/reports" },
           { href: "/staff", label: "Staff", icon: "staff", active: isStaffPage },
           { href: "/settings/catalog", label: "Shop setup", icon: "settings", active: isSettingsPage },
         ]

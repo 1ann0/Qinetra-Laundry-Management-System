@@ -10,7 +10,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!isLoading) {
-      const signedInPath = role === "owner" ? "/finance" : "/workspace";
+      const signedInPath = role === "owner" ? "/dashboard" : "/workspace";
       router.replace(isAuthenticated ? signedInPath : "/login");
     }
   }, [isAuthenticated, isLoading, role, router]);

@@ -26,7 +26,7 @@ class AccountSafetyRouteTests(unittest.TestCase):
         }
 
         for route in main.app.routes:
-            for method in route.methods or set():
+            for method in getattr(route, "methods", None) or set():
                 route_key = (method, route.path)
                 if route_key not in protected_routes:
                     continue
@@ -43,7 +43,7 @@ class AccountSafetyRouteTests(unittest.TestCase):
         refresh_route = next(
             route
             for route in main.app.routes
-            if route.path == "/auth/refresh" and "POST" in route.methods
+            if getattr(route, "path", None) == "/auth/refresh" and "POST" in route.methods
         )
         dependency_calls = {
             dependency.call for dependency in refresh_route.dependant.dependencies

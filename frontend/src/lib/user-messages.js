@@ -63,6 +63,11 @@ const INPUT_MESSAGES = {
   "Promised completion time must be in the future": "Choose a ready time later than now.",
   "Promised completion time must include a timezone": "Choose the ready date and time again. Contact support if this message returns.",
   "End date cannot be before start date": "Choose an end date on or after the start date.",
+  "Select the customer or service for this report": "Choose one customer or service, then select View report.",
+  "A filter does not apply to this report": "Choose the filters shown for this report, then select View report again.",
+  "Choose valid report filters without repeated fields": "Open Reports again and choose the filters you need.",
+  "Choose a recognized status or payment method": "Choose an order stage or payment method from the list.",
+  "Choose a recognized attention list": "Choose what needs attention from the list.",
   "Orders can only move forward by one stage at a time": "Open Track orders to check the current stage. Use the next action shown on the order.",
   "Complete the pending clothing check before this order is ready": "Open the order and complete its clothing check before you mark it ready.",
   "Password cannot be blank": "Enter a password.",
@@ -148,6 +153,8 @@ export function responseError(status, payload, path, recovery) {
       "Service not found": "This service is not available. Ask the owner to check Shop setup.",
       "Clothing item not found": "This clothing item is not available. Ask the owner to check Shop setup.",
       "Order service not found": "This service is not on the order. Open the order again to check its services.",
+      "Selected customer or service was not found": "Choose the customer or service again in Reports.",
+      "Unknown report": "Open Reports and choose a report from the list.",
     };
     const detail = payload?.detail;
     return new ApiError(
@@ -162,6 +169,9 @@ export function responseError(status, payload, path, recovery) {
       return new ApiError("Too many sign-in attempts. Wait up to five minutes, then try signing in again.", status, "QLMS-LOGIN-LIMIT");
     }
     return new ApiError(`QLMS is busy. Wait one minute. ${recovery} Contact support if this continues.`, status, "QLMS-BUSY");
+  }
+  if (status === 413 && path.startsWith("/dashboard/reports/")) {
+    return new ApiError("This report is too large. Choose a shorter date range or fewer records, then select View report. Nothing was cut from the download.", status, "QLMS-REPORT-LIMIT");
   }
   if (status >= 500) {
     return new ApiError(`QLMS is not available right now. ${recovery} Contact support if this continues.`, status, "QLMS-SERVICE");
