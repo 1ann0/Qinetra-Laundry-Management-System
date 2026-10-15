@@ -54,6 +54,14 @@ jobs:
           else
             python -m ops.backup_schedule >> "$GITHUB_OUTPUT"
           fi
+      - name: Record public trigger and admission decision
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SCHEDULE_CRON: ${{ github.event.schedule }}
+          BACKUP_REQUIRED: ${{ steps.proof.outputs.required }}
+        run: >-
+          printf 'Event: %s\n\nSchedule (UTC): %s\n\nNew backup required: %s\n'
+          "$EVENT_NAME" "${SCHEDULE_CRON:-manual}" "$BACKUP_REQUIRED" >> "$GITHUB_STEP_SUMMARY"
 
   backup:
     needs: admission
