@@ -1,0 +1,688 @@
+{
+  "source": "e6d9d2bb68ae8224e311c15e3a4232057bc7d6bb",
+  "origin": "https://qlms.qinetra.workers.dev",
+  "publicAssetCount": 135,
+  "allHashesMatched": true,
+  "publicPagesAndPrivateHeadersPassed": true,
+  "version": "40566df2-8488-42ee-87a1-042fccf503ec",
+  "deployment": "aa97f478-5962-4a37-b3ad-d5ce5d86b84a",
+  "renderDeployment": "dep-db881ass728c738hggvg",
+  "assetResults": [
+    {
+      "path": "404.html",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "__next.__PAGE__.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "__next._full.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "__next._tree.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/L82qC_SqJibQWfnACuVUM/_buildManifest.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/L82qC_SqJibQWfnACuVUM/_clientMiddlewareManifest.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/L82qC_SqJibQWfnACuVUM/_ssgManifest.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/01q9v95o-s4ec.css",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/0_izx-k6ak5d5.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/0c2kczr2vpadw.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/0cz1d0mv5g_q7.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/0wakbnz2gnm97.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/12n2a686so4hd.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/17bjek4-_qjq6.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/196x_tfexoucg.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/1aka4znk4x1lk.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/1nm9_dal3kqd3.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/1v7ckopnhy0y3.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/1w8d0_qcso4zc.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/29k6xhw8ji610.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/2_2-1c0c4snqt.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/2i3zkoyk2dc28.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/2mmpezlrfmbu5.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/2qe9hd4rny5nc.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/2s-8cm88_ltjs.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/2yyg8rk-x3-es.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/33btf6meamc3z.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/35r88ivuzmbp7.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/3fntmmi971322.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/3r6rgtvzv0288.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/3s6nzrbk-8mnv.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/3wywsc7ugp2eg.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/3y7ygkule1xfx.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/3z53747hz88wh.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_next/static/chunks/turbopack-4238gqpqzsqca.js",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_not-found/__next._full.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_not-found/__next._not-found.__PAGE__.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_not-found/__next._tree.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_not-found.html",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "_not-found.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "backup/__next._full.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "backup/__next._tree.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "backup/__next.backup.__PAGE__.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "backup/privacy/__next._full.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "backup/privacy/__next._tree.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "backup/privacy/__next.backup.privacy.__PAGE__.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "backup/privacy.html",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "backup/privacy.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "backup/terms/__next._full.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "backup/terms/__next._tree.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "backup/terms/__next.backup.terms.__PAGE__.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "backup/terms.html",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "backup/terms.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "backup.html",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "backup.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "customers/__next.!KHByb3RlY3RlZCk.customers.__PAGE__.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "customers/__next._full.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "customers/__next._tree.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "customers/contact/__next.!KHByb3RlY3RlZCk.customers.contact.__PAGE__.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "customers/contact/__next._full.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "customers/contact/__next._tree.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "customers/contact.html",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "customers/contact.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "customers/search/__next.!KHByb3RlY3RlZCk.customers.search.__PAGE__.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "customers/search/__next._full.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "customers/search/__next._tree.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "customers/search.html",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "customers/search.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "customers.html",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "customers.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "dashboard/__next.!KHByb3RlY3RlZCk.dashboard.__PAGE__.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "dashboard/__next._full.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "dashboard/__next._tree.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "dashboard.html",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "dashboard.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "expenses/__next.!KHByb3RlY3RlZCk.expenses.__PAGE__.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "expenses/__next._full.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "expenses/__next._tree.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "expenses.html",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "expenses.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "file.svg",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "finance/__next.!KHByb3RlY3RlZCk.finance.__PAGE__.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "finance/__next._full.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "finance/__next._tree.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "finance.html",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "finance.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "globe.svg",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "index.html",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "index.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "login/__next._full.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "login/__next._tree.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "login/__next.login.__PAGE__.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "login.html",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "login.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "manifest.webmanifest",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "next.svg",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "orders/__next.!KHByb3RlY3RlZCk.orders.__PAGE__.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "orders/__next._full.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "orders/__next._tree.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "orders/receipt/__next.!KHByb3RlY3RlZCk.orders.receipt.__PAGE__.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "orders/receipt/__next._full.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "orders/receipt/__next._tree.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "orders/receipt.html",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "orders/receipt.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "orders/status/__next.!KHByb3RlY3RlZCk.orders.status.__PAGE__.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "orders/status/__next._full.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "orders/status/__next._tree.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "orders/status.html",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "orders/status.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "orders.html",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "orders.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "qinetra-icon.svg",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "qinetra-logo.jpg",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "reports/__next.!KHByb3RlY3RlZCk.reports.__PAGE__.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "reports/__next._full.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "reports/__next._tree.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "reports.html",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "reports.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "settings/catalog/__next.!KHByb3RlY3RlZCk.settings.catalog.__PAGE__.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "settings/catalog/__next._full.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "settings/catalog/__next._tree.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "settings/catalog.html",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "settings/catalog.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "staff/__next.!KHByb3RlY3RlZCk.staff.__PAGE__.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "staff/__next._full.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "staff/__next._tree.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "staff.html",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "staff.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "vercel.svg",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "window.svg",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "workspace/__next.!KHByb3RlY3RlZCk.workspace.__PAGE__.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "workspace/__next._full.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "workspace/__next._tree.txt",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "workspace.html",
+      "status": 200,
+      "matched": true
+    },
+    {
+      "path": "workspace.txt",
+      "status": 200,
+      "matched": true
+    }
+  ],
+  "actualAndroidAndPrivateAuthenticatedChecks": "unobserved"
+}
