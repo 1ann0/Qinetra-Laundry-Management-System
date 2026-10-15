@@ -1,5 +1,7 @@
 # Qinetra pilot handover
 
+**15 October schedule observation:** enabled daily scheduling has no recorded first schedule event for the 14 October slot. Recovery cloud backup [38637462472](https://github.com/1ann0/Qinetra-Laundry-Management-System/actions/runs/38637462472) passed encrypted Drive readback and monitor completion. This is workflow_dispatch, not proof of the daily trigger. [Observation and remaining gate](pilot-schedule-observation-20261015.md). Expense implementation remains local, not deployed.
+
 **14 October Qinetra icon release:** frontend commit `60f1a114e40f9c94435c6748aa73497f32939896`, exact CI 38633960213 successful. Worker `14b7629b-f333-4ba4-88ea-e35063af4661`, deployment `308cf474-1ceb-44ea-b404-5ee547f00f6f`, independently at 100% (23:44:41 Nairobi). All 129 public asset hashes and private/security headers match; browser metadata uses Qinetra icon and manifest. Pilot API remains bf00780/schema unchanged. Android shortcut creation is still a human check. [Icon checks and rollback](qinetra-icon-check.md).
 
 Updated 14 October 2026. Start here when continuing in a fresh task.
