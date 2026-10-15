@@ -49,6 +49,7 @@ def backup_required(current_run_id, *, now=None, fetch_json=read_metadata):
         for run in runs[:10]:
             run_id = run.get("id")
             if (type(run_id) is not int or run_id <= 0 or run_id == current_run_id
+                    or run.get("repository", {}).get("full_name", "").casefold() != REPOSITORY.casefold()
                     or run.get("event") != "schedule" or run.get("head_branch") != "main"
                     or run.get("status") != "completed" or run.get("conclusion") != "success"
                     or not start <= timestamp(run.get("created_at")) <= now):

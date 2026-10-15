@@ -12,7 +12,8 @@ NOW = datetime(2026, 10, 15, 20, 17, tzinfo=timezone.utc)
 class BackupScheduleTests(unittest.TestCase):
     def setUp(self):
         self.run = {"id": 123, "event": "schedule", "head_branch": "main", "status": "completed",
-                    "conclusion": "success", "created_at": "2026-10-15T19:00:01Z"}
+                    "conclusion": "success", "created_at": "2026-10-15T19:00:01Z",
+                    "repository": {"full_name": "1ann0/Qinetra-Laundry-Management-System"}}
         self.job = {"name": "backup", "status": "completed", "conclusion": "success", "steps": [
             {"name": name, "status": "completed", "conclusion": "success", "completed_at": "2026-10-15T19:01:00Z"}
             for name in ("Require qualified retention before a scheduled run",
@@ -57,6 +58,10 @@ class BackupScheduleTests(unittest.TestCase):
                     self.job["steps"][1]["conclusion"] = change
                 self.assertTrue(self.required())
                 self.job = previous
+
+    def test_metadata_from_another_repository_cannot_suppress_the_pilot_backup(self):
+        self.run["repository"] = {"full_name": "other-owner/another-laundry"}
+        self.assertTrue(self.required())
 
     def test_unknown_history_or_provider_failure_makes_a_fresh_backup(self):
         for reply in ({}, {"workflow_runs": []}, {"workflow_runs": "wrong"}):
