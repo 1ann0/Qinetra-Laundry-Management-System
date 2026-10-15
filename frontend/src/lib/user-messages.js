@@ -68,6 +68,10 @@ const INPUT_MESSAGES = {
   "Choose valid report filters without repeated fields": "Open Reports again and choose the filters you need.",
   "Choose a recognized status or payment method": "Choose an order stage or payment method from the list.",
   "Choose a recognized attention list": "Choose what needs attention from the list.",
+  "Choose a recognized expense category": "Choose an expense category from the list.",
+  "Choose a paid date on or before today in Nairobi": "Choose today or an earlier paid date.",
+  "Explain this correction": "Explain why this expense is being changed.",
+  "Remove control characters": "Remove unusual control characters and try again.",
   "Orders can only move forward by one stage at a time": "Open Track orders to check the current stage. Use the next action shown on the order.",
   "Complete the pending clothing check before this order is ready": "Open the order and complete its clothing check before you mark it ready.",
   "Password cannot be blank": "Enter a password.",
@@ -155,6 +159,7 @@ export function responseError(status, payload, path, recovery) {
       "Order service not found": "This service is not on the order. Open the order again to check its services.",
       "Selected customer or service was not found": "Choose the customer or service again in Reports.",
       "Unknown report": "Open Reports and choose a report from the list.",
+      "Expense not found": "This expense is not available. Open Expense history in Reports and select it again.",
     };
     const detail = payload?.detail;
     return new ApiError(

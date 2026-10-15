@@ -24,6 +24,7 @@ import schemas
 import logic
 import auth
 from report_routes import router as report_router
+from expense_routes import router as expense_router
 from login_throttle import consume_login_attempt
 from response_security import ResponseSecurityMiddleware, private_headers, safe_csv_text
 from alert_settings import get_alert_settings, get_alert_history, update_alert_settings
@@ -39,6 +40,7 @@ NAIROBI_TIMEZONE = timezone(timedelta(hours=3))
 
 app = FastAPI()
 app.include_router(report_router)
+app.include_router(expense_router)
 app.add_api_route("/settings/alerts", get_alert_settings, methods=["GET"], response_model=schemas.AlertSettingsOut, tags=["Owner setup"])
 app.add_api_route("/settings/alerts/history", get_alert_history, methods=["GET"], response_model=list[schemas.AlertSettingsChangeOut], tags=["Owner setup"])
 app.add_api_route("/settings/alerts", update_alert_settings, methods=["POST"], response_model=schemas.AlertSettingsOut, tags=["Owner setup"])

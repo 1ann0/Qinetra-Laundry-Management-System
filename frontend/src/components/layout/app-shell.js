@@ -19,6 +19,7 @@ const PAGE_TITLES = {
   "/orders/receipt": "Order receipt",
   "/dashboard": "Dashboard",
   "/reports": "Reports",
+  "/expenses": "Expenses",
   "/staff": "Staff",
   "/settings": "Shop setup",
 };
@@ -135,6 +136,7 @@ export default function AppShell({ children }) {
     ...(role === "owner"
       ? [
           { href: "/reports", label: "Reports", icon: "orders", active: pathname === "/reports" },
+          { href: "/expenses", label: "Expenses", icon: "finance", active: pathname === "/expenses" },
           { href: "/staff", label: "Staff", icon: "staff", active: isStaffPage },
           { href: "/settings/catalog", label: "Shop setup", icon: "settings", active: isSettingsPage },
         ]

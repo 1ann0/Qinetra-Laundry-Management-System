@@ -167,6 +167,17 @@ test("CSV report downloads still return their original text", async (t) => {
   assert.equal(await apiRequest("/dashboard/export"), "ticket,total\nfixture,300");
 });
 
+test("Owner expense downloads use the authenticated binary helper and keep its error boundary", async (t) => {
+  t.mock.method(globalThis, "fetch", async (_url, options) => {
+    assert.equal(options.headers.get("Authorization"), "Bearer fictional-token");
+    return new Response("Expense,Amount\n1,200", { headers: { "content-type": "text/csv", "content-disposition": 'attachment; filename="qlms_expenses_current_20261014.csv"' } });
+  });
+  const result = await apiRequest("/dashboard/reports/expenses/download?format=csv&category=supplies", { token: "fictional-token", responseType: "blob" });
+  assert.equal(await result.blob.text(), "Expense,Amount\n1,200");
+  assert.equal(result.filename, "qlms_expenses_current_20261014.csv");
+  await assert.rejects(apiRequest("/expenses/download", { responseType: "blob" }), { code: "QLMS-RESPONSE" });
+});
+
 test("business rules keep a specific action that staff can take", () => {
   const cases = [
     [400, "Username already taken", /Choose another username/],

@@ -1,6 +1,7 @@
 "use client";
 
 import { getUserMessage } from "@/lib/user-messages";
+import Link from "next/link";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import OwnerGuard from "@/components/auth/owner-guard";
@@ -457,6 +458,7 @@ function FinancialSnapshotContent() {
           See the work booked, money received and customer contribution for the
           selected period.
         </p>
+        <div className="mt-4 flex flex-wrap gap-3"><Link className="secondary-button" href="/expenses">Record an expense</Link><Link className="secondary-button" href="/reports?report=expenses">Expense history and downloads</Link></div>
       </div>
 
       {error ? (

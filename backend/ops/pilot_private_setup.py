@@ -13,7 +13,7 @@ HOST = "aws-1-eu-central-1.pooler.supabase.com"
 PRIVATE_DIRECTORY = Path(__file__).resolve().parent / "private"
 ROLE_KEYS = {"qlms_runtime": "QLMS_RUNTIME_PASSWORD", "qlms_backup": "QLMS_BACKUP_PASSWORD"}
 IMMUTABLE_TABLES = {"customer_corrections", "discount_policy_changes", "order_corrections",
-                    "payment_adjustments", "order_item_check_history", "alert_settings_changes"}
+                    "payment_adjustments", "order_item_check_history", "alert_settings_changes", "expense_changes"}
 DELETABLE_TABLES = {"login_attempt_buckets", "order_items", "order_item_exceptions"}
 COUNTS_SQL = """SELECT (SELECT count(*) FROM qlms.services),
     (SELECT count(*) FROM qlms.clothing_item_types), (SELECT count(*) FROM qlms.users),
@@ -91,7 +91,7 @@ def check_database(connection):
             FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
             WHERE n.nspname='qlms' AND c.relkind='r' ORDER BY c.relname""")
         tables = cursor.fetchall()
-        if len(tables) != 22:
+        if len(tables) != 24:
             raise ValueError("Unexpected pilot table inventory")
         for table, *rights in tables:
             expected = [True, True, True, table not in IMMUTABLE_TABLES, table in DELETABLE_TABLES,

@@ -7,6 +7,7 @@ import { useAuth } from "@/context/auth-context";
 import { getUserMessage } from "@/lib/user-messages";
 import { formatNairobiDateTime } from "@/lib/format-nairobi";
 import { REPORT_TYPES, ATTENTION_LABELS, SUMMARY_LABELS, nairobiToday, reportQuery, formatKes, saveReportFile } from "@/lib/report-tools";
+import { EXPENSE_CATEGORIES } from "@/lib/expense-tools";
 
 const INPUT = "min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100";
 const STATUS = { received: "Received", in_progress: "In progress", ready: "Ready for collection", collected: "Collected", cancelled: "Cancelled" };
@@ -35,6 +36,8 @@ function ReportValue({ row, column }) {
   let text = column.type === "money" ? formatKes(value) : column.key === "status" ? STATUS[value] || value : value;
   if (column.key === "attention") text = String(value || "").split(", ").map(flag => ATTENTION_LABELS[flag] || flag).join(", ");
   if (["method", "purpose"].includes(column.key)) text = { cash: "Cash", mpesa: "M-Pesa", service_refund: "Service refund", excess_payment: "Excess payment" }[value] || value;
+  if (column.key === "category") text = EXPENSE_CATEGORIES[value] || value;
+  if (column.key === "expense_id") return <Link className="inline-flex min-h-12 items-center font-bold text-[#005AAB] underline" href={`/expenses?id=${value}`}>Expense #{value}</Link>;
   return column.key === "ticket" && row.order_id ? <Link className="inline-flex min-h-12 items-center font-bold text-[#005AAB] underline" href={`/orders/receipt?id=${row.order_id}`}>{text}</Link> : String(text ?? "");
 }
 
@@ -43,6 +46,7 @@ const MOBILE_FIELDS = {
   related_orders: ["ticket", "customer_name", "status", "balance_due"], attention: ["ticket", "customer_name", "attention", "balance_due"],
   receipts: ["ticket", "date", "method", "amount"], refunds: ["ticket", "date", "method", "amount"], corrections: ["ticket", "date", "amount", "purpose"],
   service_lines: ["ticket", "service", "quantity", "unit", "booked_value"], services: ["name", "unit", "price", "active"], clothing: ["name", "group", "active"],
+  expenses: ["expense_id", "paid_date", "category", "amount", "state"], expense_changes: ["expense_id", "recorded_at", "reason", "actor"],
 };
 
 function ReportSection({ section }) {
@@ -166,9 +170,11 @@ function ReportsContent() {
         {type.filters.includes("status") ? <div><label className="mb-2 block font-bold text-slate-800" htmlFor="report-status">Current order stage</label><select className={INPUT} id="report-status" value={filters.status || ""} onChange={event => update("status", event.target.value)}><option value="">All stages</option>{Object.entries(STATUS).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></div> : null}
         {type.filters.includes("payment_method") ? <div><label className="mb-2 block font-bold text-slate-800" htmlFor="report-method">Payment method</label><select className={INPUT} id="report-method" value={filters.payment_method || ""} onChange={event => update("payment_method", event.target.value)}><option value="">Cash and M-Pesa</option><option value="cash">Cash</option><option value="mpesa">M-Pesa</option></select></div> : null}
         {type.filters.includes("attention") ? <div><label className="mb-2 block font-bold text-slate-800" htmlFor="report-attention">What needs attention?</label><select className={INPUT} id="report-attention" value={filters.attention || ""} onChange={event => update("attention", event.target.value)}><option value="">Everything needing attention</option>{Object.entries(ATTENTION_LABELS).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></div> : null}
+        {type.filters.includes("category") ? <div><label className="mb-2 block font-bold text-slate-800" htmlFor="report-category">Expense category</label><select className={INPUT} id="report-category" value={filters.category || ""} onChange={event => update("category", event.target.value)}><option value="">All expense categories</option>{Object.entries(EXPENSE_CATEGORIES).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></div> : null}
       </div>
       <button className="primary-button mt-5 min-h-12" disabled={loading} type="submit">{loading ? "Preparing report…" : "View report"}</button>
       {kind === "attention" ? <p className="mt-3 text-sm text-slate-600">Attention shows the shop now. It is not a historical date report.</p> : null}
+      {kind === "expenses" ? <Link className="secondary-button ml-3 mt-5" href="/expenses">Record an expense</Link> : null}
     </form>
     {message ? <p className="mt-4 break-words rounded-xl border border-green-300 bg-green-50 p-4 text-green-900" role="status">{message}</p> : null}
     {report ? <div id="reports-preview-step" className="mt-6" aria-busy={loading}>

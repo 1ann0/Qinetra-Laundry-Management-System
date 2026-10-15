@@ -93,7 +93,7 @@ BEGIN
 END $$;
 REVOKE UPDATE ON {quoted}.customer_corrections, {quoted}.discount_policy_changes,
     {quoted}.order_corrections, {quoted}.payment_adjustments, {quoted}.order_item_check_history,
-    {quoted}.alert_settings_changes FROM {role};
+    {quoted}.alert_settings_changes, {quoted}.expense_changes FROM {role};
 ALTER ROLE {role} SET search_path={quoted},pg_catalog;
 """
 

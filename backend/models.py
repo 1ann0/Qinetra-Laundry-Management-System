@@ -33,6 +33,57 @@ class User(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
 
+# Owner costs have a current view; immutable events retain their original details.
+class Expense(Base):
+    __tablename__ = "expenses"
+    __table_args__ = (
+        CheckConstraint("amount > 0", name="expense_positive_amount"),
+        CheckConstraint("payment_method IN ('cash', 'mpesa')", name="expense_method"),
+        CheckConstraint("category IN ('supplies','utilities','rent','wages','outsourcing','other')", name="expense_category"),
+        CheckConstraint("revision >= 0", name="expense_revision"),
+    )
+    id = Column(Integer, primary_key=True)
+    paid_date = Column(Date, nullable=False, index=True)
+    category = Column(String(20), nullable=False)
+    amount = Column(Numeric(12, 2), nullable=False)
+    payment_method = Column(String(10), nullable=False)
+    reference = Column(String(100), nullable=False, default="")
+    note = Column(String(1000), nullable=False, default="")
+    is_voided = Column(Boolean, nullable=False, default=False, server_default="false")
+    revision = Column(Integer, nullable=False, default=0, server_default="0")
+    request_key = Column(String(36), unique=True, nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    confirmed_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    confirmed_by_username = Column(String(50), nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    changes = relationship("ExpenseChange", back_populates="expense", order_by="ExpenseChange.revision")
+
+    @property
+    def original_details(self):
+        return next((event.after_details for event in self.changes if event.revision == 0), None)
+
+    @property
+    def corrections(self):
+        return [event for event in self.changes if event.revision > 0]
+
+
+class ExpenseChange(Base):
+    __tablename__ = "expense_changes"
+    __table_args__ = (UniqueConstraint("expense_id", "revision", name="expense_change_revision"),)
+    id = Column(Integer, primary_key=True)
+    expense_id = Column(Integer, ForeignKey("expenses.id", ondelete="RESTRICT"), nullable=False)
+    before_details = Column(JSON, nullable=True)
+    after_details = Column(JSON, nullable=False)
+    reason = Column(String(200), nullable=False)
+    revision = Column(Integer, nullable=False)
+    request_key = Column(String(36), unique=True, nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    confirmed_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    confirmed_by_username = Column(String(50), nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    expense = relationship("Expense", back_populates="changes")
+
+
 # Shared login limits survive process restarts without storing raw identifiers.
 class LoginAttemptBucket(Base):
     __tablename__ = "login_attempt_buckets"

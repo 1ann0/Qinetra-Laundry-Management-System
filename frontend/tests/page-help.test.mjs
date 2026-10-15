@@ -11,7 +11,7 @@ test("help omits sections hidden by loading, permissions or the current record",
 });
 
 test("each staff screen has a short help flow with clear actions", () => {
-  const paths = ["/workspace", "/customers", "/customers/search", "/customers/contact", "/orders", "/orders/status", "/orders/receipt", "/dashboard", "/finance", "/staff", "/settings/catalog"];
+  const paths = ["/workspace", "/customers", "/customers/search", "/customers/contact", "/orders", "/orders/status", "/orders/receipt", "/dashboard", "/finance", "/expenses", "/staff", "/settings/catalog"];
   for (const path of paths) {
     const steps = availableHelpSteps(path, () => true);
     assert.ok(steps.length >= 2 && steps.length <= 5, path);

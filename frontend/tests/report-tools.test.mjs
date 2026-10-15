@@ -30,4 +30,5 @@ test("report query sends only applicable filters and preserves explicit all-date
   assert.equal(reports.reportQuery("attention", { start_date: "2026-10-01", attention: "holds", customer_id: "5" }), "customer_id=5&attention=holds");
   assert.equal(reports.reportQuery("customer", { customer_id: "5", start_date: "", end_date: "", service_id: "2" }), "customer_id=5");
   assert.throws(() => reports.reportQuery("not-a-report", {}));
+  assert.equal(reports.reportQuery("expenses", { start_date: "2026-10-01", category: "supplies", payment_method: "mpesa", customer_id: "8" }), "start_date=2026-10-01&category=supplies&payment_method=mpesa");
 });

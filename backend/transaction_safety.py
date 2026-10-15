@@ -52,6 +52,10 @@ def find_saved_order(db, record_type, key, fingerprint, user_id):
         return saved.policy
     if record_type is models.AlertSettingsChange:
         return saved.settings
+    if record_type is models.Expense:
+        return saved
+    if record_type is models.ExpenseChange:
+        return saved.expense
     return saved.order
 
 

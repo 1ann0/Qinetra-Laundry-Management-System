@@ -17,6 +17,9 @@ function DashboardContent() {
   const [displayedPeriod, setDisplayedPeriod] = useState(null);
   const [work, setWork] = useState(null);
   const [money, setMoney] = useState(null);
+  const [expenses, setExpenses] = useState(null);
+  const [expensesPeriod, setExpensesPeriod] = useState(null);
+  const [expensesError, setExpensesError] = useState("");
   const [loading, setLoading] = useState(true);
   const [workError, setWorkError] = useState("");
   const [moneyError, setMoneyError] = useState("");
@@ -25,6 +28,7 @@ function DashboardContent() {
   const requestDashboard = useCallback((dates, signal) => Promise.allSettled([
     authenticatedRequest("/dashboard/reports/attention", { signal, cache: "no-store" }),
     authenticatedRequest(`/dashboard/reports/money?${reportQuery("money", dates)}`, { signal, cache: "no-store" }),
+    authenticatedRequest(`/dashboard/reports/expenses?${reportQuery("expenses", dates)}`, { signal, cache: "no-store" }),
   ]), [authenticatedRequest]);
 
   const applyResults = useCallback((results, dates) => {
@@ -33,6 +37,8 @@ function DashboardContent() {
     else setWorkError(getUserMessage(results[0].reason, "Current work could not be refreshed."));
     if (results[1].status === "fulfilled") { setMoney(results[1].value); setDisplayedPeriod({ ...dates }); }
     else setMoneyError(getUserMessage(results[1].reason, "Money figures could not be refreshed."));
+    if (results[2].status === "fulfilled") { setExpenses(results[2].value); setExpensesPeriod({ ...dates }); }
+    else setExpensesError(getUserMessage(results[2].reason, "Expense figures could not be refreshed."));
     setLoading(false);
   }, []);
 
@@ -48,7 +54,7 @@ function DashboardContent() {
     if (period.start_date && period.end_date && period.end_date < period.start_date) {
       setMoneyError("Choose an end date on or after the start date."); return;
     }
-    setLoading(true); setWorkError(""); setMoneyError("");
+    setLoading(true); setWorkError(""); setMoneyError(""); setExpensesError("");
     void loadDashboard(period);
   }
 
@@ -104,6 +110,16 @@ function DashboardContent() {
         {!money.sections.some(section => section.rows.length) ? <p className="mt-4 text-slate-600">No payment or return activity in this period.</p> : null}
         <div id="dashboard-export-step" className="mt-5"><Link className="secondary-button min-h-12" href={`/reports?report=money&${reportQuery("money", displayedPeriod)}`}>View this report and download Excel or CSV</Link></div>
       </> : <p className="mt-5 text-slate-600">{loading ? "Loading money figures…" : "Money figures are unavailable. Refresh to try again."}</p>}
+    </section>
+    <section id="dashboard-expenses-step" className="mt-7 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6" aria-busy={loading}>
+      <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-bold text-slate-900">Shop expenses</h2><p className="mt-1 text-sm text-slate-600">Money paid for running the shop, using corrected paid dates. Reversed entries are excluded. These totals do not establish profit.</p></div><Link className="secondary-button" href="/expenses">Record an expense</Link></div>
+      {expensesError ? <p className="mt-4 rounded-xl border border-red-300 bg-red-50 p-4 text-red-800" role="alert">{expensesError} {expenses ? "The last successful expense snapshot remains below." : ""}</p> : null}
+      {expenses ? <><p className="mt-5 text-sm text-slate-600">Displayed expense period: {expensesPeriod.start_date} to {expensesPeriod.end_date} · Nairobi. Updated {formatNairobiDateTime(expenses.generated_at)}.</p>
+        {period.start_date !== expensesPeriod.start_date || period.end_date !== expensesPeriod.end_date ? <p className="mt-2 font-semibold text-amber-900" role="status">Select Apply dates above to update expenses.</p> : null}
+        <dl className="mt-4 grid gap-3 sm:grid-cols-3">{Object.entries(expenses.summary).map(([key, value]) => <div className="rounded-xl bg-slate-50 p-4" key={key}><dt className="text-sm font-semibold text-slate-600">{SUMMARY_LABELS[key]}</dt><dd className="mt-2 text-xl font-bold text-slate-900">{formatKes(value)}</dd></div>)}</dl>
+        {!expenses.sections[0].rows.length ? <p className="mt-4 text-slate-600">No expenses recorded in this period.</p> : null}
+        <Link className="secondary-button mt-5" href={`/reports?report=expenses&${reportQuery("expenses", expensesPeriod)}`}>Expense history and downloads</Link>
+      </> : <p className="mt-5 text-slate-600">{loading ? "Loading expenses…" : "Expenses are unavailable. Refresh to try again."}</p>}
     </section>
   </section>;
 }

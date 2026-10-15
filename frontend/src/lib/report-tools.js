@@ -6,6 +6,7 @@ export const REPORT_TYPES = [
   { value: "money", label: "Payments and returns", filters: ["start_date", "end_date", "customer_id", "payment_method"] },
   { value: "attention", label: "Needs attention now", filters: ["customer_id", "service_id", "status", "attention"] },
   { value: "catalogue", label: "Shop catalogue", filters: [] },
+  { value: "expenses", label: "Shop expenses", filters: ["start_date", "end_date", "category", "payment_method"] },
 ];
 
 export const ATTENTION_LABELS = {
@@ -18,6 +19,7 @@ export const SUMMARY_LABELS = {
   refunds_sent: "Money returned", net_cash_movement: "Money received less returns",
   current_balance_due: "Money currently owed to the shop", current_refund_due: "Money currently owed back",
   booked_value: "Booked service value",
+  cash_expenses: "Cash expenses", mpesa_expenses: "M-Pesa expenses", total_expenses: "Total shop expenses",
 };
 
 export function nairobiToday(now = new Date()) {

@@ -18,6 +18,7 @@ import auth
 import models
 import schemas
 from alert_settings import update_alert_settings
+from expense_routes import create_expense, correct_expense, ExpenseInput, ExpenseCorrectionInput
 from customer_phone import normalize_kenyan_phone
 from ops.backup import export_database, restore_database
 from ops.schema_setup import backup_access_sql, runtime_access_sql, verify_schema
@@ -69,6 +70,11 @@ def main_rehearsal(container, client_image=None):
         db.commit()
         update_alert_settings(schemas.AlertSettingsUpdate(owner_email="restore-owner@example.test", backup_time="22:00", expected_revision=0),
                               db, owner, idempotency_key=uuid4())
+        expense_body = ExpenseInput(paid_date=main.get_nairobi_today(),category="supplies",amount=100,payment_method="cash",note="Fictional restore supplies")
+        expense = create_expense(expense_body,db,owner,idempotency_key=uuid4())
+        expense_change = ExpenseCorrectionInput(**(expense_body.model_dump() | {"amount":Decimal("75")}),
+            expected_revision=0,reason="Fictional price correction",is_voided=False)
+        correct_expense(expense.id,expense_change,db,owner,idempotency_key=uuid4())
         main.correct_customer_details(customer.id, schemas.CustomerCorrectionCreate(expected_name=customer.name, expected_phone=customer.phone,
                  new_name="Corrected fictional customer", new_phone="0711111111", reason="Fictional contact correction", confirmed=True),
                  db, owner, idempotency_key=uuid4())
@@ -95,6 +101,8 @@ def main_rehearsal(container, client_image=None):
     must_be_denied(runtime, "DELETE FROM qlms.customers")
     must_be_denied(runtime, "UPDATE qlms.payment_adjustments SET reason='tampered'")
     must_be_denied(runtime, "UPDATE qlms.alert_settings_changes SET after_email='tampered@example.test'")
+    must_be_denied(runtime, "UPDATE qlms.expense_changes SET reason='tampered'")
+    must_be_denied(runtime, "DELETE FROM qlms.expenses")
     must_be_denied(runtime, "CREATE TABLE qlms.forbidden(id integer)")
     backup_url = url.set(username=backup_name, password=backup_password)
     backup = create_engine(backup_url)
@@ -136,6 +144,9 @@ def main_rehearsal(container, client_image=None):
             assert db.query(models.AlertSettingsChange).count() == 1
             assert db.query(models.AlertSettings).one().owner_email == "restore-owner@example.test"
             assert db.query(models.AlertSettings).one().backup_time == "22:00"
+            assert db.query(models.Expense).one().amount == Decimal("75")
+            assert Decimal(db.query(models.Expense).one().original_details["amount"]) == Decimal("100")
+            assert db.query(models.ExpenseChange).count() == 2
             assert db.query(models.Customer).one().name == "Corrected fictional customer"
             assert order.status == "collected"
             assert order.service_lines[0].item_revision == 1

@@ -14,12 +14,13 @@ import xlsxwriter
 
 import models
 from response_security import safe_csv_text
+from expense_routes import EXPENSE_CATEGORIES
 
 NAIROBI = timezone(timedelta(hours=3))
 MAX_RECORDS = 5000
 MAX_ROWS = 20000
 MAX_REPORT_BYTES = 10 * 1024 * 1024
-REPORTS = {"orders", "customer", "service", "money", "attention", "catalogue"}
+REPORTS = {"orders", "customer", "service", "money", "attention", "catalogue", "expenses"}
 STATUSES = {"received", "in_progress", "ready", "collected", "cancelled"}
 ATTENTION = {"due_today", "production_late", "ready", "overdue", "holds", "outsourcing", "outstanding", "refund_due"}
 DEFINITIONS = [
@@ -125,7 +126,7 @@ ADJUSTMENT_COLUMNS = columns(("ticket", "Ticket", "text"), ("customer_name", "Cu
 
 
 def build_report(db, report_name, *, start_date=None, end_date=None, customer_id=None, service_id=None,
-                 status=None, payment_method=None, attention=None, now=None):
+                 status=None, payment_method=None, attention=None, category=None, now=None):
     if report_name not in REPORTS:
         raise HTTPException(404, "Unknown report")
     if start_date and end_date and end_date < start_date:
@@ -134,15 +135,18 @@ def build_report(db, report_name, *, start_date=None, end_date=None, customer_id
         raise HTTPException(422, "Choose a recognized status or payment method")
     if attention and attention not in ATTENTION:
         raise HTTPException(422, "Choose a recognized attention list")
+    if category and category not in EXPENSE_CATEGORIES:
+        raise HTTPException(422, "Choose a recognized expense category")
     supported = {
         "orders": {"start_date", "end_date", "customer_id", "service_id", "status"},
         "customer": {"start_date", "end_date", "customer_id", "status", "payment_method"},
         "service": {"start_date", "end_date", "service_id", "status", "customer_id"},
         "money": {"start_date", "end_date", "customer_id", "payment_method"},
         "attention": {"customer_id", "service_id", "status", "attention"}, "catalogue": set(),
+        "expenses": {"start_date", "end_date", "category", "payment_method"},
     }
     filters = {key: value for key, value in {"start_date": start_date, "end_date": end_date, "customer_id": customer_id,
-        "service_id": service_id, "status": status, "payment_method": payment_method, "attention": attention}.items() if value is not None}
+        "service_id": service_id, "status": status, "payment_method": payment_method, "attention": attention, "category":category}.items() if value is not None}
     if set(filters) - supported[report_name]:
         raise HTTPException(422, "A filter does not apply to this report")
     if report_name == "customer" and customer_id is None or report_name == "service" and service_id is None:
@@ -160,6 +164,39 @@ def build_report(db, report_name, *, start_date=None, end_date=None, customer_id
         result["sections"].append({"key": key, "title": title, "columns": fields, "rows": rows})
         if sum(len(part["rows"]) for part in result["sections"]) > MAX_ROWS:
             raise HTTPException(413, "This report is too large. Narrow its filters; nothing has been truncated.")
+    if report_name == "expenses":
+        query = db.query(models.Expense)
+        if start_date:
+            query = query.filter(models.Expense.paid_date >= start_date)
+        if end_date:
+            query = query.filter(models.Expense.paid_date <= end_date)
+        if category:
+            query = query.filter(models.Expense.category == category)
+        if payment_method:
+            query = query.filter(models.Expense.payment_method == payment_method)
+        expenses = bounded(query.order_by(models.Expense.paid_date.desc(),models.Expense.id.desc()))
+        rows = [{"expense_id":item.id,"paid_date":item.paid_date.isoformat(),"category":item.category,
+            "amount":item.amount,"method":item.payment_method,"reference":item.reference,"note":item.note,
+            "state":"Reversed" if item.is_voided else "Recorded","actor":item.confirmed_by_username,"revision":item.revision} for item in expenses]
+        section("expenses","Expenses on corrected paid dates",columns(("expense_id","Expense","number"),
+            ("paid_date","Paid date","date"),("category","Category","text"),("amount","Expense KES","money"),
+            ("method","Method","text"),("reference","Reference","text"),("note","Note","text"),
+            ("state","State","text"),("actor","Recorded by","text"),("revision","Revision","number")),rows)
+        ids = [item.id for item in expenses]
+        changes = bounded(db.query(models.ExpenseChange).filter(models.ExpenseChange.expense_id.in_(ids),models.ExpenseChange.revision > 0)
+            .order_by(models.ExpenseChange.id)) if ids else []
+        section("expense_changes","Correction history for selected expenses",columns(("expense_id","Expense","number"),
+            ("revision","Revision","number"),("recorded_at","Recorded at (Nairobi)","text"),("reason","Reason","text"),
+            ("before","Before details","text"),("after","After details","text"),("actor","Corrected by","text")),
+            [{"expense_id":item.expense_id,"revision":item.revision,"recorded_at":aware(item.created_at).astimezone(NAIROBI).isoformat(),
+              "reason":item.reason,"before":json.dumps(item.before_details,ensure_ascii=False),"after":json.dumps(item.after_details,ensure_ascii=False),
+              "actor":item.confirmed_by_username} for item in changes])
+        cash = sum((item.amount for item in expenses if not item.is_voided and item.payment_method == "cash"),Decimal("0"))
+        mpesa = sum((item.amount for item in expenses if not item.is_voided and item.payment_method == "mpesa"),Decimal("0"))
+        result["summary"] = {"cash_expenses":cash,"mpesa_expenses":mpesa,"total_expenses":cash+mpesa}
+        result["definitions"] = [*DEFINITIONS,"Expense totals use the current corrected paid date/category/method; reversed expenses stay visible but are excluded. History shows changes to the selected expenses, not a statement of cash on their correction dates. Original details remain available on each expense.",
+            "Expenses do not include till additions or Owner withdrawals. Expense totals alone do not establish service margins or profit."]
+        return result
     services = bounded(db.query(models.Service).order_by(models.Service.name))
     by_code = {service.code: service for service in services}
     if report_name == "catalogue":
