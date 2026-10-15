@@ -1,0 +1,16 @@
+{
+  "origin": "https://qlms.qinetra.workers.dev/login",
+  "source": "e6d9d2bb68ae8224e311c15e3a4232057bc7d6bb",
+  "viewport_width": 375,
+  "viewport_height": 812,
+  "document_width": 360,
+  "username_top": 679,
+  "password_top": 778,
+  "sign_in_button_top": 848,
+  "input_height": 51,
+  "sign_in_button_height": 46,
+  "credential_entry": false,
+  "actual_android": false,
+  "finding": "Mobile branding pushes credential completion below the initial viewport",
+  "screenshot": "72-live-sign-in-phone-review-20261015.jpg"
+}
