@@ -59,7 +59,7 @@ export async function apiRequest(path, options = {}) {
 
   const canRetry = ["GET", "HEAD"].includes((fetchOptions.method || "GET").toUpperCase()) && !path.startsWith("/auth/");
   // Free hosting can take a minute to wake; record requests keep their normal deadline.
-  const timeout = path === "/auth/login" ? 120_000 : REQUEST_TIMEOUT_MS;
+  const timeout = path === "/auth/login" || (path === "/health/ready" && canRetry) ? 120_000 : REQUEST_TIMEOUT_MS;
   const deadline = Date.now() + timeout;
   // Fetches, backoff and reply parsing share one deadline. Saves are never repeated here.
   const controller = new AbortController();
@@ -130,6 +130,13 @@ export async function apiRequest(path, options = {}) {
   } finally {
     clearTimeout(timer);
     signal?.removeEventListener("abort", abortRequest);
+  }
+}
+
+export async function checkApiReadiness({ signal } = {}) {
+  const reply = await apiRequest("/health/ready", { signal });
+  if (reply.status !== "ready") {
+    throw new ApiError("QLMS is not ready yet. Try signing in again in a moment.", 0, "QLMS-SERVICE");
   }
 }
 

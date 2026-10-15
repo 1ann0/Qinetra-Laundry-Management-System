@@ -21,7 +21,7 @@ export default function RequestStatus() {
         <span className="h-5 w-5 shrink-0 rounded-full border-2 border-blue-200 border-t-[#005AAB] motion-safe:animate-spin" aria-hidden="true" />
         {requestActivity.label}
       </div>
-      {slowRequestId === requestActivity.id ? <p className="mt-2">{requestActivity.isRead ? "This is taking longer than usual. Keep this page open." : "Still waiting for confirmation. Keep this tab open."}</p> : null}
+      {slowRequestId === requestActivity.id ? <p className="mt-2">{requestActivity.isRead ? "QLMS may be waking up or your connection may be slow. Keep this page open." : "Still waiting for confirmation. Keep this tab open."}</p> : null}
     </div>
   );
 }

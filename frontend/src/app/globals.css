@@ -245,6 +245,14 @@ a {
   letter-spacing: -0.035em;
 }
 
+.login-server-status {
+  min-height: 3.25rem;
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
 .form-intro {
   margin: 9px 0 30px;
   color: var(--muted);
@@ -821,6 +829,40 @@ a {
 }
 
 @media (max-width: 680px) {
+  .login-brand {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 16px;
+    padding: 20px 24px;
+  }
+
+  .login-logo-wrap {
+    width: 112px;
+    flex-shrink: 0;
+    border-radius: 12px;
+  }
+
+  .login-brand .eyebrow,
+  .login-brand-copy {
+    display: none;
+  }
+
+  .login-brand h1 {
+    font-size: 1.3rem;
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+  }
+
+  .login-form-side {
+    align-items: start;
+    padding: 24px 24px 40px;
+  }
+
+  .login-page {
+    grid-template-rows: auto 1fr;
+  }
+
   .app-header {
     min-height: 64px;
     gap: 10px;

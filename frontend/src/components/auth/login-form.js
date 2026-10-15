@@ -5,15 +5,29 @@ import { getUserMessage } from "@/lib/user-messages";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
+import { checkApiReadiness } from "@/lib/api";
 
 export default function LoginForm() {
   const router = useRouter();
   const { isAuthenticated, isLoading, role, login } = useAuth();
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [startup, setStartup] = useState("connecting");
 
   // Keep the password hidden by default, but let staff check what they typed.
   const [showPassword, setShowPassword] = useState(false);
+
+  // Wake the free API while staff type; never poll or block credential submission.
+  useEffect(() => {
+    if (isLoading || isAuthenticated) return undefined;
+    const controller = new AbortController();
+    const timer = setTimeout(() => setStartup("waking"), 8000);
+    checkApiReadiness({ signal: controller.signal }).then(
+      () => { if (!controller.signal.aborted) setStartup("ready"); },
+      () => { if (!controller.signal.aborted) setStartup("unavailable"); },
+    ).finally(() => clearTimeout(timer));
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [isAuthenticated, isLoading]);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -93,7 +107,13 @@ export default function LoginForm() {
         {isSubmitting ? "Signing in…" : "Sign in to QLMS"}
         </span>
       </button>
-      {isSubmitting ? <p className="mt-3 text-center text-sm text-slate-600">Keep this page open. Connecting can take up to two minutes after QLMS has been idle.</p> : null}
+      <p className="login-server-status" role="status" aria-live="polite" aria-atomic="true">
+        {isSubmitting ? "Keep this page open. Connecting can take up to two minutes after QLMS has been idle."
+          : startup === "ready" ? "Ready to sign in."
+          : startup === "unavailable" ? "QLMS is not reachable yet. Check your internet, then try Sign in."
+          : startup === "waking" ? "QLMS may be waking up. You can enter your details while it connects."
+          : "Connecting to QLMS… You can enter your sign-in details."}
+      </p>
     </form>
   );
 }
