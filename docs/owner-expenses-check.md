@@ -1,6 +1,6 @@
 # Owner expense ledger
 
-Deployed 15 October 2026. This is the approved expense increment before till movements and daily closing.
+Deployed 15 October 2026. This is the approved expense increment before till movements and daily closing. The Owner subsequently confirmed Expenses and Reports → Shop expenses both open clearly on the actual Android phone. Actual phone expense entry/correction was not reported; do not infer it from screen access.
 
 Release source `e6d9d2bb68ae8224e311c15e3a4232057bc7d6bb`; exact CI [38698310509](https://github.com/1ann0/Qinetra-Laundry-Management-System/actions/runs/38698310509) passed both jobs. Pilot API `dep-db881ass728c738hggvg` is live at that commit. Worker `40566df2-8488-42ee-87a1-042fccf503ec`, deployment `aa97f478-5962-4a37-b3ad-d5ce5d86b84a`, serves 100% from 15 October 12:09:34 UTC. All 135 hosted public asset hashes match; login/dashboard/reports/expenses/privacy and private/security headers pass. Worker module and headers read back byte-for-byte; one-millisecond startup, existing runtime flags/API binding preserved. No credentials or real expense rows were used for agent browser acceptance.
 

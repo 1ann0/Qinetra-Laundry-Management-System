@@ -6,6 +6,19 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      post_deploy_smoke:
+        description: Check the public pilot after a deployment (no login or shop writes)
+        type: boolean
+        default: false
+      smoke_source:
+        description: Approved frontend source SHA from the release manifest
+        type: string
+        default: e6d9d2bb68ae8224e311c15e3a4232057bc7d6bb
+      smoke_manifest:
+        description: Repository path to the approved public asset manifest
+        type: string
+        default: docs/diagrams/evidence/qlms-owner-expenses-assets-20261015.json
 
 # Checks have no deployment credentials or permission to change the repository.
 permissions:
@@ -16,6 +29,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  post-deploy-smoke:
+    name: Public pilot post-deploy smoke
+    if: github.event_name == 'workflow_dispatch' && inputs.post_deploy_smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      SMOKE_SOURCE: ${{ inputs.smoke_source }}
+      SMOKE_MANIFEST: ${{ inputs.smoke_manifest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.12'
+      - name: Verify public routes, assets, API readiness and anonymous denial
+        run: >-
+          python -m backend.ops.release_smoke
+          --manifest "$SMOKE_MANIFEST"
+          --source "$SMOKE_SOURCE"
+          --frontend https://qlms.qinetra.workers.dev
+          --api https://qlms-pilot-api.onrender.com
+          --output "$RUNNER_TEMP/qlms-release-smoke.json"
+      - name: Record public evidence in the run summary
+        run: cat "$RUNNER_TEMP/qlms-release-smoke.json" >> "$GITHUB_STEP_SUMMARY"
+
   backend:
     name: Backend and recovery
     runs-on: ubuntu-24.04
