@@ -79,8 +79,8 @@ For money, use a hand-calculated mixed-service/partial-payment/refund/date-bound
 - `docs/pilot-handoff.md`, `docs/pilot-release-status.md`, relevant check records: current release summary first; older observations visibly superseded; record stash and branch divergence. Learning/presentation notes remain local as configured.
 - [x] Test smoke failure for a missing `/expenses` route, wrong asset/API origin and readiness unavailable; test success for exact current release and denied anonymous Owner endpoints. Eleven focused fictional checks pass.
 - [x] Implement only the reusable read-only smoke check and release-record cleanup. No widened credentials or private configuration. Actual live check passed 135 assets/19 pages/readiness/contracts/three denials; GitHub-hosted invocation still pending publication.
-- [ ] Run tests/secret scan; execute on the live site; record exact source/API/Worker/schema and known limits. No application redeploy needed for documentation/check-only changes; run it after the next actual release as well.
-- [ ] Continue to 1b only when this result is verified. Separate detailed plans are written for money/photos/auth/delivery at their own feature boundaries, using shop facts only when needed.
+- [x] Run tests/secret scan; execute on the live site; record exact source/API/Worker/schema and known limits. Operations source `1451ccc` passed all three jobs in GitHub run `38741029506`, including the actual public live smoke. Secret scan passed. No application redeploy needed; run it after the next actual release as well.
+- [x] Continue to 1b only when this result is verified. Separate detailed plans are written for money/photos/auth/delivery at their own feature boundaries, using shop facts only when needed.
 
 ## Checks and handover
 
