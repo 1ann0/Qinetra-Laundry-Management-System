@@ -11,6 +11,9 @@ on:
   schedule:
     # Initial owner choice: 22:00 Nairobi (UTC+3). Cron is not an exact-time guarantee.
     - cron: '0 19 * * *'
+    # Off-hour catch-ups preserve the primary slot and do not extend monitor grace.
+    - cron: '17 19 * * *'
+    - cron: '17 20 * * *'
 
 permissions:
   contents: read
@@ -20,13 +23,41 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  backup:
-    # Job admission switches are repository variables; environment variables arrive after admission.
+  admission:
+    # Public proof only: this job receives no protected backup secrets.
     # A manual qualification run does not enable the daily schedule.
     if: >-
       github.ref == 'refs/heads/main' &&
       ((github.event_name == 'schedule' && vars.QLMS_HOSTED_BACKUP_ENABLED == 'true') ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'qualification' && vars.QLMS_BACKUP_QUALIFICATION_ENABLED == 'true'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      required: ${{ steps.proof.outputs.required }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          # Exact operations source passed verification run 38788784374.
+          ref: 25a135afcfcc3c6d2316ebc35fa332fb6cbe2317
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.12'
+      - name: Require a new backup unless today's actual scheduled archive is proved
+        id: proof
+        working-directory: backend
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = schedule ]; then
+            python -m ops.backup_schedule --scheduled >> "$GITHUB_OUTPUT"
+          else
+            python -m ops.backup_schedule >> "$GITHUB_OUTPUT"
+          fi
+
+  backup:
+    needs: admission
+    if: needs.admission.outputs.required == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     environment: qinetra-pilot-backup
@@ -34,12 +65,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-          # Keep automation independent of main's older application and unfinished local reports.
-          ref: c06dc6290394d607dccc927c2046a2a2bb77d104
+          # Keep automation independent of main's older application.
+          ref: 25a135afcfcc3c6d2316ebc35fa332fb6cbe2317
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
       - name: Signal start to the independent monitor
+        if: github.event_name != 'schedule'
         env:
           QLMS_BACKUP_MONITOR_URL: ${{ secrets.QLMS_BACKUP_MONITOR_URL }}
         run: python backend/ops/backup_monitor.py start
@@ -65,6 +97,7 @@ jobs:
           QLMS_BACKUP_LOCAL_FOLDER: ${{ runner.temp }}/qlms-encrypted-backups
           QLMS_BACKUP_RETENTION_DAYS: '90'
           QLMS_BACKUP_STORAGE_BUDGET_BYTES: '5000000000'
+          QLMS_BACKUP_MAX_DAILY_COPIES: '3'
           QLMS_BACKUP_CLEANUP_ENABLED: ${{ vars.QLMS_BACKUP_CLEANUP_ENABLED }}
           QLMS_BACKUP_DRIVE_ACCOUNT: ${{ secrets.QLMS_BACKUP_DRIVE_ACCOUNT }}
           QLMS_BACKUP_DRIVE_FOLDER_ID: ${{ secrets.QLMS_BACKUP_DRIVE_FOLDER_ID }}
@@ -92,7 +125,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-          ref: c06dc6290394d607dccc927c2046a2a2bb77d104
+          ref: 25a135afcfcc3c6d2316ebc35fa332fb6cbe2317
       - name: Send only an operational test-failure signal
         env:
           QLMS_BACKUP_MONITOR_URL: ${{ secrets.QLMS_BACKUP_MONITOR_URL }}
