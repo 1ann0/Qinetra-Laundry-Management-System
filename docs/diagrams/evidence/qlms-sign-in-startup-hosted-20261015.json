@@ -1,0 +1,12 @@
+{
+  "checked_at": "2026-10-15T20:13:53.124822+00:00",
+  "source": "875eeb146ae86562b4fdef5f309e9ffb580879a9",
+  "frontend": "https://qlms.qinetra.workers.dev",
+  "api_origin": "https://qlms-pilot-api.onrender.com",
+  "public_asset_count": 135,
+  "page_count": 19,
+  "anonymous_denial_count": 3,
+  "passed": true,
+  "authenticated_workflows_checked": false,
+  "api_commit_verified": false
+}
