@@ -46,6 +46,7 @@ def run_job(configuration_file=None):
     if len(key) != 32:
         raise ValueError("Backup key must contain exactly 32 bytes")
     storage, client_image, retention, projection = None, None, None, None
+    maximum_copies = 1
     schema = settings.get("QLMS_DB_SCHEMA", "qlms")
     cleanup_value = settings.get("QLMS_BACKUP_CLEANUP_ENABLED") or "false"
     if cleanup_value not in {"true", "false"} or cleanup_value == "true" and not cloud:
@@ -65,6 +66,10 @@ def run_job(configuration_file=None):
         budget = int(settings.get("QLMS_BACKUP_STORAGE_BUDGET_BYTES") or APPROVED_BUDGET_BYTES)
         if not 1 <= budget <= APPROVED_BUDGET_BYTES:
             raise ValueError("Invalid approved backup storage budget")
+        copies_value = settings.get("QLMS_BACKUP_MAX_DAILY_COPIES") or "1"
+        if copies_value not in {"1", "2", "3"}:
+            raise ValueError("Invalid scheduled backup copy budget")
+        maximum_copies = int(copies_value)
         token = refresh_access_token(settings["QLMS_DRIVE_CLIENT_ID"], settings["QLMS_DRIVE_CLIENT_SECRET"], settings["QLMS_DRIVE_REFRESH_TOKEN"])
         storage = DriveStorage(token, settings["QLMS_BACKUP_DRIVE_ACCOUNT"], settings["QLMS_BACKUP_DRIVE_FOLDER_ID"])
         storage.check_destination()
@@ -72,7 +77,7 @@ def run_job(configuration_file=None):
     encrypted, copied = export_database(url, schema, key, settings["QLMS_BACKUP_LOCAL_FOLDER"],
                                        None if cloud else settings["QLMS_BACKUP_INDEPENDENT_FOLDER"], client_image=client_image)
     if cloud:
-        projection = backup_projection(encrypted.stat().st_size, retention, budget)
+        projection = backup_projection(encrypted.stat().st_size, retention, budget, maximum_copies_per_day=maximum_copies)
         storage.check_capacity(projection["archive_bytes"], projection["reserved_bytes"])
     remote_id = storage.upload_verified(encrypted, key) if storage else None
     if cloud and (not isinstance(remote_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{3,200}", remote_id)):
@@ -91,7 +96,7 @@ def run_job(configuration_file=None):
         marker_data.update(retention_completed=True, expired_archives_removed=removed)
         marker.write_text(json.dumps(marker_data) + "\n", encoding="utf-8")
     if projection:
-        print(f"Verified archive: {projection['archive_bytes']} bytes; {retention} equal-size copies: "
+        print(f"Verified archive: {projection['archive_bytes']} bytes; {projection['projected_copies']} equal-size copies: "
               f"{projection['projected_retained_bytes']} bytes. This is a projection, not a growth forecast; "
               + ("90-day retention cleanup completed." if cleanup else "retention cleanup remains inactive."))
     return remote_id is not None

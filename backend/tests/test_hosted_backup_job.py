@@ -73,6 +73,18 @@ class HostedBackupJobTests(unittest.TestCase):
         drive.return_value.upload_verified.assert_not_called()
         self.assertEqual(marker.read_text(), '{"completed_at":"previous"}')
 
+    def test_runner_projects_three_possible_scheduled_copies_per_day(self):
+        with patch.dict(os.environ, self.settings | {"QLMS_BACKUP_MAX_DAILY_COPIES": "3"}, clear=True), \
+                patch("ops.backup_job.refresh_access_token", return_value="fictional"), \
+                patch("ops.backup_job.DriveStorage") as drive, \
+                patch("ops.backup_job.export_database", side_effect=self.export_fixture):
+            drive.return_value.upload_verified.return_value = "file_fixture"
+            self.assertTrue(run_job())
+        marker = json.loads((self.root / "archives" / "last-success.json").read_text())
+        self.assertEqual(marker["projected_copies"], 270)
+        self.assertEqual(marker["projected_retained_bytes"], marker["archive_bytes"] * 270)
+        self.assertEqual(marker["maximum_copies_per_day"], 3)
+
     def test_cleanup_only_follows_verified_new_copy_and_records_completion(self):
         with patch.dict(os.environ, self.settings | {"QLMS_BACKUP_CLEANUP_ENABLED": "true"}, clear=True), \
                 patch("ops.backup_job.refresh_access_token", return_value="fictional"), patch("ops.backup_job.DriveStorage") as drive, \
@@ -142,6 +154,8 @@ class HostedBackupJobTests(unittest.TestCase):
                        {"QLMS_BACKUP_KEY_BASE64": base64.b64encode(b"short").decode()},
                        {"QLMS_DB_SCHEMA": "public"}, {"QLMS_BACKUP_PG_CLIENT_IMAGE": "postgres:latest"},
                        {"QLMS_BACKUP_RETENTION_DAYS": "0"},
+                       {"QLMS_BACKUP_MAX_DAILY_COPIES": "4"},
+                       {"QLMS_BACKUP_MAX_DAILY_COPIES": "3.0"},
                        {"QLMS_BACKUP_CLEANUP_ENABLED": "yes"},
                        {"QLMS_BACKUP_CLEANUP_ENABLED": "true", "QLMS_BACKUP_RETENTION_DAYS": "30"},
                        {"QLMS_BACKUP_DATABASE_URL": self.settings["QLMS_BACKUP_DATABASE_URL"].replace("qlms_backup.", "postgres.")}]:
