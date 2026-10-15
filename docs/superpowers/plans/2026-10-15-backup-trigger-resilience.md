@@ -18,9 +18,11 @@ This is bounded improvement within GitHub, not an independent scheduler or an ex
 **Sequence:**
 
 1. [x] Write and observe failing admission/budget/job-integration tests first; implement the minimal helpers and budget extension.
-2. [ ] Focused operations checks, redacted scan and exact-source CI on the approved feature branch.
+2. [x] Initial source `8d806b7`: 56 focused operations checks, redacted scan and exact-source CI `38744010222` passed. Subsequent local repository-proof hardening still needs its own scan/commit/fresh CI; see the [deployment handover](../../pilot-backup-catchup-check.md).
 3. [ ] Wire the workflow to that verified pin; verify the whole candidate before a separate workflow-only default-branch publication. Never merge feature application history into main or reset the user's divergent local main.
 4. [ ] Run the existing manual cloud qualification after deployment; inspect safe run/step metadata only. Exercise admission using public historical proof and fictional boundary cases. Observe a real scheduled invocation when due; no forced past timestamp or manual dispatch counts as that proof.
+
+**Current interruption:** default-branch metadata read was not executed because automatic approval review could not complete after hitting the account usage limit. Do not bypass the check. Local workflow syntax/security wiring tests pass, but the three operations pins remain provisional until hardened source passes fresh CI. No catch-up trigger is active yet.
 
 **Acceptance and limits:** Automated proof must reject a successful-looking workflow without actual completed archive/retention/monitor steps. When metadata is rate-limited or malformed, request a fresh archive rather than silently skipping. With a 113,262-byte fictional archive, three possible copies/day × 90 days is 30,580,740 bytes; this is a fixture projection, not measured live storage or a growth forecast. A successful previous read-back is historical proof; admission does not re-download the earlier archive or guarantee it was not subsequently removed outside QLMS. Every actual new export still performs authenticated Drive read-back.
 
