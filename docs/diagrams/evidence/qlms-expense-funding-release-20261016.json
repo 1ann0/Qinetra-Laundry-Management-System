@@ -1,0 +1,43 @@
+{
+  "source": "754e7789eab40431dabd39bc65fa8715ce497b98",
+  "exact_ci": {"run": 38834420271, "backend_and_recovery": "success", "frontend": "success"},
+  "frontend": {
+    "version": "c49202af-632f-4c14-addb-237c6b77005e",
+    "deployment": "4e00e6e6-97d1-46c1-96e2-5826c38ae0ab",
+    "created_utc": "2026-10-16T01:24:19.238088Z",
+    "percentage": 100,
+    "startup_ms": 2,
+    "source_annotation_verified": true,
+    "worker_headers_routing_and_bindings_verified": true
+  },
+  "api": {
+    "service": "srv-db5cqa0473hc73amomg0",
+    "renderDeployment": "dep-db8noi4s728c73adakq0",
+    "source_verified": true,
+    "status": "live",
+    "finished_utc": "2026-10-16T01:23:19.646919Z",
+    "funding_contract_verified": true,
+    "automatic_deployment": "off"
+  },
+  "schema": {
+    "revision": "026",
+    "migration": "026_expense_funding_source_without_backfill",
+    "nullable_funding_with_check_verified": true,
+    "expense_count_before": 0,
+    "expense_count_after": 0,
+    "expense_history_count_before": 0,
+    "expense_history_count_after": 0,
+    "restricted_grants_and_rls_unchanged": true,
+    "old_api_ready_after_migration": true
+  },
+  "cloud_backups": {
+    "pre_migration_run": 38834445877,
+    "post_migration_run": 38834984748,
+    "encrypted_export_authenticated_readback_and_completion": "success",
+    "raw_logs_or_credentials_read": false
+  },
+  "public_smoke": "qlms-expense-funding-hosted-20261016.json",
+  "actual_android_financial_save_checked": false,
+  "fictional_live_costs_written": false,
+  "daily_backup_timing_fixed": false
+}

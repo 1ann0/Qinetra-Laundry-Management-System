@@ -1,6 +1,6 @@
 # Expense funding before daily closing
 
-Prepared 16 October 2026; not yet deployed. The Owner confirms that some shop costs are paid personally. Cash/M-Pesa describes how a cost was paid; Paid from identifies whose money was used. Both sources remain business costs. Daily closing and reimbursement are separate future controls.
+Deployed and live-verified 16 October 2026. The Owner confirms that some shop costs are paid personally. Cash/M-Pesa describes how a cost was paid; Paid from identifies whose money was used. Both sources remain business costs. Daily closing and reimbursement are separate future controls.
 
 ## Implementation and compatibility
 
@@ -17,9 +17,17 @@ The existing request reference, correction revision, original details, immutable
 - Hand-calculated report before classification: business costs **KES 360.50**, Cash **110**, M-Pesa **250.50**, shop funded **50**, Owner funded **250.50**, unconfirmed **60**. Both actual browser-downloaded CSV and XLSX contain the funding labels and selected fictional records; workbook ZIP integrity passed. The Playwright download observer stalled; subsequent ordinary browser controls downloaded the files, which were checked independently. No actual Android download is claimed for this change.
 - Attributed correction of expense #1 confirms Owner funding while original Paid from stays Not confirmed. Phone inputs/selects measured 48px, submit controls 46px; no horizontal page overflow (375px viewport, 360px document content). Screenshots **79/80** show retained funding and original/correction history. Earlier Employee browser denial and current API permission tests remain applicable; no role rules changed.
 
-## Release gates still open
+## Actual release evidence
 
-Exact candidate CI and staged secret scan; actual pre-migration cloud backup; pilot-only 026 migration with metadata/count/grant checks and previous API readiness; exact Render deployment; approved static asset manifest and Cloudflare upload/activation; paired public live smoke; post-migration cloud backup. Do not claim the feature live until these are recorded. Never add fictional expenses to the live ledger.
+- Source **754e7789eab40431dabd39bc65fa8715ce497b98** passed exact [CI 38834420271](https://github.com/1ann0/Qinetra-Laundry-Management-System/actions/runs/38834420271), both backend/recovery and frontend checks. Staged secret scanning passed. Unrelated drafts were excluded.
+- Actual pre-migration cloud backup [38834445877](https://github.com/1ann0/Qinetra-Laundry-Management-System/actions/runs/38834445877) passed encrypted export/authenticated Drive read-back and monitor completion. No private settings or raw backup logs were read.
+- Pilot project istweeaqtykwfuhntgik only: applied `026_expense_funding_source_without_backfill` with the qlms search path. Metadata proves nullable source and the shop/owner check. Expense and history counts stayed **0/0**; RLS, runtime nondeletion/history immutability, backup read and browser denial remained unchanged. Previous API readiness returned ready after migration, before deployment.
+- Render service deployment **dep-db8noi4s728c73adakq0** is live at the exact source, finished **01:23:19 UTC / 04:23:19 Nairobi**. Public OpenAPI includes funding_source and readiness is ready. Automatic deployment remains OFF; the practice service was not changed.
+- Cloudflare version **c49202af-632f-4c14-addb-237c6b77005e**, deployment **4e00e6e6-97d1-46c1-96e2-5826c38ae0ab**, **100%** at **01:24:19 UTC / 04:24:19 Nairobi**. Exact source annotation, unchanged Worker module, private headers, routing, flags and HTTPS API binding were verified before activation; startup 2ms. Temporary asset grants remained encrypted in exchange and were not written to files or displayed.
+- Actual paired live smoke passed **135 public asset hashes, 19 clean page routes, readiness/API contract and three anonymous denials** at 08:42:54 UTC / 11:42:54 Nairobi. [Manifest](diagrams/evidence/qlms-expense-funding-assets-20261016.json) and [safe hosted result](diagrams/evidence/qlms-expense-funding-hosted-20261016.json) are public evidence. First immediate attempt saw a stale 404 page; a targeted hash subsequently matched the candidate and the complete check then passed. Temporary approval-review usage failure delayed the retry; it succeeded through the same normal reviewer after its stated reset, without bypass.
+- Actual post-migration cloud backup [38834984748](https://github.com/1ann0/Qinetra-Laundry-Management-System/actions/runs/38834984748) passed encrypted export/authenticated Drive read-back and monitor completion. This proves the existing runner accepts schema 026, not a new human restore or punctual daily execution.
+
+No fictional expenses were added to the live ledger. Actual Android financial-save acceptance remains separate; it is not inferred from public smoke.
 
 ## Rollback and limits
 
