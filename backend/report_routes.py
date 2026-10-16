@@ -5,9 +5,8 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
-from sqlalchemy import text
 import auth
-from database import get_db
+from database import get_db, start_consistent_transaction
 from owner_reports import build_report, csv_report, xlsx_report, json_report
 
 router = APIRouter(prefix="/dashboard/reports", dependencies=[Depends(auth.require_owner)], tags=["Owner reports"])
@@ -28,11 +27,7 @@ def report_filters(request: Request, start_date: date | None = None, end_date: d
 
 @contextmanager
 def read_snapshot(db):
-    if db.get_bind().dialect.name == "postgresql":
-        # Authentication has finished its read; every report query now sees one read-only snapshot.
-        db.rollback()
-        db.connection(execution_options={"isolation_level": "REPEATABLE READ"})
-        db.execute(text("SET TRANSACTION READ ONLY"))
+    start_consistent_transaction(db, read_only=True)
     try:
         yield db
     finally:

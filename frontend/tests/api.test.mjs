@@ -31,6 +31,23 @@ test("authenticated XLSX download returns its binary body and safe dated filenam
   assert.deepEqual(new Uint8Array(await result.blob.arrayBuffer()), bytes);
 });
 
+test('closing and till reports use the authenticated binary download path', async (t) => {
+  const fetchMock=t.mock.method(globalThis,'fetch',async (url)=>{
+    const kind=url.includes('/closing/') ? 'closing' : 'till';
+    const format=new URL(url).searchParams.get('format');
+    return new Response('fictional export',{headers:{
+      'content-type':format==='csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'content-disposition':`attachment; filename="qlms_${kind}_20261016.${format}"`,
+    }});
+  });
+  for (const kind of ['closing','till']) for (const format of ['csv','xlsx']) {
+    const result=await apiRequest(`/dashboard/reports/${kind}/download?format=${format}`,{token:'fictional-token',responseType:'blob'});
+    assert.equal(result.filename,`qlms_${kind}_20261016.${format}`);
+  }
+  assert.equal(fetchMock.mock.callCount(),4);
+  await assert.rejects(apiRequest('/dashboard/reports/unknown/download',{responseType:'blob'}),{code:'QLMS-RESPONSE'});
+});
+
 test("binary downloads preserve sign-in errors and refuse HTML or unsafe filenames", async (t) => {
   for (const response of [
     new Response("<html>private</html>", { status: 401 }),

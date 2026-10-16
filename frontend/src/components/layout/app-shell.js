@@ -20,6 +20,8 @@ const PAGE_TITLES = {
   "/dashboard": "Dashboard",
   "/reports": "Reports",
   "/expenses": "Expenses",
+  "/daily-close": "Daily closing",
+  "/till-movements": "Cash movements",
   "/staff": "Staff",
   "/settings": "Shop setup",
 };
@@ -137,6 +139,7 @@ export default function AppShell({ children }) {
       ? [
           { href: "/reports", label: "Reports", icon: "orders", active: pathname === "/reports" },
           { href: "/expenses", label: "Expenses", icon: "finance", active: pathname === "/expenses" },
+          { href: "/daily-close", label: "Daily closing", icon: "finance", active: pathname === "/daily-close" || pathname === "/till-movements" },
           { href: "/staff", label: "Staff", icon: "staff", active: isStaffPage },
           { href: "/settings/catalog", label: "Shop setup", icon: "settings", active: isSettingsPage },
         ]

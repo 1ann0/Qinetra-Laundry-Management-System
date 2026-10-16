@@ -25,6 +25,7 @@ import logic
 import auth
 from report_routes import router as report_router
 from expense_routes import router as expense_router
+from daily_close_routes import router as daily_close_router
 from login_throttle import consume_login_attempt
 from response_security import ResponseSecurityMiddleware, private_headers, safe_csv_text
 from alert_settings import get_alert_settings, get_alert_history, update_alert_settings
@@ -41,6 +42,7 @@ NAIROBI_TIMEZONE = timezone(timedelta(hours=3))
 app = FastAPI()
 app.include_router(report_router)
 app.include_router(expense_router)
+app.include_router(daily_close_router)
 app.add_api_route("/settings/alerts", get_alert_settings, methods=["GET"], response_model=schemas.AlertSettingsOut, tags=["Owner setup"])
 app.add_api_route("/settings/alerts/history", get_alert_history, methods=["GET"], response_model=list[schemas.AlertSettingsChangeOut], tags=["Owner setup"])
 app.add_api_route("/settings/alerts", update_alert_settings, methods=["POST"], response_model=schemas.AlertSettingsOut, tags=["Owner setup"])
@@ -2677,11 +2679,7 @@ def financial_summary(
     for payment in payments:
         # An entry mistake restates the original day's receipt. A real refund
         # remains a separate cash-out event on the date money was returned.
-        payment_amount = Decimal(str(payment.amount)) - sum(
-            (Decimal(str(item.amount)) for item in payment.adjustments
-             if item.kind == "entry_error"),
-            Decimal("0"),
-        )
+        payment_amount = payment.corrected_amount
         if payment.payment_method == "cash":
             cash_received += payment_amount
         else:

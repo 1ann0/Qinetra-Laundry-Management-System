@@ -50,6 +50,17 @@ const PAGE_HELP = {
     {targetId: "expense-entry-step", title: "Record money already spent", description: "Choose when it was paid and what it was for. Paid using is Cash or M-Pesa; Paid from is shop money or the Owner's own money. Save once. If the reply is uncertain, use Retry previous save."},
     {targetId: "expense-history-step", title: "Correct without deleting", description: "Open an expense from Reports. Explain any correction. Reverse an incorrect entry to exclude it from totals; its original details and history remain."},
   ],
+  "/daily-close": [
+    {targetId: "close-date-step", title: "Choose the day", description: "Choose the Nairobi business date and load its records. Confirm who paid any unconfirmed cash expenses first; personal costs must not reduce the till."},
+    {targetId: "close-activity-step", title: "Check what is recorded", description: "Check payments, returns, shop cash costs and cash movements. Add Owner withdrawals separately from expenses. Open a linked record to correct it, then reload this day."},
+    {targetId: "close-counts-step", title: "Enter the real counts", description: "Enter opening and counted cash yourself. Use M-Pesa statement collections and returns, not the account balance. Enter 0 when there was none."},
+    {targetId: "close-comparison-step", title: "Explain and confirm", description: "Short means counted cash is less than expected. Explain differences, then confirm once as Owner. If the reply is uncertain, retry the same save."},
+    {targetId: "close-history-step", title: "Keep the original check", description: "Later changes show Needs review. Confirm again after checking the new figures; every earlier Owner confirmation remains in history."},
+  ],
+  "/till-movements": [
+    {targetId: "movement-entry-step", title: "Record cash entering or leaving", description: "Choose Cash added to the till or Owner withdrawal. Purchases and wages belong in Expenses; do not record the same payment twice. Return to Close the day and reload its figures."},
+    {targetId: "movement-history-step", title: "Correct with history", description: "Explain any correction or reversal. The original movement stays visible, and an affected daily closing will need review."},
+  ],
   "/finance": [
     {targetId: "finance-period-step", title: "Choose the dates", description: "Choose a quick period or enter start and end dates. Apply the dates before reading the figures."},
     {targetId: "finance-figures-step", title: "Separate work from money", description: "Orders booked shows work sold. Payments received shows money received in the selected period. Money received is not profit."},

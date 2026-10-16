@@ -3,6 +3,7 @@ import asyncio
 import json
 import unittest
 from uuid import uuid4
+from urllib.parse import urlsplit
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -51,14 +52,15 @@ class SaveRejectionHttpTests(unittest.TestCase):
     def post(self, path, body, key=None, role="owner", method="POST"):
         # Send a complete HTTP request through FastAPI without a network server.
         async def request():
+            target = urlsplit(path)
             data = json.dumps(body).encode()
             headers = [(b"content-type", b"application/json"),
                        (b"idempotency-key", str(key or uuid4()).encode())]
             if role:
                 headers.append((b"authorization", f"Bearer {self.tokens[role]}".encode()))
             scope = {"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1",
-                     "method": method, "scheme": "http", "path": path,
-                     "raw_path": path.encode(), "query_string": b"", "root_path": "",
+                     "method": method, "scheme": "http", "path": target.path,
+                     "raw_path": target.path.encode(), "query_string": target.query.encode(), "root_path": "",
                      "headers": headers, "client": ("127.0.0.1", 1), "server": ("testserver", 80)}
             messages = []
 

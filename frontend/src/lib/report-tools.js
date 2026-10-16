@@ -7,6 +7,8 @@ export const REPORT_TYPES = [
   { value: "attention", label: "Needs attention now", filters: ["customer_id", "service_id", "status", "attention"] },
   { value: "catalogue", label: "Shop catalogue", filters: [] },
   { value: "expenses", label: "Shop expenses", filters: ["start_date", "end_date", "category", "payment_method"] },
+  { value: "closing", label: "Daily closing", filters: ["start_date", "end_date"] },
+  { value: "till", label: "Cash added and Owner withdrawals", filters: ["start_date", "end_date"] },
 ];
 
 export const ATTENTION_LABELS = {
@@ -21,6 +23,8 @@ export const SUMMARY_LABELS = {
   booked_value: "Booked service value",
   cash_expenses: "Cash expenses", mpesa_expenses: "M-Pesa expenses", total_expenses: "Total shop expenses",
   shop_funded_expenses: "Paid from shop money", owner_funded_expenses: "Paid personally by Owner", unconfirmed_funding_expenses: "Payer not confirmed",
+  days_confirmed: "Days with an Owner confirmation", days_needing_review: "Days needing review",
+  cash_added: "Cash added to the till", owner_withdrawals: "Owner withdrawals", net_till_movement: "Cash additions less withdrawals",
 };
 
 export function nairobiToday(now = new Date()) {
@@ -40,6 +44,11 @@ export function reportQuery(kind, filters) {
 
 export function formatKes(value) {
   return `KES ${Number(value).toLocaleString("en-KE", { maximumFractionDigits: 2 })}`;
+}
+
+export function reportSummaryValue(report, key, value) {
+  return report === 'attention' || key.startsWith('quantity_') || key.startsWith('days_')
+    ? Number(value).toLocaleString('en-KE') : formatKes(value);
 }
 
 export function dashboardWork(report) {

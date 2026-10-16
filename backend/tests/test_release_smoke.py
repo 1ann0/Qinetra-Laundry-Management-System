@@ -67,6 +67,26 @@ class ReleaseSmokeTests(unittest.TestCase):
         with self.assertRaisesRegex(SmokeFailure, "/customers/history"):
             self.verify()
 
+    def test_closing_release_requires_its_api_contract_and_anonymous_denials(self):
+        body = b'fictional closing page'
+        self.manifest['assets']['daily-close.html'] = hashlib.sha256(body).hexdigest()
+        for path in ('/daily-close.html', '/daily-close'):
+            self.responses[self.frontend + path] = HttpResult(200, self.headers, body)
+        with self.assertRaisesRegex(SmokeFailure, 'contract'):
+            self.verify()
+        paths = {path: {} for path in ('/expenses', '/dashboard/summary',
+            '/dashboard/reports/{report_name}', '/daily-close', '/till-movements',
+            '/till-movements/{movement_id}', '/till-movements/{movement_id}/corrections')}
+        self.responses[self.api + '/openapi.json'] = HttpResult(200, {}, json.dumps({'paths':paths}).encode())
+        probes = ('/daily-close?date=2000-01-01', '/till-movements/1',
+            '/dashboard/reports/closing', '/dashboard/reports/till')
+        for path in probes:
+            self.responses[self.api + path] = HttpResult(401, self.headers, b'')
+        self.assertEqual(self.verify()['anonymous_denial_count'], 7)
+        self.responses[self.api + probes[0]] = HttpResult(200, self.headers, b'')
+        with self.assertRaisesRegex(SmokeFailure, 'anonymous'):
+            self.verify()
+
     def test_generated_next_route_payload_names_are_accepted(self):
         name, body = "expenses/__next.!KHByb3RlY3RlZCk.expenses.__PAGE__.txt", b"fictional route payload"
         self.manifest["assets"][name] = hashlib.sha256(body).hexdigest()

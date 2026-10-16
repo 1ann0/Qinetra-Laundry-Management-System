@@ -1,6 +1,6 @@
 {
   "schema": "qlms",
-  "schema_sha256": "3b940edcf18ebbaf20d58f7affda48126a852fd5f8398cd836048061f66cf9fb",
+  "schema_sha256": "853ed9b7c3fb3c3bff3efe4c28ead3c1b3aa1b09da37d04462fbdf03e38ce6da",
   "migrations": [
     {
       "file": "001_add_catalogs.sql",
@@ -105,6 +105,10 @@
     {
       "file": "026_add_expense_funding.sql",
       "sha256": "bd2d22ff6576db199b8c15187189a459f2063c516d99065a20b1d86b95e07c65"
+    },
+    {
+      "file": "027_add_daily_close.sql",
+      "sha256": "fd84c67c0e2f6a609b548b802465ace35f80a3a4b41d0a776ccb48add225ec30"
     }
   ]
 }

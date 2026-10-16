@@ -458,7 +458,7 @@ function FinancialSnapshotContent() {
           See the work booked, money received and customer contribution for the
           selected period.
         </p>
-        <div className="mt-4 flex flex-wrap gap-3"><Link className="secondary-button" href="/expenses">Record an expense</Link><Link className="secondary-button" href="/reports?report=expenses">Expense history and downloads</Link></div>
+        <div className="mt-4 flex flex-wrap gap-3"><Link className="secondary-button" href="/daily-close">Close the day</Link><Link className="secondary-button" href="/expenses">Record an expense</Link><Link className="secondary-button" href="/reports?report=expenses">Expense history and downloads</Link></div>
       </div>
 
       {error ? (

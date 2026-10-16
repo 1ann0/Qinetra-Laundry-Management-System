@@ -6,7 +6,7 @@ import OwnerGuard from "@/components/auth/owner-guard";
 import { useAuth } from "@/context/auth-context";
 import { getUserMessage } from "@/lib/user-messages";
 import { formatNairobiDateTime } from "@/lib/format-nairobi";
-import { REPORT_TYPES, ATTENTION_LABELS, SUMMARY_LABELS, nairobiToday, reportQuery, formatKes, saveReportFile } from "@/lib/report-tools";
+import { REPORT_TYPES, ATTENTION_LABELS, SUMMARY_LABELS, nairobiToday, reportQuery, formatKes, saveReportFile, reportSummaryValue } from "@/lib/report-tools";
 import { EXPENSE_CATEGORIES } from "@/lib/expense-tools";
 
 const INPUT = "min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100";
@@ -38,6 +38,8 @@ function ReportValue({ row, column }) {
   if (["method", "purpose"].includes(column.key)) text = { cash: "Cash", mpesa: "M-Pesa", service_refund: "Service refund", excess_payment: "Excess payment" }[value] || value;
   if (column.key === "category") text = EXPENSE_CATEGORIES[value] || value;
   if (column.key === "expense_id") return <Link className="inline-flex min-h-12 items-center font-bold text-[#005AAB] underline" href={`/expenses?id=${value}`}>Expense #{value}</Link>;
+  if (column.key === "movement_id") return <Link className="inline-flex min-h-12 items-center font-bold text-[#005AAB] underline" href={`/till-movements?id=${value}`}>Movement #{value}</Link>;
+  if (column.key === "business_date") return <Link className="inline-flex min-h-12 items-center font-bold text-[#005AAB] underline" href={`/daily-close?date=${value}`}>{value}</Link>;
   return column.key === "ticket" && row.order_id ? <Link className="inline-flex min-h-12 items-center font-bold text-[#005AAB] underline" href={`/orders/receipt?id=${row.order_id}`}>{text}</Link> : String(text ?? "");
 }
 
@@ -47,6 +49,10 @@ const MOBILE_FIELDS = {
   receipts: ["ticket", "date", "method", "amount"], refunds: ["ticket", "date", "method", "amount"], corrections: ["ticket", "date", "amount", "purpose"],
   service_lines: ["ticket", "service", "quantity", "unit", "booked_value"], services: ["name", "unit", "price", "active"], clothing: ["name", "group", "active"],
   expenses: ["expense_id", "paid_date", "category", "amount", "state"], expense_changes: ["expense_id", "recorded_at", "reason", "actor"],
+  closing_summary: ["business_date", "review_state", "expected_cash", "counted_cash", "cash_difference"],
+  closing_history: ["business_date", "revision", "cash_difference", "reason"],
+  till_movements: ["movement_id", "movement_date", "kind", "amount", "state"],
+  till_changes: ["movement_id", "revision", "recorded_at", "reason"],
 };
 
 function ReportSection({ section }) {
@@ -175,6 +181,8 @@ function ReportsContent() {
       <button className="primary-button mt-5 min-h-12" disabled={loading} type="submit">{loading ? "Preparing report…" : "View report"}</button>
       {kind === "attention" ? <p className="mt-3 text-sm text-slate-600">Attention shows the shop now. It is not a historical date report.</p> : null}
       {kind === "expenses" ? <Link className="secondary-button ml-3 mt-5" href="/expenses">Record an expense</Link> : null}
+      {kind === "closing" ? <Link className="secondary-button ml-3 mt-5" href="/daily-close">Close a day</Link> : null}
+      {kind === "till" ? <Link className="secondary-button ml-3 mt-5" href="/till-movements">Record cash added or withdrawn</Link> : null}
     </form>
     {message ? <p className="mt-4 break-words rounded-xl border border-green-300 bg-green-50 p-4 text-green-900" role="status">{message}</p> : null}
     {report ? <div id="reports-preview-step" className="mt-6" aria-busy={loading}>
@@ -185,7 +193,7 @@ function ReportsContent() {
         <div className="mt-4 flex flex-wrap gap-3"><button className="primary-button min-h-12" type="button" disabled={Boolean(downloading) || loading || changed} onClick={() => download("xlsx")}>{downloading === "xlsx" ? "Preparing Excel…" : "Download Excel (.xlsx)"}</button><button className="secondary-button min-h-12" type="button" disabled={Boolean(downloading) || loading || changed} onClick={() => download("csv")}>{downloading === "csv" ? "Preparing CSV…" : "Download CSV"}</button></div>
         <p className="mt-3 text-sm text-slate-600">Downloads use exactly these displayed filters. Editing a file does not change QLMS.</p>
       </div>
-      {Object.keys(report.summary).length ? <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{Object.entries(report.summary).map(([key, value]) => <div className="rounded-xl border border-slate-200 bg-white p-4" key={key}><dt className="text-sm text-slate-600">{ATTENTION_LABELS[key] || SUMMARY_LABELS[key] || key.replaceAll("_", " ")}</dt><dd className="mt-1 text-xl font-bold text-slate-900">{report.report === "attention" || key.startsWith("quantity_") ? Number(value).toLocaleString("en-KE") : formatKes(value)}</dd></div>)}</dl> : null}
+      {Object.keys(report.summary).length ? <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{Object.entries(report.summary).map(([key, value]) => <div className="rounded-xl border border-slate-200 bg-white p-4" key={key}><dt className="text-sm text-slate-600">{ATTENTION_LABELS[key] || SUMMARY_LABELS[key] || key.replaceAll("_", " ")}</dt><dd className="mt-1 text-xl font-bold text-slate-900">{reportSummaryValue(report.report,key,value)}</dd></div>)}</dl> : null}
       {report.sections.map(section => <ReportSection key={`${loadedQuery}:${report.generated_at}:${section.key}`} section={section} />)}
       <details className="mt-5 rounded-xl border border-slate-200 bg-white p-4"><summary className="cursor-pointer font-bold text-slate-800">How to read these figures</summary><ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-slate-600">{report.definitions.map(definition => <li key={definition}>{definition}</li>)}</ul></details>
     </div> : loading ? <p className="mt-5 text-slate-600" role="status">Loading report choices…</p> : <p className="mt-5 rounded-xl bg-slate-50 p-4 text-slate-600">Choose a customer or service where required, then select View report.</p>}

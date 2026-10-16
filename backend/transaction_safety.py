@@ -56,6 +56,10 @@ def find_saved_order(db, record_type, key, fingerprint, user_id):
         return saved
     if record_type is models.ExpenseChange:
         return saved.expense
+    if record_type in {models.TillMovement, models.DailyClose}:
+        return saved
+    if record_type is models.TillMovementChange:
+        return saved.movement
     return saved.order
 
 

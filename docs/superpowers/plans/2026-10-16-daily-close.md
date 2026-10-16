@@ -20,6 +20,8 @@
 
 ## Task 1 — transaction-consistent shared daily activity
 
+Progress 16 October: test-first components, Owner routes, till/history and immutable signing are implemented locally. Intermediate full PostgreSQL run **369 checks** passed, including the forced waiting-replay case and a payment committed during a repeatable-read preview; migration/repeat/empty restore and 27-table encrypted recovery passed (57.1s). Later batched report/decimal-text/date/refund checks passed 8 calculation/11 HTTP cases. Both phone forms, report navigation and Owner dashboard integration exist; 122 frontend tests/lint/Linux production build passed before two last flow fixes. Final full suite, phone proof, exact candidate CI and all live 027/release gates remain open. No daily-close deployment has occurred.
+
 Files: create `backend/daily_control.py`, `backend/tests/test_daily_control.py`; extend existing model/payment calculation only if needed to avoid duplicating corrected-receipt logic; keep existing Finance/Reports callers consistent.
 
 - [ ] Write the hand-calculated fixture and date/method/correction/unknown-payer/no-activity tests first; run and observe the missing implementation fail.

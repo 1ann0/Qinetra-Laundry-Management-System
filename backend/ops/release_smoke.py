@@ -111,12 +111,19 @@ def verify_release(manifest, frontend, api, source, *, fetch=fetch_public):
     contract = request(api, "/openapi.json")
     try:
         paths = json.loads(contract.body)["paths"] if contract.status == 200 else {}
-        has_contract = {"/expenses", "/dashboard/summary", "/dashboard/reports/{report_name}"}.issubset(paths)
+        required_routes = {"/expenses", "/dashboard/summary", "/dashboard/reports/{report_name}"}
+        if 'daily-close.html' in assets:
+            required_routes.update({'/daily-close', '/till-movements', '/till-movements/{movement_id}',
+                '/till-movements/{movement_id}/corrections'})
+        has_contract = required_routes.issubset(paths)
     except (ValueError, KeyError, TypeError):
         has_contract = False
     if not has_contract:
-        raise SmokeFailure("API contract is missing required expense/report routes")
+        raise SmokeFailure("API contract is missing required staff routes")
     denials = ("/expenses/1", "/dashboard/summary", "/dashboard/reports/catalogue")
+    if 'daily-close.html' in assets:
+        denials += ('/daily-close?date=2000-01-01', '/till-movements/1',
+            '/dashboard/reports/closing', '/dashboard/reports/till')
     for path in denials:
         reply = request(api, path, read_body=False)
         if reply.status not in (401, 403):

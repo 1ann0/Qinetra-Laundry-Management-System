@@ -7,6 +7,7 @@ import { useAuth } from "@/context/auth-context";
 import { getUserMessage } from "@/lib/user-messages";
 import { formatNairobiDateTime } from "@/lib/format-nairobi";
 import { ATTENTION_LABELS, SUMMARY_LABELS, dashboardWork, formatKes, nairobiToday, reportQuery } from "@/lib/report-tools";
+import { differenceFromKes } from "@/lib/daily-close-tools";
 
 const WORK_QUEUES = ["due_today", "production_late", "ready", "overdue", "holds", "outsourcing"];
 const INPUT = "min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base text-slate-900 focus:border-[#005AAB] focus:outline-none focus:ring-4 focus:ring-blue-100";
@@ -20,6 +21,8 @@ function DashboardContent() {
   const [expenses, setExpenses] = useState(null);
   const [expensesPeriod, setExpensesPeriod] = useState(null);
   const [expensesError, setExpensesError] = useState("");
+  const [closing, setClosing] = useState(null);
+  const [closingError, setClosingError] = useState("");
   const [loading, setLoading] = useState(true);
   const [workError, setWorkError] = useState("");
   const [moneyError, setMoneyError] = useState("");
@@ -29,6 +32,7 @@ function DashboardContent() {
     authenticatedRequest("/dashboard/reports/attention", { signal, cache: "no-store" }),
     authenticatedRequest(`/dashboard/reports/money?${reportQuery("money", dates)}`, { signal, cache: "no-store" }),
     authenticatedRequest(`/dashboard/reports/expenses?${reportQuery("expenses", dates)}`, { signal, cache: "no-store" }),
+    authenticatedRequest(`/daily-close?date=${nairobiToday()}`, { signal, cache: "no-store" }),
   ]), [authenticatedRequest]);
 
   const applyResults = useCallback((results, dates) => {
@@ -39,6 +43,8 @@ function DashboardContent() {
     else setMoneyError(getUserMessage(results[1].reason, "Money figures could not be refreshed."));
     if (results[2].status === "fulfilled") { setExpenses(results[2].value); setExpensesPeriod({ ...dates }); }
     else setExpensesError(getUserMessage(results[2].reason, "Expense figures could not be refreshed."));
+    if (results[3].status === "fulfilled") setClosing(results[3].value);
+    else setClosingError(getUserMessage(results[3].reason, "The daily money check could not be refreshed."));
     setLoading(false);
   }, []);
 
@@ -54,7 +60,7 @@ function DashboardContent() {
     if (period.start_date && period.end_date && period.end_date < period.start_date) {
       setMoneyError("Choose an end date on or after the start date."); return;
     }
-    setLoading(true); setWorkError(""); setMoneyError(""); setExpensesError("");
+    setLoading(true); setWorkError(""); setMoneyError(""); setExpensesError(""); setClosingError("");
     void loadDashboard(period);
   }
 
@@ -94,6 +100,11 @@ function DashboardContent() {
           {current.rows.length ? <ul className="divide-y divide-slate-200">{current.rows.slice(0, 5).map(row => <li key={row.order_id} className="flex flex-wrap items-start justify-between gap-3 p-4"><div className="min-w-0"><Link className="inline-flex min-h-12 items-center font-bold text-[#005AAB] underline" href={`/orders/receipt?id=${row.order_id}`}>{row.ticket}</Link><p className="break-words text-slate-800">{row.customer_name}</p><p className="mt-1 text-sm text-slate-600">{String(row.attention).split(", ").map(flag => ATTENTION_LABELS[flag] || flag).join(" · ")}</p></div><Link className="secondary-button" href={`/customers/search?customerId=${row.customer_id}`}>Customer history</Link></li>)}</ul> : <p className="p-5 text-slate-600">No tickets need attention right now. Saved work will appear here when it needs action.</p>}
         </div>
       </> : null}
+    </section>
+    <section id="dashboard-close-step" className="mt-7 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6" aria-busy={loading}>
+      <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-bold">Daily money check</h2><p className="mt-1 text-sm text-slate-600">Count cash and compare M-Pesa statement totals. This is a manual Owner check, not profit.</p></div><Link className="secondary-button" href={`/daily-close?date=${closing?.date || nairobiToday()}`}>Close the day</Link></div>
+      {closingError ? <p role="alert" className="mt-4 rounded-xl border border-red-300 bg-red-50 p-4 text-red-800">{closingError} {closing ? "The last loaded day remains below; reload before relying on its review state." : ""}</p> : null}
+      {closing ? <div className="mt-4 space-y-2"><p className="text-sm text-slate-600">Displayed day: {closing.date} · Nairobi</p><p className="font-bold">{!closing.latest ? "No Owner confirmation yet" : closing.needs_review ? "Needs review — records changed after confirmation" : "Owner confirmation saved"}</p>{closing.latest ? <><p>Signed cash result: <strong>{differenceFromKes(closing.latest.snapshot.figures.cash_difference)}</strong></p><p className="text-sm text-slate-600">{closing.latest.confirmed_by_username} · {formatNairobiDateTime(closing.latest.created_at)}. Later activity never rewrites the signed snapshot.</p></> : <p>Open Close the day when the shop is ready to count its money.</p>}</div> : <p role="status" className="mt-4 text-slate-600">{loading ? "Loading the daily check…" : "Daily check unavailable. Refresh to try again."}</p>}
     </section>
     <section id="dashboard-money-step" className="mt-7 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6" aria-busy={loading}>
       <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-bold text-slate-900">Money received and returned</h2><p className="mt-1 text-sm text-slate-600">These are recorded payments. Profit also needs the shop&apos;s costs.</p></div><Link className="secondary-button" href="/finance">Open Finance</Link></div>

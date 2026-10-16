@@ -71,6 +71,8 @@ const INPUT_MESSAGES = {
   "Choose a recognized expense category": "Choose an expense category from the list.",
   "Choose a paid date on or before today in Nairobi": "Choose today or an earlier paid date.",
   "Explain this correction": "Explain why this expense is being changed.",
+  "Choose today or an earlier closing date": "Choose today or an earlier closing date.",
+  "Explain the difference or why this day is being confirmed again": "Explain the money difference or why you are confirming this day again.",
   "Remove control characters": "Remove unusual control characters and try again.",
   "Orders can only move forward by one stage at a time": "Open Track orders to check the current stage. Use the next action shown on the order.",
   "Complete the pending clothing check before this order is ready": "Open the order and complete its clothing check before you mark it ready.",
@@ -132,6 +134,12 @@ export function responseError(status, payload, path, recovery) {
   if (status === 409) {
     const detail = payload?.detail;
     if (detail?.save_state === "not_saved" && Object.hasOwn(REJECTED_SAVE_MESSAGES, detail.code)) {
+      if (path === '/daily-close' && detail.code === 'QLMS-STALE-RECORD') {
+        const message = detail.message === 'Confirm who paid each unconfirmed cash expense before closing'
+          ? 'Confirm who paid the listed cash expenses, then reload this day. Your closing was not saved.'
+          : 'The day changed before confirmation. Your closing was not saved. Reload the figures and review your counts before confirming again.';
+        return new ApiError(message,status,detail.code,'not_saved');
+      }
       return new ApiError(REJECTED_SAVE_MESSAGES[detail.code], status, detail.code, "not_saved");
     }
     if (detail?.code === "QLMS-SAVE-CONFLICT") {
@@ -160,6 +168,7 @@ export function responseError(status, payload, path, recovery) {
       "Selected customer or service was not found": "Choose the customer or service again in Reports.",
       "Unknown report": "Open Reports and choose a report from the list.",
       "Expense not found": "This expense is not available. Open Expense history in Reports and select it again.",
+      "Cash movement not found": "This cash movement is not available. Open Cash added and Owner withdrawals in Reports and select it again.",
     };
     const detail = payload?.detail;
     return new ApiError(

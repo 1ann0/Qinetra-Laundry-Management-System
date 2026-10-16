@@ -20,7 +20,7 @@ NAIROBI = timezone(timedelta(hours=3))
 MAX_RECORDS = 5000
 MAX_ROWS = 20000
 MAX_REPORT_BYTES = 10 * 1024 * 1024
-REPORTS = {"orders", "customer", "service", "money", "attention", "catalogue", "expenses"}
+REPORTS = {"orders", "customer", "service", "money", "attention", "catalogue", "expenses", "closing", "till"}
 STATUSES = {"received", "in_progress", "ready", "collected", "cancelled"}
 ATTENTION = {"due_today", "production_late", "ready", "overdue", "holds", "outsourcing", "outstanding", "refund_due"}
 DEFINITIONS = [
@@ -144,6 +144,7 @@ def build_report(db, report_name, *, start_date=None, end_date=None, customer_id
         "money": {"start_date", "end_date", "customer_id", "payment_method"},
         "attention": {"customer_id", "service_id", "status", "attention"}, "catalogue": set(),
         "expenses": {"start_date", "end_date", "category", "payment_method"},
+        "closing": {"start_date", "end_date"}, "till": {"start_date", "end_date"},
     }
     filters = {key: value for key, value in {"start_date": start_date, "end_date": end_date, "customer_id": customer_id,
         "service_id": service_id, "status": status, "payment_method": payment_method, "attention": attention, "category":category}.items() if value is not None}
@@ -164,6 +165,10 @@ def build_report(db, report_name, *, start_date=None, end_date=None, customer_id
         result["sections"].append({"key": key, "title": title, "columns": fields, "rows": rows})
         if sum(len(part["rows"]) for part in result["sections"]) > MAX_ROWS:
             raise HTTPException(413, "This report is too large. Narrow its filters; nothing has been truncated.")
+    if report_name in {"closing", "till"}:
+        from daily_reports import extend_daily_report
+        extend_daily_report(db, report_name, result, section, start_date, end_date)
+        return result
     if report_name == "expenses":
         query = db.query(models.Expense)
         if start_date:
@@ -305,9 +310,10 @@ def build_report(db, report_name, *, start_date=None, end_date=None, customer_id
                     continue
                 if payment_method and payment.payment_method != payment_method:
                     continue
-                errors = sum((Decimal(str(a.amount)) for a in payment.adjustments if a.kind == "entry_error"), Decimal("0"))
+                corrected = payment.corrected_amount
+                errors = Decimal(str(payment.amount)) - corrected
                 received.append({**contact(order), "date": payment.received_date.isoformat(), "method": payment.payment_method,
-                    "original_amount": payment.amount, "entry_errors": errors, "amount": Decimal(str(payment.amount)) - errors,
+                    "original_amount": payment.amount, "entry_errors": errors, "amount": corrected,
                     "actor": payment.confirmed_by_username})
             for item in order.payment_adjustments:
                 if not in_period(item.effective_date):

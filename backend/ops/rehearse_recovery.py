@@ -19,6 +19,7 @@ import models
 import schemas
 from alert_settings import update_alert_settings
 from expense_routes import create_expense, correct_expense, ExpenseInput, ExpenseCorrectionInput
+from daily_close_routes import create_movement, correct_movement, read_close, confirm_close, TillInput, TillCorrection, CloseInput
 from customer_phone import normalize_kenyan_phone
 from ops.backup import export_database, restore_database
 from ops.schema_setup import backup_access_sql, runtime_access_sql, verify_schema
@@ -98,11 +99,34 @@ def main_rehearsal(container, client_image=None):
         order_id, owner_id = order.id, owner.id
         report = main.financial_summary(main.get_nairobi_today(), main.get_nairobi_today(), db, owner)
         assert (report.total_received, report.refunds_sent, report.net_cash_movement) == (1000, 200, 800)
+        day = main.get_nairobi_today()
+        movement_body = TillInput(movement_date=day, kind="withdrawal", amount=100)
+        movement = create_movement(movement_body, db, owner, idempotency_key=uuid4())
+        movement_id = movement.id
+        preview = read_close(day, db, owner)
+        closing_body = CloseInput(business_date=day, opening_cash=200, counted_cash=850,
+            statement_received=0, statement_returned=0, expected_revision=0,
+            expected_fingerprint=preview["activity"]["source_fingerprint"], reason="Fictional fifty shillings short")
+        first_close = confirm_close(closing_body, db, owner, idempotency_key=uuid4())
+        assert Decimal(first_close["snapshot"]["figures"]["expected_cash"]) == 900
+        correct_movement(movement_id, TillCorrection(**(movement_body.model_dump() | {"amount":80}),
+            expected_revision=0, reason="Fictional withdrawal correction", is_voided=False),
+            db, owner, idempotency_key=uuid4())
+        preview = read_close(day, db, owner)
+        assert preview["needs_review"]
+        second_body = closing_body.model_copy(update={"counted_cash":Decimal("870"), "expected_revision":1,
+            "expected_fingerprint":preview["activity"]["source_fingerprint"], "reason":"Fictional reviewed cash movement"})
+        second_close = confirm_close(second_body, db, owner, idempotency_key=uuid4())
+        assert Decimal(second_close["snapshot"]["figures"]["expected_cash"]) == 920
     must_be_denied(runtime, "DELETE FROM qlms.customers")
     must_be_denied(runtime, "UPDATE qlms.payment_adjustments SET reason='tampered'")
     must_be_denied(runtime, "UPDATE qlms.alert_settings_changes SET after_email='tampered@example.test'")
     must_be_denied(runtime, "UPDATE qlms.expense_changes SET reason='tampered'")
     must_be_denied(runtime, "DELETE FROM qlms.expenses")
+    must_be_denied(runtime, "DELETE FROM qlms.till_movements")
+    must_be_denied(runtime, "UPDATE qlms.till_movement_changes SET reason='tampered'")
+    must_be_denied(runtime, "UPDATE qlms.daily_closes SET reason='tampered'")
+    must_be_denied(runtime, "DELETE FROM qlms.daily_closes")
     must_be_denied(runtime, "CREATE TABLE qlms.forbidden(id integer)")
     backup_url = url.set(username=backup_name, password=backup_password)
     backup = create_engine(backup_url)
@@ -149,6 +173,14 @@ def main_rehearsal(container, client_image=None):
             assert "funding_source" not in db.query(models.Expense).one().original_details
             assert Decimal(db.query(models.Expense).one().original_details["amount"]) == Decimal("100")
             assert db.query(models.ExpenseChange).count() == 2
+            assert db.query(models.TillMovement).one().amount == Decimal("80")
+            assert Decimal(db.query(models.TillMovement).one().original_details["amount"]) == 100
+            assert db.query(models.TillMovementChange).count() == 2
+            closes = db.query(models.DailyClose).order_by(models.DailyClose.revision).all()
+            assert len(closes) == 2
+            assert Decimal(closes[0].snapshot["figures"]["expected_cash"]) == 900
+            assert Decimal(closes[1].snapshot["figures"]["expected_cash"]) == 920
+            assert Decimal(closes[0].snapshot["figures"]["cash_difference"]) == Decimal(closes[1].snapshot["figures"]["cash_difference"]) == -50
             assert db.query(models.Customer).one().name == "Corrected fictional customer"
             assert order.status == "collected"
             assert order.service_lines[0].item_revision == 1

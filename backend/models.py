@@ -86,6 +86,75 @@ class ExpenseChange(Base):
     expense = relationship("Expense", back_populates="changes")
 
 
+# Cash entering/leaving the till is separate from a business expense.
+class TillMovement(Base):
+    __tablename__ = "till_movements"
+    __table_args__ = (
+        CheckConstraint("amount > 0", name="till_movement_positive"),
+        CheckConstraint("kind IN ('addition','withdrawal')", name="till_movement_kind"),
+        CheckConstraint("revision >= 0", name="till_movement_revision"),
+    )
+    id = Column(Integer, primary_key=True)
+    movement_date = Column(Date, nullable=False, index=True)
+    kind = Column(String(20), nullable=False)
+    amount = Column(Numeric(12, 2), nullable=False)
+    reference = Column(String(100), nullable=False, default="")
+    note = Column(String(1000), nullable=False, default="")
+    is_voided = Column(Boolean, nullable=False, default=False, server_default="false")
+    revision = Column(Integer, nullable=False, default=0, server_default="0")
+    request_key = Column(String(36), unique=True, nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    confirmed_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    confirmed_by_username = Column(String(50), nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    changes = relationship("TillMovementChange", back_populates="movement", order_by="TillMovementChange.revision")
+
+    @property
+    def original_details(self):
+        return next((item.after_details for item in self.changes if item.revision == 0), None)
+
+    @property
+    def corrections(self):
+        return [item for item in self.changes if item.revision > 0]
+
+
+class TillMovementChange(Base):
+    __tablename__ = "till_movement_changes"
+    __table_args__ = (UniqueConstraint("movement_id", "revision", name="till_change_revision"),)
+    id = Column(Integer, primary_key=True)
+    movement_id = Column(Integer, ForeignKey("till_movements.id", ondelete="RESTRICT"), nullable=False)
+    before_details = Column(JSON, nullable=True)
+    after_details = Column(JSON, nullable=False)
+    reason = Column(String(200), nullable=False)
+    revision = Column(Integer, nullable=False)
+    request_key = Column(String(36), unique=True, nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    confirmed_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    confirmed_by_username = Column(String(50), nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    movement = relationship("TillMovement", back_populates="changes")
+
+
+# Each Owner confirmation is immutable, even when the day's ledger changes later.
+class DailyClose(Base):
+    __tablename__ = "daily_closes"
+    __table_args__ = (
+        UniqueConstraint("business_date", "revision", name="daily_close_revision"),
+        CheckConstraint("revision > 0", name="daily_close_positive_revision"),
+    )
+    id = Column(Integer, primary_key=True)
+    business_date = Column(Date, nullable=False, index=True)
+    revision = Column(Integer, nullable=False)
+    source_fingerprint = Column(String(64), nullable=False)
+    snapshot = Column(JSON, nullable=False)
+    reason = Column(String(200), nullable=False, default="")
+    request_key = Column(String(36), unique=True, nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    confirmed_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    confirmed_by_username = Column(String(50), nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+
+
 # Shared login limits survive process restarts without storing raw identifiers.
 class LoginAttemptBucket(Base):
     __tablename__ = "login_attempt_buckets"
@@ -680,6 +749,12 @@ class Payment(Base):
         cascade="all, delete-orphan",
         order_by="PaymentAdjustment.id",
     )
+
+    @property
+    def corrected_amount(self):
+        # Entry errors restate the original receipt; real refunds remain separate events.
+        return Decimal(str(self.amount)) - sum((Decimal(str(item.amount))
+            for item in self.adjustments if item.kind == "entry_error"), Decimal("0"))
 
 
 # A linked adjustment never edits the original receipt of money.

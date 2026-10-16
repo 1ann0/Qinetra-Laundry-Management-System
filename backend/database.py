@@ -4,7 +4,7 @@
 import os
 import re
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker, declarative_base
 
@@ -45,3 +45,12 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def start_consistent_transaction(db, *, read_only=False):
+    # Use only at an HTTP boundary after its authentication read, before ledger work.
+    db.rollback()
+    if db.get_bind().dialect.name == "postgresql":
+        db.connection(execution_options={"isolation_level": "REPEATABLE READ"})
+        if read_only:
+            db.execute(text("SET TRANSACTION READ ONLY"))
