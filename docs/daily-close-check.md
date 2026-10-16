@@ -1,6 +1,6 @@
 # Daily closing — release qualification
 
-Status: implemented and under local qualification on 16 October 2026. **Not deployed.** Live remains expense-funding source 754e778 / schema 026 until the release evidence below is completed.
+Status: **deployed and publicly verified on 16 October 2026**. Frontend/API source d0935e802b4bc76fc7035ef193e7ebdd014ed868, schema 027. Private Owner Android acceptance remains separate. No fictional production records were added.
 
 ## Behaviour and shop decision
 
@@ -24,11 +24,16 @@ M-Pesa comparisons are manual statement checks, not automatic transaction verifi
 - Correcting the withdrawal from 100 to 80 flagged Needs review. A new explained confirmation saved expected 920/count 870/50 short. Expanding history showed original expected 900/count 850 unchanged. Two versions, one business day.
 - Screenshots 82/83 show fictional variance and the new signed confirmation at phone width. Inputs measured 48px; primary/load actions 46px; no horizontal overflow (375 viewport, 360 document). Existing 40px Log out is unchanged. This is browser emulation, not actual Android hardware acceptance.
 
-## Release gates still open
+## Actual release evidence
 
-Finish fresh frontend build and spreadsheet file verification, Employee browser denial and focused manual review. Then stage only this feature, run secret/diff checks and exact candidate CI. Obtain an actual cloud backup before applying pilot-only migration 027 plus the rehearsed runtime/backup grants. Verify old API readiness, deploy the exact compatible API and matching HTTPS frontend, run the full manifest smoke and another cloud backup. Record provider source, schema, Worker version/traffic and safe public evidence. Do not add fictional ledger records to production.
+- Final source **d0935e8** passed exact [CI 38940888554](https://github.com/1ann0/Qinetra-Laundry-Management-System/actions/runs/38940888554): **378 backend checks**, full/repeated migration and empty restore, restricted runtime/backup/browser tests and 27-table encrypted recovery (3.1s), plus **123 frontend checks**, lint and static build. Screenshot 84 is the actual passing run. The local narrow-script rehearsal lost its disposable PostgreSQL connection; it is not called a pass. The exact-source hosted rehearsal separately passed the same new scope-preservation assertions.
+- Actual pre-migration backup **38916905290** and post-migration backup **38942039201** passed encrypted archive/Drive read-back and monitor completion. Raw backup logs and private settings were not opened. These do not prove punctual daily scheduling.
+- Automatic review rejected the initial whole-schema access script; no migration was applied. The safer script grants only the three new tables/sequences and their policies. Actual SQL read-back confirms **27 RLS tables**, runtime append-only closing/history, no runtime deletion, read-only backup and no browser-role access. The old table/sequence access fingerprint stayed **7be1575c47a3697b3d588037f6593e2a**; existing expense/history counts stayed **0/0**, new closing/movement counts **0/0**. Old API readiness was ready after migration and before replacing it.
+- Render **dep-db963oss728c73ft824g** is live at the exact source, finished **17:43:01 UTC / 20:43:01 Nairobi**; readiness and actual daily-close/till OpenAPI contract passed. Automatic deployment remains off; only the pilot service was changed.
+- Cloudflare version **e04fa600-0f3d-46aa-9d66-9865c6253044**, deployment **19c49ae5-7e50-4aad-bbc9-bf34b7e17d7b**, 100% at **17:44:10 UTC / 20:44:10 Nairobi**; startup 2ms. Exact source, unchanged Worker module, private headers/routing/flags/HTTPS binding were read back before activation. The tested frontend image is unchanged by the later permission-only commit; every frontend source/asset hash was checked. Temporary grants stayed encrypted in exchange and were not printed/saved.
+- Full paired live smoke passed **147 public asset hashes, 21 clean page routes, API readiness/contract and seven anonymous denials**. [Asset manifest](diagrams/evidence/qlms-daily-close-assets-20261016.json), [safe hosted result](diagrams/evidence/qlms-daily-close-hosted-20261016.json), [provider/recovery evidence](diagrams/evidence/qlms-daily-close-release-20261016.json).
 
-Candidate f73168d6fb22b30f28448766d2cc54628887987c passed exact CI 38938123295; staged secret/diff checks passed. Actual pre-migration backup 38916905290 passed archive/Drive read-back/completion. Provider metadata still shows 24 pilot tables and no daily_closes table. Automatic review rejected the initial script because it reused broad whole-schema access setup; it was **not applied**. A bounded access function now targets only the three new tables/sequences, preserving existing schema/default/table permissions; its unit checks pass and actual PostgreSQL rehearsal/updated exact CI must pass before retrying. No security-review bypass or alternate executor is permitted.
+Actual Android new financial save/correction and locating/opening these two new report types remain private Owner acceptance, not inferred from public smoke. Financial code review traced existing Finance/report/payment callers, replay dispatch, transaction isolation, RLS/grants and UI recovery. It resolved the missing binary-report allowlist and reused-reason issues. Dedicated daily-close frontend rollback was reviewed for compatibility, not exercised in the unreliable browser; keeping the compatible API/schema and old pending-save keys is essential.
 
 ## Rollback
 
