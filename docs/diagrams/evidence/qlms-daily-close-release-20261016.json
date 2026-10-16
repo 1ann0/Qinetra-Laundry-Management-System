@@ -1,6 +1,8 @@
 {
   "source": "d0935e802b4bc76fc7035ef193e7ebdd014ed868",
   "candidateCI": "38940888554",
+  "independentHostedVerification": "38942835359",
+  "allHostedVerificationJobsPassed": true,
   "backendTests": 378,
   "frontendTests": 123,
   "schema": "027",
