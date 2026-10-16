@@ -36,10 +36,18 @@ def timestamp(value):
     return result.astimezone(timezone.utc)
 
 
+def validate_trigger_slot(value, *, now=None):
+    now = now or datetime.now(timezone.utc)
+    start = backup_window(now)
+    if value != start.strftime("%Y-%m-%dT%H:%M:%SZ"):
+        raise ValueError("Independent backup trigger must name the current 22:00 Nairobi slot")
+    return start
+
+
 def backup_required(current_run_id, *, now=None, fetch_json=read_metadata):
     now = now or datetime.now(timezone.utc)
     start = backup_window(now)
-    query = urlencode({"event": "schedule", "branch": "main", "status": "success", "per_page": 100,
+    query = urlencode({"branch": "main", "status": "success", "per_page": 100,
                        "created": ">=" + start.strftime("%Y-%m-%dT%H:%M:%SZ")})
     try:
         runs = fetch_json("/workflows/pilot-backup.yml/runs?" + query)["workflow_runs"]
@@ -50,7 +58,7 @@ def backup_required(current_run_id, *, now=None, fetch_json=read_metadata):
             run_id = run.get("id")
             if (type(run_id) is not int or run_id <= 0 or run_id == current_run_id
                     or run.get("repository", {}).get("full_name", "").casefold() != REPOSITORY.casefold()
-                    or run.get("event") != "schedule" or run.get("head_branch") != "main"
+                    or run.get("event") not in ("schedule", "workflow_dispatch") or run.get("head_branch") != "main"
                     or run.get("status") != "completed" or run.get("conclusion") != "success"
                     or not start <= timestamp(run.get("created_at")) <= now):
                 continue
@@ -73,8 +81,12 @@ def backup_required(current_run_id, *, now=None, fetch_json=read_metadata):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scheduled", action="store_true")
+    parser.add_argument("--trigger-slot")
     parser.add_argument("--run-id", type=int, default=os.environ.get("GITHUB_RUN_ID", "0"))
     args = parser.parse_args()
+    if args.trigger_slot is not None:
+        validate_trigger_slot(args.trigger_slot)
+        args.scheduled = True
     required = not args.scheduled or backup_required(args.run_id)
     print("required=" + str(required).lower())
     return 0

@@ -48,10 +48,25 @@ test("catch-ups cannot extend cron-monitor grace or claim success without the ar
   const start = backup.steps.find(step => step.name === "Signal start to the independent monitor");
   const complete = backup.steps.find(step => step.name === "Signal verified completion");
   const failure = backup.steps.find(step => step.name === "Signal failure or cancellation");
-  assert.equal(start.if, "github.event_name != 'schedule'");
+  assert.equal(start.if, "github.event_name == 'workflow_dispatch' && inputs.mode == 'qualification'");
   assert.equal(complete.if, undefined);
   assert.equal(failure.if, "failure() || cancelled()");
   assert.equal(backup.steps.find(step => step.name === "Require qualified retention before a scheduled run").if,
-    "github.event_name == 'schedule'");
+    "github.event_name == 'schedule' || inputs.mode == 'daily-trigger'");
   assert.equal(backup.steps.some(step => /upload-artifact|actions\/cache/.test(step.uses || "")), false);
+});
+
+test("independent dispatch has its own daily gate, validated slot and no fourth ordinary export", () => {
+  assert.ok(workflow.on.workflow_dispatch.inputs.mode.options.includes("daily-trigger"));
+  assert.equal(workflow.on.workflow_dispatch.inputs.slot.type, "string");
+  assert.match(admission.if, /inputs\.mode == 'daily-trigger'/);
+  assert.match(admission.if, /vars\.QLMS_INDEPENDENT_BACKUP_ENABLED == 'true'/);
+  assert.match(admission.if, /github\.event\.schedule != '17 19 \* \* \*'/);
+  const proof = admission.steps.find(step => step.id === "proof");
+  assert.equal(proof.env.TRIGGER_SLOT, "${{ inputs.slot }}");
+  assert.match(proof.run, /--trigger-slot "\$TRIGGER_SLOT"/);
+  assert.match(proof.run, /DAILY_MODE/);
+  const summary = admission.steps.find(step => step.name === "Record public trigger and admission decision");
+  assert.equal(summary.env.TRIGGER_SLOT, "${{ inputs.slot }}");
+  assert.match(summary.run, /TRIGGER_SLOT/);
 });

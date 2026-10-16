@@ -7,7 +7,11 @@ on:
         description: Private qualification; daily scheduling has a separate switch
         type: choice
         default: qualification
-        options: [qualification, alert-failure]
+        options: [qualification, alert-failure, daily-trigger]
+      slot:
+        description: Independent daily trigger slot in UTC; leave empty for private qualification
+        type: string
+        default: ''
   schedule:
     # Initial owner choice: 22:00 Nairobi (UTC+3). Cron is not an exact-time guarantee.
     - cron: '0 19 * * *'
@@ -28,7 +32,10 @@ jobs:
     # A manual qualification run does not enable the daily schedule.
     if: >-
       github.ref == 'refs/heads/main' &&
-      ((github.event_name == 'schedule' && vars.QLMS_HOSTED_BACKUP_ENABLED == 'true') ||
+      ((github.event_name == 'schedule' && vars.QLMS_HOSTED_BACKUP_ENABLED == 'true' &&
+        (vars.QLMS_INDEPENDENT_BACKUP_ENABLED != 'true' || github.event.schedule != '17 19 * * *')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'daily-trigger' &&
+        vars.QLMS_HOSTED_BACKUP_ENABLED == 'true' && vars.QLMS_INDEPENDENT_BACKUP_ENABLED == 'true') ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'qualification' && vars.QLMS_BACKUP_QUALIFICATION_ENABLED == 'true'))
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -48,8 +55,12 @@ jobs:
         working-directory: backend
         env:
           EVENT_NAME: ${{ github.event_name }}
+          DAILY_MODE: ${{ inputs.mode }}
+          TRIGGER_SLOT: ${{ inputs.slot }}
         run: |
-          if [ "$EVENT_NAME" = schedule ]; then
+          if [ "$DAILY_MODE" = daily-trigger ]; then
+            python -m ops.backup_schedule --trigger-slot "$TRIGGER_SLOT" >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT_NAME" = schedule ]; then
             python -m ops.backup_schedule --scheduled >> "$GITHUB_OUTPUT"
           else
             python -m ops.backup_schedule >> "$GITHUB_OUTPUT"
@@ -58,10 +69,11 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           SCHEDULE_CRON: ${{ github.event.schedule }}
+          TRIGGER_SLOT: ${{ inputs.slot }}
           BACKUP_REQUIRED: ${{ steps.proof.outputs.required }}
         run: >-
-          printf 'Event: %s\n\nSchedule (UTC): %s\n\nNew backup required: %s\n'
-          "$EVENT_NAME" "${SCHEDULE_CRON:-manual}" "$BACKUP_REQUIRED" >> "$GITHUB_STEP_SUMMARY"
+          printf 'Event: %s\n\nSchedule (UTC): %s\n\nIndependent slot: %s\n\nNew backup required: %s\n'
+          "$EVENT_NAME" "${SCHEDULE_CRON:-manual}" "${TRIGGER_SLOT:-none}" "$BACKUP_REQUIRED" >> "$GITHUB_STEP_SUMMARY"
 
   backup:
     needs: admission
@@ -79,12 +91,12 @@ jobs:
         with:
           python-version: '3.12'
       - name: Signal start to the independent monitor
-        if: github.event_name != 'schedule'
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'qualification'
         env:
           QLMS_BACKUP_MONITOR_URL: ${{ secrets.QLMS_BACKUP_MONITOR_URL }}
         run: python backend/ops/backup_monitor.py start
       - name: Require qualified retention before a scheduled run
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' || inputs.mode == 'daily-trigger'
         env:
           QLMS_BACKUP_CLEANUP_ENABLED: ${{ vars.QLMS_BACKUP_CLEANUP_ENABLED }}
         run: python -c "import os; assert os.environ.get('QLMS_BACKUP_CLEANUP_ENABLED') == 'true', 'Retention is not qualified'"

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 import unittest
 
 from ops.backup_schedule import backup_required, backup_window
+import ops.backup_schedule as schedule
 
 
 NOW = datetime(2026, 10, 15, 20, 17, tzinfo=timezone.utc)
@@ -32,12 +33,12 @@ class BackupScheduleTests(unittest.TestCase):
     def test_successful_scheduled_archive_retention_and_monitor_skip_duplicate(self):
         self.assertFalse(self.required())
         self.assertEqual(len(self.calls), 2)
-        self.assertIn("event=schedule", self.calls[0])
+        self.assertNotIn("event=schedule", self.calls[0])
         self.assertIn("status=success", self.calls[0])
         self.assertIn("/runs/123/jobs?", self.calls[1])
 
     def test_manual_old_current_wrong_branch_and_incomplete_runs_do_not_suppress(self):
-        for change in ({"event": "workflow_dispatch"}, {"created_at": "2026-10-14T19:00:00Z"},
+        for change in ({"event": "push"}, {"created_at": "2026-10-14T19:00:00Z"},
                        {"id": 999}, {"head_branch": "practice"}, {"status": "in_progress"},
                        {"conclusion": "failure"}, {"created_at": "2026-10-16T19:00:00Z"}):
             with self.subTest(change=change):
@@ -45,6 +46,20 @@ class BackupScheduleTests(unittest.TestCase):
                 self.run.update(change)
                 self.assertTrue(self.required())
                 self.run = previous
+
+    def test_independent_daily_dispatch_counts_only_with_scheduled_retention_proof(self):
+        self.run["event"] = "workflow_dispatch"
+        self.assertFalse(self.required())
+        self.job["steps"][0]["conclusion"] = "skipped"
+        self.assertTrue(self.required())
+
+    def test_dispatch_slot_must_be_the_current_2200_nairobi_window(self):
+        validate = getattr(schedule, "validate_trigger_slot", None)
+        self.assertTrue(callable(validate), "Independent daily dispatch must validate its backup slot")
+        self.assertEqual(validate("2026-10-15T19:00:00Z", now=NOW), backup_window(NOW))
+        for slot in ("", "2026-10-14T19:00:00Z", "2026-10-16T19:00:00Z", "2026-10-15T18:00:00Z", "2026-10-15T19:00:00"):
+            with self.subTest(slot=slot), self.assertRaises(ValueError):
+                validate(slot, now=NOW)
 
     def test_overall_success_without_each_real_step_cannot_suppress(self):
         for change in ("skipped", "failure", "missing", "old", "no_time"):
