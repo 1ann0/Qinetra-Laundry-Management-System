@@ -1,6 +1,6 @@
 # Customer returns — 16 October 2026
 
-Owner-approved next feature after the backup timing work. Backup activation is parked only at private installation of its narrow dispatch credential; the existing schedule remains active.
+Deployed source **42dcce5764382218b3329dfe86235cdf91a0c6a6**, exact CI **38951124828**: 383 backend checks, PostgreSQL snapshot/export tests and encrypted restricted recovery (3.0s), 129 frontend checks, lint and static build. API **dep-db97c3mk1f9s738n8em0** went live at 22:08:55 Nairobi; Worker version **d795315b-0b0d-4519-b4c7-66f2b7623061** / deployment **1b1451df-db92-4a92-b401-5485c8faa87b**, 100%, at 22:09:58. Schema remains 027; no migration or live fixture writes. Public paired smoke passed 147 hashes, 21 pages, readiness/contract and seven existing denials; three additional return JSON/XLSX/CSV denials passed with 401. The new API advertises return-group filters.
 
 Small extension of existing Owner Reports, not a separate CRM. Dashboard → Customer returns; Reports → Customer returns. Search name/phone, choose last-visit group and dates, open a customer's existing history, download the same filtered Excel/CSV snapshot. No schema migration, new dependency, automatic message, discount or marketing attribution.
 
@@ -10,7 +10,7 @@ Follow-up guidance asks the Owner to check existing laundry/issues, then conside
 
 Checks: hand-calculated fixtures cover Nairobi midnight, 7/29/30/89/90-day boundaries, same-day duplicates, cancellation, future orders, registration without visits, new/repeat counts, search/group filters, blank Excel cells, literal wildcard search, explicit oversize rejection, Owner-only JSON/Excel/CSV and private headers. PostgreSQL snapshot/export coverage is included. The shared binary-download allowlist and numeric display tests include returns.
 
-Release gates remain exact candidate CI, fresh build/phone review, paired deployment/public smoke and a recorded source/API pair. No live fictional records. Actual Android file locate/open remains human acceptance if not performed.
+Actual 375×812 fictional browser proof: Dashboard → Customer returns; four profiles correctly separated, new-week/month count 1; 30–89-day group plus Monthly search yielded exactly one customer, 35 days away. Tapping the name opened that customer's existing order history. All filter controls were 48px, action 46px, document width 360px within a 375px viewport. Screenshot 86 is fictional proof, visually inspected. Fixture review substituted only the API origin; production assets stayed untouched. Actual Android file locate/open and live authenticated Owner acceptance remain human checks. Existing CSV/XLSX bytes and binary helper checks passed; no download-event observer was used.
 
 Rollback: restore the previous frontend while retaining the compatible API; no tables or existing records change. If this report endpoint is removed, new report links stop working but operational intake/payment/corrections remain unchanged. Existing pending saves and account/API destinations are untouched.
 

@@ -1,6 +1,6 @@
 # Customer return insights — requested 15 October 2026
 
-The Owner reprioritised this immediately after backup timing on 16 October. Implementation will reuse Owner Reports and the existing customer-history screen, including Excel/CSV downloads; no new database tables or automatic messages. Backup activation is deliberately parked at the private dispatch-secret gate while this work proceeds under the Owner's autonomous-work instruction. Pickup/delivery follows, then secure-cookie sessions.
+The Owner reprioritised this immediately after backup timing on 16 October. The first version is now deployed through Owner Reports and existing customer history, including Excel/CSV downloads; see [release proof](customer-return-insights-check.md). No new database tables or automatic messages. Pickup/delivery follows, then secure-cookie sessions. Suggestions based on a customer's usual visit interval and attributed contact logs remain later refinements, not claims of this release.
 
 The Owner wants days since a customer's last visit, 7-day/30-day/90-day views, weekly/monthly new-customer counts and practical retention/re-engagement guidance. Follow-up should be searchable and reachable from the Owner dashboard and customer history. Preserve employee access boundaries and the existing shared calculations/export patterns.
 

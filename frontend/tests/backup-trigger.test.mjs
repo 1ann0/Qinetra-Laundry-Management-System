@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {existsSync} from "node:fs";
+import {existsSync,readFileSync} from "node:fs";
 
 const source = new URL("../../backend/ops/cloudflare-trigger/worker.mjs", import.meta.url);
 const present = existsSync(source);
@@ -11,6 +11,14 @@ test("independent trigger exists without a public HTTP handler", () => {
   assert.ok(present, "Independent trigger must be implemented");
   assert.equal(typeof worker.scheduled, "function");
   assert.equal(worker.fetch, undefined);
+});
+
+test("active trigger configuration retains only the approved daily UTC cron and private URLs", () => {
+  const config=JSON.parse(readFileSync(new URL("../../backend/ops/cloudflare-trigger/wrangler.jsonc",import.meta.url),"utf8"));
+  assert.deepEqual(config.triggers.crons,["0 19 * * *"]);
+  assert.equal(config.workers_dev,false);
+  assert.equal(config.preview_urls,false);
+  assert.equal(config.vars,undefined);
 });
 
 test("daily trigger dispatches only the fixed workflow, main and exact slot", {skip: !present}, async () => {
