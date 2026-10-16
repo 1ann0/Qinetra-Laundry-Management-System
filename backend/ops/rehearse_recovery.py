@@ -22,7 +22,7 @@ from expense_routes import create_expense, correct_expense, ExpenseInput, Expens
 from daily_close_routes import create_movement, correct_movement, read_close, confirm_close, TillInput, TillCorrection, CloseInput
 from customer_phone import normalize_kenyan_phone
 from ops.backup import export_database, restore_database
-from ops.schema_setup import backup_access_sql, runtime_access_sql, verify_schema
+from ops.schema_setup import backup_access_sql, runtime_access_sql, daily_close_access_sql, verify_schema
 from ops.verify_pilot_restore import restore_and_compare
 
 
@@ -51,6 +51,18 @@ def main_rehearsal(container, client_image=None):
             connection.exec_driver_sql(f"CREATE ROLE {role} LOGIN PASSWORD '{password}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS")
         connection.exec_driver_sql(runtime_access_sql("qlms", runtime_name), execution_options={"no_parameters": True})
         connection.exec_driver_sql(backup_access_sql("qlms", backup_name), execution_options={"no_parameters": True})
+        # Qualify the narrow live grant script without touching old table/schema/default access.
+        old_access = """SELECT c.relname, c.relacl::text FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+            WHERE n.nspname='qlms' AND c.relname NOT LIKE 'till_movement%' AND c.relname NOT LIKE 'daily_close%'
+            UNION ALL SELECT nspname,nspacl::text FROM pg_namespace WHERE nspname='qlms'
+            UNION ALL SELECT defaclobjtype::text,defaclacl::text FROM pg_default_acl
+            WHERE defaclnamespace='qlms'::regnamespace ORDER BY 1,2"""
+        before_access = connection.execute(text(old_access)).all()
+        for table in ('till_movements', 'till_movement_changes', 'daily_closes'):
+            connection.exec_driver_sql(f'DROP POLICY qlms_server_access ON qlms.{table}; DROP POLICY qlms_backup_read ON qlms.{table}')
+        for _ in range(2):
+            connection.exec_driver_sql(daily_close_access_sql('qlms', runtime_name, backup_name), execution_options={'no_parameters':True})
+        assert connection.execute(text(old_access)).all() == before_access
         connection.exec_driver_sql("CREATE ROLE anon NOLOGIN", execution_options={"no_parameters": True}) if not connection.execute(text("SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='anon')")).scalar() else None
         connection.exec_driver_sql("CREATE ROLE authenticated NOLOGIN", execution_options={"no_parameters": True}) if not connection.execute(text("SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='authenticated')")).scalar() else None
     runtime_url = url.set(username=runtime_name, password=runtime_password)

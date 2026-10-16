@@ -120,6 +120,31 @@ ALTER ROLE {role} SET search_path={quoted},pg_catalog;
 """
 
 
+def daily_close_access_sql(schema, runtime_role, backup_role):
+    """Grant this release access only to its three new tables and sequences."""
+    quoted, runtime, backup = identifier(schema), identifier(runtime_role), identifier(backup_role)
+    statements = []
+    for table in ('till_movements', 'till_movement_changes', 'daily_closes'):
+        privileges = 'SELECT, INSERT, UPDATE' if table == 'till_movements' else 'SELECT, INSERT'
+        statements.append(f"""
+REVOKE ALL ON {quoted}.{table} FROM {runtime}, {backup};
+REVOKE ALL ON SEQUENCE {quoted}.{table}_id_seq FROM {runtime}, {backup};
+GRANT {privileges} ON {quoted}.{table} TO {runtime};
+GRANT USAGE ON SEQUENCE {quoted}.{table}_id_seq TO {runtime};
+GRANT SELECT ON {quoted}.{table} TO {backup};
+GRANT SELECT ON SEQUENCE {quoted}.{table}_id_seq TO {backup};
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='{schema}' AND tablename='{table}' AND policyname='qlms_server_access') THEN
+        CREATE POLICY qlms_server_access ON {quoted}.{table} TO {runtime} USING (true) WITH CHECK (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='{schema}' AND tablename='{table}' AND policyname='qlms_backup_read') THEN
+        CREATE POLICY qlms_backup_read ON {quoted}.{table} FOR SELECT TO {backup} USING (true);
+    END IF;
+END $$;
+""")
+    return ''.join(statements)
+
+
 def snapshot_manifest(snapshot):
     return {"schema": "qlms", "schema_sha256": hashlib.sha256(snapshot.encode()).hexdigest(),
             "migrations": [{"file": path.name, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()} for path in migration_files()]}
