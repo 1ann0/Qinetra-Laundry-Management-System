@@ -49,7 +49,8 @@ def report_download(report_name: str, format: Literal["xlsx", "csv"] = "xlsx",
         report = build_report(db, report_name, **filters)
     period = "_".join(str(value) for value in (filters["start_date"], filters["end_date"]) if value) or "current"
     generated = datetime.fromisoformat(report["generated_at"]).astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    filename = f"qlms_{report_name}_{period}_{generated}.{format}"
+    filename_label = "customer_returns" if report_name == "returns" else report_name
+    filename = f"qlms_{filename_label}_{period}_{generated}.{format}"
     mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if format == "xlsx" else "text/csv; charset=utf-8"
     return Response(xlsx_report(report) if format == "xlsx" else csv_report(report), media_type=mime,
                     headers={"Content-Disposition": f'attachment; filename="{filename}"'})

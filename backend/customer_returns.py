@@ -54,7 +54,10 @@ def extend_return_report(db, result, section, start_date, end_date, return_group
             "first_visit": first.isoformat() if first else "", "last_visit": last.isoformat() if last else "",
             "days_away": days if days is not None else "", "visits": count or 0, "open_orders": open_count or 0,
             "return_group": group, "next_step": "Check their open laundry first." if open_count else
-                "No visit recorded yet." if last is None else "Review their history, then follow up personally if welcome."})
+                "No visit recorded yet." if last is None else
+                "Invite them back if they welcome a reminder." if days >= 30 else
+                "Ask if their first order was okay." if count == 1 else
+                "Review their last order before following up."})
     result["summary"] = summary
     result["definitions"] = [
         "A visit is a distinct Nairobi booking date with a non-cancelled order. Payments, collections, profile creation and future bookings are not visits.",

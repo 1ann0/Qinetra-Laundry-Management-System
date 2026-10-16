@@ -237,6 +237,22 @@ class OwnerReportTests(unittest.TestCase):
             self.report("returns")
         self.assertEqual(oversized.exception.status_code,413)
 
+    def test_return_hints_distinguish_open_laundry_first_visits_and_long_absence(self):
+        now=datetime(2026,10,16,12,tzinfo=timezone.utc)
+        report=self.report("returns",now=now)
+        rows={row["customer_name"]:row for row in self.section(report,"customer_returns")}
+        self.assertEqual(rows[self.other.name]["next_step"],"Check their open laundry first.")
+        self.db.query(models.Order).filter(models.Order.customer_id==self.other.id).update({"status":"collected"})
+        self.db.commit()
+        row=self.section(self.report("returns",search="Other",now=now),"customer_returns")[0]
+        self.assertEqual(row["next_step"],"Ask if their first order was okay.")
+        later=now+timedelta(days=90)
+        row=self.section(self.report("returns",search="Other",now=later),"customer_returns")[0]
+        self.assertEqual(row["next_step"],"Invite them back if they welcome a reminder.")
+        self.assertNotIn("usual",row["next_step"])
+        _, headers, _=self.request("/dashboard/reports/returns/download",{"format":"csv"})
+        self.assertIn(b'qlms_customer_returns_',headers[b'content-disposition'])
+
     def test_unsupported_filters_and_large_reports_fail_explicitly(self):
         for name, filters in [("unknown", {}), ("customer", {}), ("catalogue", {"start_date": date(2026, 10, 1)}),
                               ("orders", {"payment_method": "cash"}), ("orders", {"start_date": date(2026, 10, 14), "end_date": date(2026, 10, 13)})]:
