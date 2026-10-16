@@ -1,6 +1,6 @@
 # Independent daily backup trigger — 16 October 2026
 
-Prepared within the Owner-approved backup timing fix. Not yet activated or proof of punctual backup.
+Operations source **dc47db29c02401a88b82fbb9375cd57a237573ea** passed exact CI **38944859612**. Source pin commit **0485450** passed the nine affected trigger/wiring checks. Workflow-only main **44fff87f0faac3b76dffadea47eba7da857ced07** is published with Render/CI skip markers; no application files were merged. The separate Worker exists, with public and preview URLs independently confirmed disabled and no Cron installed. **Private dispatch-secret setup and actual nightly timing proof remain open.**
 
 Cloudflare's separate Cron trigger calls only the existing GitHub backup workflow on main at 19:00 UTC (22:00 Nairobi). It holds no database password, Drive grant, archive key, monitor URL or shop records. The fixed dispatch body selects `daily-trigger` and names the actual UTC slot. The GitHub daily-enable switch, additional independent-trigger switch, current-slot validation, protected environment and serial concurrency all apply. A dispatch acceptance is not backup completion.
 
@@ -23,7 +23,7 @@ Focused tests cover exact destination/body, no public handler, deadline/no redir
 
 Rollback: disable the independent repository switch and remove the Worker's Cron. The native 22:17 admission automatically returns, retaining the original three native opportunities. Revoke its separate GitHub token privately. Leave the backup secrets, archives, monitor grace, daily-enable switch, app and database unchanged.
 
-Limits: independent scheduling reduces correlated trigger delays; neither free provider guarantees an exact start time. GitHub runner queues can still delay a dispatched job. Keep the existing two-hour missed-run alert rather than masking a late run. Monitor-token expiry is a maintenance task; never replace evidence of a real scheduled run with a qualification run.
+Limits: independent scheduling reduces correlated trigger delays; neither free provider guarantees an exact start time. GitHub runner queues can still delay a dispatched job. Keep the existing two-hour missed-run alert rather than masking a late run. Dispatch-token expiry is a maintenance task; never replace evidence of a real scheduled run with a qualification run.
 
 Skills: Superpowers debugging/TDD/verification; Cloudflare and Workers best practices; Ponytail reused the existing protected backup pipeline. UI/UX: no staff screen changes. One active agent. The latest Owner priority is backup timing, then customer-return insights, then pickup/delivery and secure-cookie sessions.
 

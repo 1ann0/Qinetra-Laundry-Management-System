@@ -184,6 +184,59 @@ class OwnerReportTests(unittest.TestCase):
                     self.assertTrue(body.startswith(b"PK"))
                     self.assertIn(b"qlms_orders_", headers[b"content-disposition"])
 
+    def test_customer_returns_use_real_visit_days_and_current_last_visit(self):
+        now = datetime(2026, 10, 16, 21, tzinfo=timezone.utc)  # Nairobi is already 17 October.
+        today = date(2026, 10, 17)
+        for days in (7, 29, 30, 89, 90):
+            customer = models.Customer(name=f"Return fixture {days}", phone=f"07000000{days:02}")
+            self.db.add(customer)
+            self.db.flush()
+            self.order(f"RETURN-{days}", customer, 150, today - timedelta(days=days))
+        never = models.Customer(name="Registered only", phone="0700000099")
+        self.db.add(never)
+        cancelled = self.order("CANCELLED-VISIT", self.customer, 100, today)
+        cancelled.status = "cancelled"
+        self.order("FUTURE-VISIT", self.customer, 100, today + timedelta(days=1))
+        self.order("SAME-DAY", self.customer, 100, date(2026, 10, 13))
+        self.db.commit()
+        report = self.report("returns", start_date=date(2026, 10, 1), end_date=today, now=now)
+        rows = self.section(report, "customer_returns")
+        by_name = {row["customer_name"]: row for row in rows}
+        self.assertEqual(by_name[self.customer.name]["last_visit"], "2026-10-13")
+        self.assertEqual(by_name[self.customer.name]["visits"], 2)
+        self.assertEqual(by_name[self.customer.name]["days_away"], 4)
+        self.assertEqual(by_name[never.name]["return_group"], "never")
+        for days, group in ((7,"7_29"),(29,"7_29"),(30,"30_89"),(89,"30_89"),(90,"90_plus")):
+            self.assertEqual(by_name[f"Return fixture {days}"]["return_group"], group)
+        self.assertEqual(report["summary"]["new_this_week"], 1)
+        self.assertEqual(report["summary"]["new_this_month"], 2)
+        self.assertEqual(report["summary"]["new_in_period"], 2)
+        self.assertEqual(report["summary"]["repeat_in_period"], 1)
+        filtered = self.report("returns", return_group="30_89", search="fixture 30", now=now)
+        self.assertEqual([row["customer_name"] for row in self.section(filtered,"customer_returns")], ["Return fixture 30"])
+        self.assertEqual(filtered["summary"]["matching_customers"], 1)
+
+    def test_customer_return_downloads_filters_and_owner_boundary(self):
+        self.db.add(models.Customer(name="No visits yet", phone="0700000099"))
+        self.db.commit()
+        for role, expected in ((None,401),("employee",403),("owner",200)):
+            self.assertEqual(self.request("/dashboard/reports/returns", role=role)[0], expected)
+            for kind in ("csv","xlsx"):
+                code, headers, body = self.request("/dashboard/reports/returns/download", {"format":kind,"search":"Other"}, role)
+                self.assertEqual(code, expected)
+                self.assertIn(b"no-store", headers[b"cache-control"])
+                if expected == 200:
+                    self.assertTrue(body.startswith(b"PK") if kind == "xlsx" else b"Other fictional customer" in body)
+        for filters in ({"return_group":"lost"},{"search":"x" * 101},{"status":"collected"}):
+            self.assertEqual(self.request("/dashboard/reports/returns",filters)[0],422)
+        self.assertEqual(self.request("/dashboard/reports/orders",{"return_group":"never"})[0],422)
+        self.assertEqual(self.request("/dashboard/reports/returns",{"search":"%"})[0],200)
+        self.assertEqual(self.section(self.report("returns",search="%"),"customer_returns"),[])
+        self.assertTrue(xlsx_report(self.report("returns",return_group="never")).startswith(b"PK"))
+        with patch("owner_reports.MAX_RECORDS",1), self.assertRaises(HTTPException) as oversized:
+            self.report("returns")
+        self.assertEqual(oversized.exception.status_code,413)
+
     def test_unsupported_filters_and_large_reports_fail_explicitly(self):
         for name, filters in [("unknown", {}), ("customer", {}), ("catalogue", {"start_date": date(2026, 10, 1)}),
                               ("orders", {"payment_method": "cash"}), ("orders", {"start_date": date(2026, 10, 14), "end_date": date(2026, 10, 13)})]:
@@ -309,3 +362,11 @@ class PostgresReportSnapshotTests(unittest.TestCase):
                 db.execute(text("UPDATE orders SET total_price = 1"))
         with self.Session() as db:
             self.assertEqual(db.get(models.Order, self.order_id).total_price, 900)
+
+    def test_return_aggregation_and_exports_run_in_the_postgres_read_snapshot(self):
+        with self.Session() as db, read_snapshot(db):
+            report = build_report(db,"returns",now=datetime(2026,10,16,21,tzinfo=timezone.utc),search="snapshot")
+            row = report["sections"][0]["rows"][0]
+            self.assertEqual((row["last_visit"],row["days_away"],row["visits"],row["open_orders"]),("2026-10-13",4,1,1))
+            self.assertEqual(report["summary"]["new_this_week"],1)
+            self.assertTrue(xlsx_report(report).startswith(b"PK"))

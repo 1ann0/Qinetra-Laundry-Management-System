@@ -9,7 +9,10 @@ export const REPORT_TYPES = [
   { value: "expenses", label: "Shop expenses", filters: ["start_date", "end_date", "category", "payment_method"] },
   { value: "closing", label: "Daily closing", filters: ["start_date", "end_date"] },
   { value: "till", label: "Cash added and Owner withdrawals", filters: ["start_date", "end_date"] },
+  { value: "returns", label: "Customer returns", filters: ["start_date", "end_date", "return_group", "search"] },
 ];
+
+export const RETURN_GROUPS = {recent: "Within 7 days", "7_29": "7–29 days away", "30_89": "30–89 days away", "90_plus": "90+ days away", never: "No visit recorded"};
 
 export const ATTENTION_LABELS = {
   due_today: "Due today", production_late: "Late production", ready: "Ready for collection", overdue: "Collection overdue",
@@ -17,6 +20,8 @@ export const ATTENTION_LABELS = {
 };
 
 export const SUMMARY_LABELS = {
+  matching_customers: "Matching customers", new_this_week: "New this week", new_this_month: "New this month",
+  new_in_period: "New in selected dates", repeat_in_period: "Returned in selected dates",
   cash_received: "Cash received", mpesa_received: "M-Pesa received", total_received: "Total money received",
   refunds_sent: "Money returned", net_cash_movement: "Money received less returns",
   current_balance_due: "Money currently owed to the shop", current_refund_due: "Money currently owed back",
@@ -47,7 +52,7 @@ export function formatKes(value) {
 }
 
 export function reportSummaryValue(report, key, value) {
-  return report === 'attention' || key.startsWith('quantity_') || key.startsWith('days_')
+  return report === 'attention' || report === 'returns' || key.startsWith('quantity_') || key.startsWith('days_')
     ? Number(value).toLocaleString('en-KE') : formatKes(value);
 }
 

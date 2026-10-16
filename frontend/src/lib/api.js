@@ -39,7 +39,7 @@ function getApiBaseUrl() {
 
 export async function apiRequest(path, options = {}) {
   const { token, headers, signal, responseType, ...fetchOptions } = options;
-  const isBinaryReport = responseType === "blob" && /^\/dashboard\/reports\/(orders|customer|service|money|attention|catalogue|expenses|closing|till)\/download(?:\?|$)/.test(path);
+  const isBinaryReport = responseType === "blob" && /^\/dashboard\/reports\/(orders|customer|service|money|attention|catalogue|expenses|closing|till|returns)\/download(?:\?|$)/.test(path);
   if (responseType && (responseType !== "blob" || !isBinaryReport || (fetchOptions.method || "GET").toUpperCase() !== "GET")) {
     throw new ApiError("QLMS could not prepare this download. Contact support.", 0, "QLMS-RESPONSE");
   }

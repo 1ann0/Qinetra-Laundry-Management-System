@@ -31,20 +31,20 @@ test("authenticated XLSX download returns its binary body and safe dated filenam
   assert.deepEqual(new Uint8Array(await result.blob.arrayBuffer()), bytes);
 });
 
-test('closing and till reports use the authenticated binary download path', async (t) => {
+test('closing, till and customer-return reports use the authenticated binary download path', async (t) => {
   const fetchMock=t.mock.method(globalThis,'fetch',async (url)=>{
-    const kind=url.includes('/closing/') ? 'closing' : 'till';
+    const kind=url.includes('/closing/') ? 'closing' : url.includes('/returns/') ? 'returns' : 'till';
     const format=new URL(url).searchParams.get('format');
     return new Response('fictional export',{headers:{
       'content-type':format==='csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'content-disposition':`attachment; filename="qlms_${kind}_20261016.${format}"`,
     }});
   });
-  for (const kind of ['closing','till']) for (const format of ['csv','xlsx']) {
+  for (const kind of ['closing','till','returns']) for (const format of ['csv','xlsx']) {
     const result=await apiRequest(`/dashboard/reports/${kind}/download?format=${format}`,{token:'fictional-token',responseType:'blob'});
     assert.equal(result.filename,`qlms_${kind}_20261016.${format}`);
   }
-  assert.equal(fetchMock.mock.callCount(),4);
+  assert.equal(fetchMock.mock.callCount(),6);
   await assert.rejects(apiRequest('/dashboard/reports/unknown/download',{responseType:'blob'}),{code:'QLMS-RESPONSE'});
 });
 

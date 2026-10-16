@@ -32,3 +32,9 @@ test("report query sends only applicable filters and preserves explicit all-date
   assert.throws(() => reports.reportQuery("not-a-report", {}));
   assert.equal(reports.reportQuery("expenses", { start_date: "2026-10-01", category: "supplies", payment_method: "mpesa", customer_id: "8" }), "start_date=2026-10-01&category=supplies&payment_method=mpesa");
 });
+
+test("customer return downloads preserve group and search; customer counts are never KES", () => {
+  assert.equal(reports.reportQuery("returns", {start_date:"2026-10-01",end_date:"2026-10-16",return_group:"30_89",search:"Ann & Ian",status:"ready"}),
+    "start_date=2026-10-01&end_date=2026-10-16&return_group=30_89&search=Ann+%26+Ian");
+  assert.equal(reports.reportSummaryValue("returns","new_this_week",12),"12");
+});

@@ -36,6 +36,7 @@ const PAGE_HELP = {
     {targetId: "receipt-payments-step", title: "Check money received", description: "Read the payment history first. Add only a confirmed payment and check the date and amount. Owner corrections keep a history."},
   ],
   "/dashboard": [
+    {targetId: "dashboard-returns-step", title: "Find customers to follow up", description: "Open Customer returns for new customers and last visits. Choose a name to review their laundry before contacting them."},
     {targetId: "dashboard-attention-step", title: "Choose what needs attention", description: "Open a list to see due laundry, late work, uncollected clothes or money still owed. These are the shop's current tickets."},
     {targetId: "dashboard-money-step", title: "Choose the money dates", description: "Apply dates to see cash, M-Pesa and returns in that period. Payments received are not profit; costs matter too."},
     {targetId: "dashboard-export-step", title: "Check and download this report", description: "Open the report for the displayed dates, then save Excel or CSV. Spreadsheet edits do not change QLMS."},

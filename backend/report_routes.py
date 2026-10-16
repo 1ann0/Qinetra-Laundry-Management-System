@@ -15,14 +15,15 @@ router = APIRouter(prefix="/dashboard/reports", dependencies=[Depends(auth.requi
 def report_filters(request: Request, start_date: date | None = None, end_date: date | None = None,
                    customer_id: int | None = Query(None, gt=0), service_id: int | None = Query(None, gt=0),
                    status: str | None = None, payment_method: str | None = None, attention: str | None = None,
-                   category: str | None = None):
-    allowed = {"start_date", "end_date", "customer_id", "service_id", "status", "payment_method", "attention", "category"}
+                   category: str | None = None, return_group: str | None = None, search: str | None = Query(None,max_length=100)):
+    allowed = {"start_date", "end_date", "customer_id", "service_id", "status", "payment_method", "attention", "category", "return_group", "search"}
     if request.url.path.endswith("/download"):
         allowed.add("format")
     if set(request.query_params) - allowed or len(request.query_params.multi_items()) != len(request.query_params):
         raise HTTPException(422, "Choose valid report filters without repeated fields")
     return {"start_date": start_date, "end_date": end_date, "customer_id": customer_id, "service_id": service_id,
-            "status": status, "payment_method": payment_method, "attention": attention, "category":category}
+            "status": status, "payment_method": payment_method, "attention": attention, "category":category,
+            "return_group":return_group, "search":search}
 
 
 @contextmanager

@@ -6,7 +6,7 @@ import OwnerGuard from "@/components/auth/owner-guard";
 import { useAuth } from "@/context/auth-context";
 import { getUserMessage } from "@/lib/user-messages";
 import { formatNairobiDateTime } from "@/lib/format-nairobi";
-import { REPORT_TYPES, ATTENTION_LABELS, SUMMARY_LABELS, nairobiToday, reportQuery, formatKes, saveReportFile, reportSummaryValue } from "@/lib/report-tools";
+import { REPORT_TYPES, ATTENTION_LABELS, SUMMARY_LABELS, RETURN_GROUPS, nairobiToday, reportQuery, formatKes, saveReportFile, reportSummaryValue } from "@/lib/report-tools";
 import { EXPENSE_CATEGORIES } from "@/lib/expense-tools";
 
 const INPUT = "min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none focus:border-[#005AAB] focus:ring-4 focus:ring-blue-100";
@@ -37,6 +37,10 @@ function ReportValue({ row, column }) {
   if (column.key === "attention") text = String(value || "").split(", ").map(flag => ATTENTION_LABELS[flag] || flag).join(", ");
   if (["method", "purpose"].includes(column.key)) text = { cash: "Cash", mpesa: "M-Pesa", service_refund: "Service refund", excess_payment: "Excess payment" }[value] || value;
   if (column.key === "category") text = EXPENSE_CATEGORIES[value] || value;
+  if (column.key === "return_group") text = RETURN_GROUPS[value] || value;
+  if (["first_visit","last_visit"].includes(column.key) && !value) text = "No visit recorded";
+  if (column.key === "days_away" && value === "") text = "—";
+  if (column.key === "customer_name" && row.customer_id) return <Link className="inline-flex min-h-12 items-center font-bold text-[#005AAB] underline" href={`/customers/search?customerId=${row.customer_id}`}>{text}</Link>;
   if (column.key === "expense_id") return <Link className="inline-flex min-h-12 items-center font-bold text-[#005AAB] underline" href={`/expenses?id=${value}`}>Expense #{value}</Link>;
   if (column.key === "movement_id") return <Link className="inline-flex min-h-12 items-center font-bold text-[#005AAB] underline" href={`/till-movements?id=${value}`}>Movement #{value}</Link>;
   if (column.key === "business_date") return <Link className="inline-flex min-h-12 items-center font-bold text-[#005AAB] underline" href={`/daily-close?date=${value}`}>{value}</Link>;
@@ -44,6 +48,7 @@ function ReportValue({ row, column }) {
 }
 
 const MOBILE_FIELDS = {
+  customer_returns: ["customer_name", "last_visit", "days_away", "next_step"],
   orders: ["ticket", "customer_name", "status", "balance_due"], balances: ["ticket", "customer_name", "balance_due", "refund_due"],
   related_orders: ["ticket", "customer_name", "status", "balance_due"], attention: ["ticket", "customer_name", "attention", "balance_due"],
   receipts: ["ticket", "date", "method", "amount"], refunds: ["ticket", "date", "method", "amount"], corrections: ["ticket", "date", "amount", "purpose"],
@@ -177,9 +182,12 @@ function ReportsContent() {
         {type.filters.includes("payment_method") ? <div><label className="mb-2 block font-bold text-slate-800" htmlFor="report-method">Payment method</label><select className={INPUT} id="report-method" value={filters.payment_method || ""} onChange={event => update("payment_method", event.target.value)}><option value="">Cash and M-Pesa</option><option value="cash">Cash</option><option value="mpesa">M-Pesa</option></select></div> : null}
         {type.filters.includes("attention") ? <div><label className="mb-2 block font-bold text-slate-800" htmlFor="report-attention">What needs attention?</label><select className={INPUT} id="report-attention" value={filters.attention || ""} onChange={event => update("attention", event.target.value)}><option value="">Everything needing attention</option>{Object.entries(ATTENTION_LABELS).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></div> : null}
         {type.filters.includes("category") ? <div><label className="mb-2 block font-bold text-slate-800" htmlFor="report-category">Expense category</label><select className={INPUT} id="report-category" value={filters.category || ""} onChange={event => update("category", event.target.value)}><option value="">All expense categories</option>{Object.entries(EXPENSE_CATEGORIES).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></div> : null}
+        {type.filters.includes("return_group") ? <div><label className="mb-2 block font-bold text-slate-800" htmlFor="report-return-group">Last visit</label><select className={INPUT} id="report-return-group" value={filters.return_group || ""} onChange={event => update("return_group", event.target.value)}><option value="">All customers</option>{Object.entries(RETURN_GROUPS).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div> : null}
+        {type.filters.includes("search") ? <div><label className="mb-2 block font-bold text-slate-800" htmlFor="report-customer-search">Find customer</label><input className={INPUT} id="report-customer-search" type="search" maxLength={100} placeholder="Name or phone" value={filters.search || ""} onChange={event => update("search",event.target.value)} /></div> : null}
       </div>
       <button className="primary-button mt-5 min-h-12" disabled={loading} type="submit">{loading ? "Preparing report…" : "View report"}</button>
       {kind === "attention" ? <p className="mt-3 text-sm text-slate-600">Attention shows the shop now. It is not a historical date report.</p> : null}
+      {kind === "returns" ? <p className="mt-3 text-sm text-slate-600">Based on QLMS records only. Dates count new and returning customers; last visit shows today&apos;s position.</p> : null}
       {kind === "expenses" ? <Link className="secondary-button ml-3 mt-5" href="/expenses">Record an expense</Link> : null}
       {kind === "closing" ? <Link className="secondary-button ml-3 mt-5" href="/daily-close">Close a day</Link> : null}
       {kind === "till" ? <Link className="secondary-button ml-3 mt-5" href="/till-movements">Record cash added or withdrawn</Link> : null}
@@ -194,6 +202,7 @@ function ReportsContent() {
         <p className="mt-3 text-sm text-slate-600">Downloads use exactly these displayed filters. Editing a file does not change QLMS.</p>
       </div>
       {Object.keys(report.summary).length ? <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{Object.entries(report.summary).map(([key, value]) => <div className="rounded-xl border border-slate-200 bg-white p-4" key={key}><dt className="text-sm text-slate-600">{ATTENTION_LABELS[key] || SUMMARY_LABELS[key] || key.replaceAll("_", " ")}</dt><dd className="mt-1 text-xl font-bold text-slate-900">{reportSummaryValue(report.report,key,value)}</dd></div>)}</dl> : null}
+      {report.report === "returns" ? <details className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4"><summary className="flex min-h-12 cursor-pointer items-center font-bold text-[#005AAB]">How to bring customers back</summary><ul className="mt-2 list-disc space-y-2 pl-5 text-sm text-slate-700"><li>Check open laundry or a complaint first.</li><li>After a first collection, ask if everything was okay.</li><li>Review their usual services before a personal reminder.</li><li>Only contact customers who welcome it. No message is sent here.</li></ul></details> : null}
       {report.sections.map(section => <ReportSection key={`${loadedQuery}:${report.generated_at}:${section.key}`} section={section} />)}
       <details className="mt-5 rounded-xl border border-slate-200 bg-white p-4"><summary className="cursor-pointer font-bold text-slate-800">How to read these figures</summary><ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-slate-600">{report.definitions.map(definition => <li key={definition}>{definition}</li>)}</ul></details>
     </div> : loading ? <p className="mt-5 text-slate-600" role="status">Loading report choices…</p> : <p className="mt-5 rounded-xl bg-slate-50 p-4 text-slate-600">Choose a customer or service where required, then select View report.</p>}

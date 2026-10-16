@@ -20,7 +20,7 @@ NAIROBI = timezone(timedelta(hours=3))
 MAX_RECORDS = 5000
 MAX_ROWS = 20000
 MAX_REPORT_BYTES = 10 * 1024 * 1024
-REPORTS = {"orders", "customer", "service", "money", "attention", "catalogue", "expenses", "closing", "till"}
+REPORTS = {"orders", "customer", "service", "money", "attention", "catalogue", "expenses", "closing", "till", "returns"}
 STATUSES = {"received", "in_progress", "ready", "collected", "cancelled"}
 ATTENTION = {"due_today", "production_late", "ready", "overdue", "holds", "outsourcing", "outstanding", "refund_due"}
 DEFINITIONS = [
@@ -126,7 +126,7 @@ ADJUSTMENT_COLUMNS = columns(("ticket", "Ticket", "text"), ("customer_name", "Cu
 
 
 def build_report(db, report_name, *, start_date=None, end_date=None, customer_id=None, service_id=None,
-                 status=None, payment_method=None, attention=None, category=None, now=None):
+                 status=None, payment_method=None, attention=None, category=None, return_group=None, search=None, now=None):
     if report_name not in REPORTS:
         raise HTTPException(404, "Unknown report")
     if start_date and end_date and end_date < start_date:
@@ -145,9 +145,11 @@ def build_report(db, report_name, *, start_date=None, end_date=None, customer_id
         "attention": {"customer_id", "service_id", "status", "attention"}, "catalogue": set(),
         "expenses": {"start_date", "end_date", "category", "payment_method"},
         "closing": {"start_date", "end_date"}, "till": {"start_date", "end_date"},
+        "returns": {"start_date", "end_date", "return_group", "search"},
     }
     filters = {key: value for key, value in {"start_date": start_date, "end_date": end_date, "customer_id": customer_id,
-        "service_id": service_id, "status": status, "payment_method": payment_method, "attention": attention, "category":category}.items() if value is not None}
+        "service_id": service_id, "status": status, "payment_method": payment_method, "attention": attention, "category":category,
+        "return_group":return_group, "search":search}.items() if value is not None}
     if set(filters) - supported[report_name]:
         raise HTTPException(422, "A filter does not apply to this report")
     if report_name == "customer" and customer_id is None or report_name == "service" and service_id is None:
@@ -165,6 +167,10 @@ def build_report(db, report_name, *, start_date=None, end_date=None, customer_id
         result["sections"].append({"key": key, "title": title, "columns": fields, "rows": rows})
         if sum(len(part["rows"]) for part in result["sections"]) > MAX_ROWS:
             raise HTTPException(413, "This report is too large. Narrow its filters; nothing has been truncated.")
+    if report_name == "returns":
+        from customer_returns import extend_return_report
+        extend_return_report(db, result, section, start_date, end_date, return_group, search, now)
+        return result
     if report_name in {"closing", "till"}:
         from daily_reports import extend_daily_report
         extend_daily_report(db, report_name, result, section, start_date, end_date)
@@ -409,7 +415,9 @@ def xlsx_report(report):
             for row_index, row in enumerate(section["rows"], 1):
                 for column_index, column in enumerate(section["columns"]):
                     value = row.get(column["key"], "")
-                    if column["type"] in {"money", "number"}:
+                    if value is None or value == "":
+                        sheet.write_blank(row_index, column_index, None)
+                    elif column["type"] in {"money", "number"}:
                         sheet.write_number(row_index, column_index, float(value), money if column["type"] == "money" else number)
                     else:
                         if sheet.write_string(row_index, column_index, str(value)) != 0:
