@@ -14,7 +14,7 @@ import xlsxwriter
 
 import models
 from response_security import safe_csv_text
-from expense_routes import EXPENSE_CATEGORIES
+from expense_routes import EXPENSE_CATEGORIES, EXPENSE_FUNDING_SOURCES
 
 NAIROBI = timezone(timedelta(hours=3))
 MAX_RECORDS = 5000
@@ -177,10 +177,11 @@ def build_report(db, report_name, *, start_date=None, end_date=None, customer_id
         expenses = bounded(query.order_by(models.Expense.paid_date.desc(),models.Expense.id.desc()))
         rows = [{"expense_id":item.id,"paid_date":item.paid_date.isoformat(),"category":item.category,
             "amount":item.amount,"method":item.payment_method,"reference":item.reference,"note":item.note,
+            "funding_source":EXPENSE_FUNDING_SOURCES.get(item.funding_source,"Not confirmed"),
             "state":"Reversed" if item.is_voided else "Recorded","actor":item.confirmed_by_username,"revision":item.revision} for item in expenses]
         section("expenses","Expenses on corrected paid dates",columns(("expense_id","Expense","number"),
             ("paid_date","Paid date","date"),("category","Category","text"),("amount","Expense KES","money"),
-            ("method","Method","text"),("reference","Reference","text"),("note","Note","text"),
+            ("method","Method","text"),("funding_source","Paid from","text"),("reference","Reference","text"),("note","Note","text"),
             ("state","State","text"),("actor","Recorded by","text"),("revision","Revision","number")),rows)
         ids = [item.id for item in expenses]
         changes = bounded(db.query(models.ExpenseChange).filter(models.ExpenseChange.expense_id.in_(ids),models.ExpenseChange.revision > 0)
@@ -194,8 +195,11 @@ def build_report(db, report_name, *, start_date=None, end_date=None, customer_id
         cash = sum((item.amount for item in expenses if not item.is_voided and item.payment_method == "cash"),Decimal("0"))
         mpesa = sum((item.amount for item in expenses if not item.is_voided and item.payment_method == "mpesa"),Decimal("0"))
         result["summary"] = {"cash_expenses":cash,"mpesa_expenses":mpesa,"total_expenses":cash+mpesa}
+        for source, key in (("shop","shop_funded_expenses"),("owner","owner_funded_expenses"),(None,"unconfirmed_funding_expenses")):
+            result["summary"][key] = sum((item.amount for item in expenses if not item.is_voided and item.funding_source == source),Decimal("0"))
         result["definitions"] = [*DEFINITIONS,"Expense totals use the current corrected paid date/category/method; reversed expenses stay visible but are excluded. History shows changes to the selected expenses, not a statement of cash on their correction dates. Original details remain available on each expense.",
-            "Expenses do not include till additions or Owner withdrawals. Expense totals alone do not establish service margins or profit."]
+            "Expenses do not include till additions or Owner withdrawals. Expense totals alone do not establish service margins or profit.",
+            "All business costs remain in totals, including personally paid costs. Paid from identifies shop money, Owner's own money or Not confirmed. Cash/M-Pesa identifies the payment method, not the funding source. These are expense totals, not a till reconciliation."]
         return result
     services = bounded(db.query(models.Service).order_by(models.Service.name))
     by_code = {service.code: service for service in services}

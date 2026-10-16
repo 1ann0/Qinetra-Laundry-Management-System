@@ -235,6 +235,8 @@ CREATE TABLE qlms.expenses (
     confirmed_by_id integer,
     confirmed_by_username character varying(50) NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    funding_source character varying(10),
+    CONSTRAINT expense_funding_source CHECK (((funding_source)::text = ANY ((ARRAY['shop'::character varying, 'owner'::character varying])::text[]))),
     CONSTRAINT expenses_amount_check CHECK ((amount > (0)::numeric)),
     CONSTRAINT expenses_category_check CHECK (((category)::text = ANY ((ARRAY['supplies'::character varying, 'utilities'::character varying, 'rent'::character varying, 'wages'::character varying, 'outsourcing'::character varying, 'other'::character varying])::text[]))),
     CONSTRAINT expenses_payment_method_check CHECK (((payment_method)::text = ANY ((ARRAY['cash'::character varying, 'mpesa'::character varying])::text[]))),

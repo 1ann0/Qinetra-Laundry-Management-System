@@ -39,6 +39,7 @@ class Expense(Base):
     __table_args__ = (
         CheckConstraint("amount > 0", name="expense_positive_amount"),
         CheckConstraint("payment_method IN ('cash', 'mpesa')", name="expense_method"),
+        CheckConstraint("funding_source IN ('shop', 'owner')", name="expense_funding_source"),
         CheckConstraint("category IN ('supplies','utilities','rent','wages','outsourcing','other')", name="expense_category"),
         CheckConstraint("revision >= 0", name="expense_revision"),
     )
@@ -47,6 +48,7 @@ class Expense(Base):
     category = Column(String(20), nullable=False)
     amount = Column(Numeric(12, 2), nullable=False)
     payment_method = Column(String(10), nullable=False)
+    funding_source = Column(String(10), nullable=True)
     reference = Column(String(100), nullable=False, default="")
     note = Column(String(1000), nullable=False, default="")
     is_voided = Column(Boolean, nullable=False, default=False, server_default="false")

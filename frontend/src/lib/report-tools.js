@@ -20,6 +20,7 @@ export const SUMMARY_LABELS = {
   current_balance_due: "Money currently owed to the shop", current_refund_due: "Money currently owed back",
   booked_value: "Booked service value",
   cash_expenses: "Cash expenses", mpesa_expenses: "M-Pesa expenses", total_expenses: "Total shop expenses",
+  shop_funded_expenses: "Paid from shop money", owner_funded_expenses: "Paid personally by Owner", unconfirmed_funding_expenses: "Payer not confirmed",
 };
 
 export function nairobiToday(now = new Date()) {

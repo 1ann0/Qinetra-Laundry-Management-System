@@ -145,17 +145,20 @@ class ExpensePostgresTests(unittest.TestCase):
 
     def test_repeat_migration_keeps_records_and_browser_roles_denied(self):
         migration = (Path(__file__).parents[1]/'migrations/025_add_expenses.sql').read_text()
+        funding_migration = (Path(__file__).parents[1]/'migrations/026_add_expense_funding.sql').read_text()
         self.db.close()
         with self.engine.begin() as connection:
             connection.execute(text('DROP TABLE expense_changes; DROP TABLE expenses'))
         with self.engine.connect().execution_options(isolation_level='AUTOCOMMIT') as connection:
             connection.exec_driver_sql(migration)
+            connection.exec_driver_sql(funding_migration)
         from expense_routes import create_expense
         owner = self.db.get(models.User,self.user_id)
         expense = create_expense(self.body(),self.db,owner,idempotency_key=uuid4())
         self.db.close()
         with self.engine.connect().execution_options(isolation_level='AUTOCOMMIT') as connection:
             connection.exec_driver_sql(migration)
+            connection.exec_driver_sql(funding_migration)
             self.assertEqual(connection.execute(text('SELECT count(*) FROM expenses')).scalar(),1)
             self.assertEqual(connection.execute(text('SELECT count(*) FROM expense_changes')).scalar(),1)
             for table in ('expenses','expense_changes'):

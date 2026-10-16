@@ -73,7 +73,7 @@ def main_rehearsal(container, client_image=None):
         expense_body = ExpenseInput(paid_date=main.get_nairobi_today(),category="supplies",amount=100,payment_method="cash",note="Fictional restore supplies")
         expense = create_expense(expense_body,db,owner,idempotency_key=uuid4())
         expense_change = ExpenseCorrectionInput(**(expense_body.model_dump() | {"amount":Decimal("75")}),
-            expected_revision=0,reason="Fictional price correction",is_voided=False)
+            funding_source="owner",expected_revision=0,reason="Fictional price and payer correction",is_voided=False)
         correct_expense(expense.id,expense_change,db,owner,idempotency_key=uuid4())
         main.correct_customer_details(customer.id, schemas.CustomerCorrectionCreate(expected_name=customer.name, expected_phone=customer.phone,
                  new_name="Corrected fictional customer", new_phone="0711111111", reason="Fictional contact correction", confirmed=True),
@@ -145,6 +145,8 @@ def main_rehearsal(container, client_image=None):
             assert db.query(models.AlertSettings).one().owner_email == "restore-owner@example.test"
             assert db.query(models.AlertSettings).one().backup_time == "22:00"
             assert db.query(models.Expense).one().amount == Decimal("75")
+            assert db.query(models.Expense).one().funding_source == "owner"
+            assert "funding_source" not in db.query(models.Expense).one().original_details
             assert Decimal(db.query(models.Expense).one().original_details["amount"]) == Decimal("100")
             assert db.query(models.ExpenseChange).count() == 2
             assert db.query(models.Customer).one().name == "Corrected fictional customer"

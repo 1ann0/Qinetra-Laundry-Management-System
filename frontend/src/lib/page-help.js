@@ -47,7 +47,7 @@ const PAGE_HELP = {
     {targetId: "reports-download-step", title: "Save a spreadsheet", description: "Download Excel or CSV from the displayed report. On a phone, look in Files, then Downloads. Editing that file does not change QLMS."},
   ],
   "/expenses": [
-    {targetId: "expense-entry-step", title: "Record money already spent", description: "Choose when the shop paid, what it paid for and Cash or M-Pesa. Save once. If the reply is uncertain, use Retry previous save."},
+    {targetId: "expense-entry-step", title: "Record money already spent", description: "Choose when it was paid and what it was for. Paid using is Cash or M-Pesa; Paid from is shop money or the Owner's own money. Save once. If the reply is uncertain, use Retry previous save."},
     {targetId: "expense-history-step", title: "Correct without deleting", description: "Open an expense from Reports. Explain any correction. Reverse an incorrect entry to exclude it from totals; its original details and history remain."},
   ],
   "/finance": [

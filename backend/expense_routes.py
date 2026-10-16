@@ -14,6 +14,7 @@ from database import get_db
 from transaction_safety import commit_once, find_saved_order, lock_save_reference, reject_unsaved_change, request_fingerprint
 
 EXPENSE_CATEGORIES = {"supplies", "utilities", "rent", "wages", "outsourcing", "other"}
+EXPENSE_FUNDING_SOURCES = {"shop": "Shop money", "owner": "Owner's own money"}
 router = APIRouter(prefix="/expenses", tags=["Owner expenses"])
 
 
@@ -23,6 +24,8 @@ class ExpenseInput(BaseModel):
     category: Literal["supplies", "utilities", "rent", "wages", "outsourcing", "other"]
     amount: Decimal = Field(gt=0, le=9999999999, decimal_places=2, allow_inf_nan=False)
     payment_method: Literal["cash", "mpesa"]
+    # Missing funding must keep pre-upgrade pending saves' exact fingerprints.
+    funding_source: Literal["shop", "owner"] | None = Field(default=None, exclude_if=lambda value: value is None)
     reference: str = Field(default="", max_length=100)
     note: str = Field(default="", max_length=1000)
 
@@ -139,6 +142,8 @@ def correct_expense(expense_id: int, body: ExpenseCorrectionInput, db: Session =
         raise reject_unsaved_change("QLMS-STALE-RECORD","This expense changed on another screen")
     before = details(expense)
     for field in ExpenseInput.model_fields:
+        if field == "funding_source" and body.funding_source is None:
+            continue
         setattr(expense,field,getattr(body,field))
     expense.is_voided = body.is_voided
     expense.revision += 1

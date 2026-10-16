@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { expenseBody, pendingExpenseValues } from "../src/lib/expense-tools.js";
 
-const values = { paid_date: "2026-10-14", category: "supplies", amount: "250.50", payment_method: "cash", reference: " receipt 4 ", note: "Soap", reason: "Wrong amount", is_voided: true };
+const values = { paid_date: "2026-10-14", category: "supplies", amount: "250.50", payment_method: "cash", funding_source: "shop", reference: " receipt 4 ", note: "Soap", reason: "Wrong amount", is_voided: true };
 test("expenses preserve decimal input and correction revision without trusting extra fields", () => {
   const created = expenseBody({ ...values, confirmed_by_username: "fake" }, null, "2026-10-14");
   assert.deepEqual(created.errors, {});
@@ -30,4 +30,26 @@ test("pending save display shows the original allowed fields and tolerates damag
   assert.equal(shown.request_key, undefined);
   assert.equal(pendingExpenseValues({ body: "broken" }), null);
   assert.equal(pendingExpenseValues({ body: "null" }), null);
+});
+
+test("new expenses require an honest funding choice independent of payment method", () => {
+  for (const funding_source of ["", "personal", undefined]) assert.ok(expenseBody({...values, funding_source}, null, "2026-10-14").errors.funding_source);
+  const personal = expenseBody({...values, funding_source:"owner", payment_method:"mpesa"}, null, "2026-10-14");
+  assert.deepEqual(personal.errors, {});
+  assert.equal(personal.body.funding_source, "owner");
+  assert.equal(personal.body.payment_method, "mpesa");
+  const legacy = expenseBody({...values, funding_source:""}, {revision:0}, "2026-10-14");
+  assert.deepEqual(legacy.errors, {});
+  assert.equal(Object.hasOwn(legacy.body,"funding_source"), false);
+  assert.ok(expenseBody({...values, funding_source:""}, {revision:0,funding_source:"owner"}, "2026-10-14").errors.funding_source);
+});
+
+test("a pre-upgrade pending expense still displays without inventing its payer", () => {
+  const legacy = {...values}; delete legacy.funding_source;
+  const pending = {body:JSON.stringify(legacy)};
+  const original = pending.body;
+  const shown = pendingExpenseValues(pending);
+  assert.equal(shown.funding_source, "");
+  assert.equal(shown.amount, "250.50");
+  assert.equal(pending.body,original);
 });
