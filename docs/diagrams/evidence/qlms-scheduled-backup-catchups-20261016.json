@@ -1,0 +1,305 @@
+{
+  "observed_at_utc": "2026-10-15T23:50:48.8837150Z",
+  "scheduled_runs": [
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-15T21:53:01Z",
+      "event": "schedule",
+      "headSha": "cd5d86579675f7df50f3d57a4648635d68cabf83",
+      "id": 38813186276,
+      "jobs": [
+        {
+          "completedAt": "2026-10-15T21:53:10Z",
+          "conclusion": "success",
+          "name": "admission",
+          "startedAt": "2026-10-15T21:53:04Z",
+          "status": "completed",
+          "steps": [
+            {
+              "conclusion": "success",
+              "name": "Set up job",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Require a new backup unless today's actual scheduled archive is proved",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Record public trigger and admission decision",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Complete job",
+              "status": "completed"
+            }
+          ]
+        },
+        {
+          "completedAt": "2026-10-15T21:53:02Z",
+          "conclusion": "skipped",
+          "name": "alert-failure",
+          "startedAt": "2026-10-15T21:53:02Z",
+          "status": "completed",
+          "steps": []
+        },
+        {
+          "completedAt": "2026-10-15T21:54:07Z",
+          "conclusion": "success",
+          "name": "backup",
+          "startedAt": "2026-10-15T21:53:14Z",
+          "status": "completed",
+          "steps": [
+            {
+              "conclusion": "success",
+              "name": "Set up job",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed"
+            },
+            {
+              "conclusion": "skipped",
+              "name": "Signal start to the independent monitor",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Require qualified retention before a scheduled run",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Install verified operations dependencies",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Pull pinned PostgreSQL client",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Export encrypted archive and authenticate Drive readback",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Signal verified completion",
+              "status": "completed"
+            },
+            {
+              "conclusion": "skipped",
+              "name": "Signal failure or cancellation",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Complete job",
+              "status": "completed"
+            }
+          ]
+        }
+      ],
+      "status": "completed",
+      "updatedAt": "2026-10-15T21:54:08Z",
+      "url": "https://github.com/1ann0/Qinetra-Laundry-Management-System/actions/runs/38813186276"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-15T22:17:20Z",
+      "event": "schedule",
+      "headSha": "cd5d86579675f7df50f3d57a4648635d68cabf83",
+      "id": 38816067605,
+      "jobs": [
+        {
+          "completedAt": "2026-10-15T22:17:31Z",
+          "conclusion": "success",
+          "name": "admission",
+          "startedAt": "2026-10-15T22:17:23Z",
+          "status": "completed",
+          "steps": [
+            {
+              "conclusion": "success",
+              "name": "Set up job",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Require a new backup unless today's actual scheduled archive is proved",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Record public trigger and admission decision",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Complete job",
+              "status": "completed"
+            }
+          ]
+        },
+        {
+          "completedAt": "2026-10-15T22:17:21Z",
+          "conclusion": "skipped",
+          "name": "alert-failure",
+          "startedAt": "2026-10-15T22:17:21Z",
+          "status": "completed",
+          "steps": []
+        },
+        {
+          "completedAt": "2026-10-15T22:17:31Z",
+          "conclusion": "skipped",
+          "name": "backup",
+          "startedAt": "2026-10-15T22:17:31Z",
+          "status": "completed",
+          "steps": []
+        }
+      ],
+      "status": "completed",
+      "updatedAt": "2026-10-15T22:17:31Z",
+      "url": "https://github.com/1ann0/Qinetra-Laundry-Management-System/actions/runs/38816067605"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-15T23:04:32Z",
+      "event": "schedule",
+      "headSha": "cd5d86579675f7df50f3d57a4648635d68cabf83",
+      "id": 38821319500,
+      "jobs": [
+        {
+          "completedAt": "2026-10-15T23:04:46Z",
+          "conclusion": "success",
+          "name": "admission",
+          "startedAt": "2026-10-15T23:04:36Z",
+          "status": "completed",
+          "steps": [
+            {
+              "conclusion": "success",
+              "name": "Set up job",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Require a new backup unless today's actual scheduled archive is proved",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Record public trigger and admission decision",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Complete job",
+              "status": "completed"
+            }
+          ]
+        },
+        {
+          "completedAt": "2026-10-15T23:04:33Z",
+          "conclusion": "skipped",
+          "name": "alert-failure",
+          "startedAt": "2026-10-15T23:04:33Z",
+          "status": "completed",
+          "steps": []
+        },
+        {
+          "completedAt": "2026-10-15T23:04:47Z",
+          "conclusion": "skipped",
+          "name": "backup",
+          "startedAt": "2026-10-15T23:04:47Z",
+          "status": "completed",
+          "steps": []
+        }
+      ],
+      "status": "completed",
+      "updatedAt": "2026-10-15T23:04:48Z",
+      "url": "https://github.com/1ann0/Qinetra-Laundry-Management-System/actions/runs/38821319500"
+    }
+  ],
+  "credentials_read": false,
+  "secret_logs_read": false,
+  "company_email_receipt": "Owner confirms both missed-run DOWN and recovery UP received"
+}
