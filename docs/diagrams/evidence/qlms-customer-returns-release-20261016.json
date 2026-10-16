@@ -1,5 +1,13 @@
 {
   "source": "42dcce5764382218b3329dfe86235cdf91a0c6a6",
+  "latest_backend_source": "be609589edecb11ad2e5f23cb0e13e8f3d9491f4",
+  "latest_backend_deployment": "dep-db97k1rrjlhs73ase050",
+  "latest_backend_live_at": "2026-10-16T19:25:52.939639Z",
+  "polish_ci_run": 38954521574,
+  "polish_backend_tests": 384,
+  "polish_restricted_restore_seconds": 2.7,
+  "polish_public_ready": 200,
+  "polish_return_json_csv_xlsx_anonymous_status": 401,
   "ci_run": 38951124828,
   "backend_tests": 383,
   "frontend_tests": 129,
