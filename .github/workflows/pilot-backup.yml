@@ -45,8 +45,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-          # Exact operations source passed verification run 38788784374.
-          ref: 25a135afcfcc3c6d2316ebc35fa332fb6cbe2317
+          # Exact operations source passed verification run 38944859612.
+          ref: dc47db29c02401a88b82fbb9375cd57a237573ea
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
@@ -86,7 +86,7 @@ jobs:
         with:
           persist-credentials: false
           # Keep automation independent of main's older application.
-          ref: 25a135afcfcc3c6d2316ebc35fa332fb6cbe2317
+          ref: dc47db29c02401a88b82fbb9375cd57a237573ea
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
@@ -145,7 +145,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-          ref: 25a135afcfcc3c6d2316ebc35fa332fb6cbe2317
+          ref: dc47db29c02401a88b82fbb9375cd57a237573ea
       - name: Send only an operational test-failure signal
         env:
           QLMS_BACKUP_MONITOR_URL: ${{ secrets.QLMS_BACKUP_MONITOR_URL }}
